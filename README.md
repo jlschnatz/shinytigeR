@@ -26,18 +26,6 @@ You can install the development version of shinytigeR from
 ``` r
 # install.packages("devtools")
 devtools::install_github("jlschnatz/shinytigeR")
-#> Downloading GitHub repo jlschnatz/shinytigeR@HEAD
-#> 
-#> ── R CMD build ─────────────────────────────────────────────────────────────────
-#> * checking for file ‘/private/var/folders/fb/x2jg80rs5hdg00g44t0zhc3w0000gn/T/RtmpvzGPbs/remotes15f036276033a/jlschnatz-shinytigeR-aca65b3/DESCRIPTION’ ... OK
-#> * preparing ‘shinytigeR’:
-#> * checking DESCRIPTION meta-information ... OK
-#> * checking for LF line-endings in source and make files and shell scripts
-#> * checking for empty or unneeded directories
-#> Omitted ‘LazyData’ from DESCRIPTION
-#> * building ‘shinytigeR_0.0.0.9000.tar.gz’
-#> Installing package into '/private/var/folders/fb/x2jg80rs5hdg00g44t0zhc3w0000gn/T/RtmpnXHE3k/temp_libpath15d06218bc2e0'
-#> (as 'lib' is unspecified)
 ```
 
 ## License
