@@ -3,7 +3,7 @@ Title: Training with Individually Generated Success Feedback in R
 Version: 0.0.0.9000
 Authors@R: 
     person("Jan Luca", "Schnatz", , "schnatz@psych.uni-frankfurt.de", role = c("cre", "aut"))
-Description: Test Description
+Description: Test Description.
 License: CC BY 4.0
 Imports: 
     config (>= 0.3.1),

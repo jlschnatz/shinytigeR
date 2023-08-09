@@ -22,7 +22,7 @@
 golem::fill_desc(
   pkg_name = "shinytigeR", # The Name of the package containing the App
   pkg_title = "Training with Individually Generated Success Feedback in R", # The Title of the package containing the App
-  pkg_description = "Test Description", # The Description of the package containing the App
+  pkg_description = "Test Description.", # The Description of the package containing the App
   author_first_name = "Jan Luca", # Your First Name
   author_last_name = "Schnatz", # Your Last Name
   author_email = "schnatz@psych.uni-frankfurt.de", # Your Email
@@ -63,11 +63,11 @@ devtools::build_readme()
 # usethis::use_lifecycle_badge("Experimental")
 
 ## Use git ----
-usethis::use_git()
+# usethis::use_git()
 
 ## Init Testing Infrastructure ----
 ## Create a template for tests
-golem::use_recommended_tests()
+# golem::use_recommended_tests()
 
 ## Favicon ----
 # If you want to change the favicon (default is golem's one)
