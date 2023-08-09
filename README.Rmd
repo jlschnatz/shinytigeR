@@ -23,7 +23,7 @@ tigeR – Training mit individuell generierten Erfolgsrückmeldungen in R (train
 
 You can install the development version of shinytigeR from [GitHub](https://github.com/) with:
 
-```{r}
+```{r,eval=FALSE}
 # install.packages("devtools")
 devtools::install_github("jlschnatz/shinytigeR")
 ```

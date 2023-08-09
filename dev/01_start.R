@@ -30,19 +30,19 @@ golem::fill_desc(
   pkg_version = "0.0.0.9000" # The Version of the package containing the App
 )
 
-p <- #c(
-  # person(
-  #   given = "Julia",
-  #   family = "Beitner",
-  #   email = "beitner@psych.uni-frankfurt.de",
-  #   role = c("cre", "aut")
-  # ),
+p <- c(
+  person(
+    given = "Julia",
+    family = "Beitner",
+    email = "beitner@psych.uni-frankfurt.de",
+    role = c("aut")
+  ),
   person(
     given = "Jan Luca",
     family = "Schnatz",
     email = "schnatz@psych.uni-frankfurt.de",
     role = c("cre", "aut")
-  #)
+  )
 )
 
 desc::desc_set_authors(p)
