@@ -1,21 +1,37 @@
 Package: shinytigeR
-Title: Training with Individually Generated Success Feedback in R
+Title: Training with Individually Generated Feedback in R
 Version: 0.0.0.9000
 Authors@R: c(
     person("Julia", "Beitner", , "beitner@psych.uni-frankfurt.de", role = "aut"),
     person("Jan Luca", "Schnatz", , "schnatz@psych.uni-frankfurt.de", role = c("cre", "aut"))
   )
-Description: Test Description.
+Description: An interactive Shiny app providing automated feedback and skill tracking to aid students develop statistical litercy with R.
 License: CC BY 4.0
-Imports: 
-    config (>= 0.3.1),
-    golem (>= 0.4.1),
-    shiny (>= 1.7.4.1)
-Encoding: UTF-8
-LazyData: true
-RoxygenNote: 7.2.3
 URL: https://github.com/jlschnatz/shinytigeR
 BugReports: https://github.com/jlschnatz/shinytigeR/issues
+Imports: 
+    bslib (>= 0.5.1),
+    config (>= 0.3.1),
+    dplyr (>= 1.1.2),
+    forcats (>= 1.0.0),
+    geomtextpath (>= 0.1.1),
+    ggplot2 (>= 3.4.2),
+    ggtext (>= 0.1.2),
+    golem (>= 0.4.1),
+    patchwork (>= 1.1.3),
+    purrr (>= 1.0.2),
+    readr (>= 2.1.4),
+    rlang (>= 1.1.1),
+    shiny (>= 1.7.4.1),
+    shinyalert (>= 3.0.0),
+    shinyauthr (>= 1.0.0),
+    shinyjs (>= 2.1.0),
+    showtext (>= 0.9.6),
+    sysfonts (>= 0.8.8),
+    tibble (>= 3.2.1)
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
