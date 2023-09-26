@@ -5,7 +5,7 @@
 
 ## Overview
 
-tigeR – Training mit individuell generierten Erfolgsrückmeldungen in R
+*tigeR* – Training mit individuell generierten Erfolgsrückmeldungen in R
 (training with individually generated progress feedback in R) aims to
 create a Shiny web application that supports students (in the
 introductory statistics class of psychology at Goethe University)
@@ -27,6 +27,10 @@ You can install the development version of shinytigeR from
 # install.packages("devtools")
 devtools::install_github("jlschnatz/shinytigeR")
 ```
+
+## App Architecture
+
+<embed src="inst/app/www/tigeR_flowchart_horizontal.pdf" width="100%" type="application/pdf" />
 
 ## License
 

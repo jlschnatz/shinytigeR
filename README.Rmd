@@ -8,7 +8,7 @@ output: github_document
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "man/figures/README-",
+  fig.path = "inst/app/www",
   out.width = "100%"
 )
 ```
@@ -28,6 +28,13 @@ You can install the development version of shinytigeR from [GitHub](https://gith
 devtools::install_github("jlschnatz/shinytigeR")
 ```
  
+## App Architecture
+
+```{r, echo=FALSE}
+knitr::include_graphics("inst/app/www/tigeR_flowchart_horizontal.pdf")
+```
+
+
 ## License
 
 Shield: [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
