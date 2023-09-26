@@ -30,8 +30,7 @@ devtools::install_github("jlschnatz/shinytigeR")
  
 ## App Architecture
 
-<img src="inst/app/www/tigeR_flowchart_horizontal.pdf
-" align="right"/>
+<img src="inst/app/www/tigeR_flowchart_horizontal.png" align="center"/>
 
 
 ## License
