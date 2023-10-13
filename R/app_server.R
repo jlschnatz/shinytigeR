@@ -51,8 +51,11 @@ app_server <- function(input, output, session) {
     value = "home",
     icon = bsicons::bs_icon("house-fill", size = 15),
     fluidRow(
-      h3("Willkommen!"),
-      tags$a("Das wird die Übersicht.")
+      h4("Hallo und herzlich willkommen bei tigeR!"),
+      tags$div("Hallo und herzlich willkommen bei tigeR!
+Hier findest du Übungsaufgaben begleitend zu den Inhalten des Moduls PsyBSc2.
+Unter dem Reiter Üben geht es direkt zu den Aufgaben und unter Fortschritt erhältst du einen Überblick über deine bisherigen Aktivitäten in tigeR. Bei Fragen, Problemen oder Anmerkungen kannst du dich jederzeit an Julia Beitner unter beitner@psych.uni-frankfurt.de wenden!
+Viel Spaß :)")
     )
   )
 

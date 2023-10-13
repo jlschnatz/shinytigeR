@@ -10,7 +10,17 @@
 mod_select_item_ui <- function(id){
   ns <- NS(id)
   tagList(
-
+    tags$h2(tags$b("Auswahl")),
+    tags$h3("Wähle einen Pool an Items aus, die du Üben möchtest"),
+    shinyWidgets::pickerInput(
+      inputId = NS(id, "picker"),
+      label = "Auswahl",
+      choices = list("A", "B", "C", "D", "E"),
+      selected = NULL,
+      multiple = TRUE
+    ),
+    actionButton(NS(id, "submit_btn"), "Start"),
+    textOutput(NS(id, "if_empty"))
   )
 }
 
