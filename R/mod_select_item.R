@@ -7,17 +7,16 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_select_item_ui <- function(id, picker_choices) {
+mod_select_item_ui <- function(id, data_item) {
   ns <- NS(id)
   tagList(
     fluidRow(
-      wellPanel(
         tags$h4(tags$b("Auswahl der Übungsfragen")),
         tags$text("Wähle einen Pool an Items aus, die du üben möchtest. Diese kannst du inhaltlich auswählen."),
         rep_br(2),
         shinyWidgets::pickerInput(
           inputId = ns("picker"),
-          choices = picker_choices, # here reali_item topic names as input
+          choices = unique(data_item$learning_area), # here reali_item topic names as input
           selected = NULL,
           multiple = TRUE,
           options = list(
@@ -28,10 +27,7 @@ mod_select_item_ui <- function(id, picker_choices) {
           )
         ),
         actionButton(ns("submit_btn"), "Start"),
-        uiOutput(ns("if_empty")),
-        tableOutput(ns("table_test")),
         full_screen = FALSE
-      )
     )
   )
 }
@@ -50,7 +46,8 @@ mod_select_item_server <- function(id, data_item) {
       if (!is.null(selected_topics())) {
         dplyr::filter(data_item, learning_area %in% selected_topics())
       } else {
-        data_item
+        #data_item
+        NULL
       }
     })
 
@@ -77,16 +74,8 @@ mod_select_item_server <- function(id, data_item) {
       }
     })
 
-    # Display the selected variables
-    output$if_empty <- renderUI({
-      if (!is.null(selected_topics())) {
-        renderPrint(sample(filtered_data()$id_item))
-      }
-    })
-
-
-
-    return(reactive(sample(filtered_data()$id_item)))
+    # return a reactive list with the indices of the filtered data
+    return(reactive(list(id_display = sample(filtered_data()$id_item))))
   })
 }
 

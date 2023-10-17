@@ -16,7 +16,7 @@ app_server <- function(input, output, session) {
       tags$li(
         div(
           style = "padding: 10px; padding-top: 8px; padding-bottom: 0;",
-          shinyauthr::logoutUI("logout")
+          shinyauthr::logoutUI("logout", class = "btn-danger", icon = icon("right-from-bracket"))
         )
       )
     )
@@ -51,7 +51,8 @@ app_server <- function(input, output, session) {
 
   # Load data from item database
 
-  data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite")
+  data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
+    dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/")))
 
   # additional tabs to be added after login
   home_tab <- bslib::nav_panel(
@@ -68,7 +69,7 @@ app_server <- function(input, output, session) {
       ),
       column(width = 6,
              # You can add an image or any other content in the right column
-             tags$img(src = "www/tigeR_Logo_transparent.png", width = "30%")
+             tags$img(src = "www/img_logo/tigeR_Logo_transparent.png", width = "30%")
       )
     )
   )
@@ -78,7 +79,7 @@ app_server <- function(input, output, session) {
     value = "data",
     icon = bsicons::bs_icon("ui-radios", size = 15),
     fluidRow(
-      mod_select_item_ui("select_item_1", unique(data_item$learning_area)),
+      mod_select_item_ui("select_item_1", data_item),
       mod_display_item_ui("display_item_1"),
       mod_check_item_ui("check_item_1")
     )
@@ -108,6 +109,8 @@ app_server <- function(input, output, session) {
     }
   })
 
-  mod1 <- mod_select_item_server("select_item_1", data_item)
-  #mod_display_item_server("display_item_1")
+  index <- mod_select_item_server("select_item_1", data_item)
+  mod2_display_item <- mod_display_item_server("display_item_1", data_item, index)
+
+  #bslib::bs_themer()
 }
