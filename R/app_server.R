@@ -62,7 +62,7 @@ app_server <- function(input, output, session) {
     fluidRow(
       column(width = 6,
              tags$h4("Hallo und herzlich willkommen bei tigeR!"),
-             tags$p("Hallo und herzlich willkommen bei tigeR! Hier findest du Übungsaufgaben begleitend zu den Inhalten des Moduls PsyBSc2."),
+             tags$p("Hier findest du Übungsaufgaben begleitend zu den Inhalten des Moduls PsyBSc2."),
              tags$p("Unter dem Reiter Üben geht es direkt zu den Aufgaben und unter Fortschritt erhältst du einen Überblick über deine bisherigen Aktivitäten in tigeR."),
              tags$p("Bei Fragen, Problemen oder Anmerkungen kannst du dich jederzeit an Julia Beitner unter beitner@psych.uni-frankfurt.de wenden."),
              tags$p("Viel Spaß :)")
@@ -92,7 +92,7 @@ app_server <- function(input, output, session) {
     fluidRow(
       h3("Fortschritt"),
       tags$a("Hier der Fortschritt mit Dashboard"),
-      mod_response_analysis_ui("response_analysis_1"),
+      #mod_response_analysis_ui("response_analysis_1"),
       mod_progress_dashboard_ui("progress_dashboard_1")
     )
   )
@@ -111,6 +111,13 @@ app_server <- function(input, output, session) {
 
   index <- mod_select_item_server("select_item_1", data_item)
   mod2_display_item <- mod_display_item_server("display_item_1", data_item, index)
+
+
+
+  user_id <- "user1"
+  response_analysis <- callModule(mod_response_analysis_server, "response_analysis_1", data_item = data_item, user_id = user_id)
+  callModule(mod_progress_dashboard_server, "progress_dashboard_1", feedback_data = response_analysis$feedback_data,
+             bearbeitet = response_analysis$bearbeitet, all_data = response_analysis$all_data)
 
   #bslib::bs_themer()
 }

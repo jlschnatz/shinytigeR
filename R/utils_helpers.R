@@ -46,3 +46,44 @@ db_get_itemdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite
 
   return(data_item)
 }
+
+
+db_get_userdata <- function(user_id, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite") {
+
+  pool <- pool::dbPool(
+    drv = .drv,
+    dbname = .db_name
+  )
+
+  con <- pool::poolCheckout(pool)
+
+  # Fetch data for the specific user
+  user_data <- dplyr::collect(dplyr::tbl(con, "user_db") %>%
+                              dplyr::filter(id_user == user_id))
+
+  pool::poolReturn(con)
+  pool::poolClose(pool)
+
+  return(user_data)
+}
+
+
+# ## IRT functions
+# # 2PL model function
+# prob_2pl <- function(theta, discrimination, difficulty) {
+#   return(1 / (1 + exp(-discrimination * (theta - difficulty))))
+# }
+#
+# # Negative log-likelihood function for the 2PL model
+# negative_log_likelihood <- function(theta, responses, discrimination, difficulty) {
+#   p <- prob_2pl(theta, discrimination, difficulty)
+#   return(-sum(responses * log(p) + (1 - responses) * log(1 - p)))
+# }
+#
+# # Function to estimate theta for a person using Maximum Likelihood
+# estimate_theta <- function(responses, discrimination, difficulty) {
+#   result <- optim(0, negative_log_likelihood, method="L-BFGS-B",
+#                   lower=-4, upper=4, responses=responses,
+#                   discrimination=discrimination, difficulty=difficulty)
+#   return(result$par)
+# }
