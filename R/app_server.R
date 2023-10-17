@@ -108,6 +108,6 @@ app_server <- function(input, output, session) {
     }
   })
 
-  mod_select_item_server("select_item_1", data_item)
+  mod1 <- mod_select_item_server("select_item_1", data_item)
   #mod_display_item_server("display_item_1")
 }

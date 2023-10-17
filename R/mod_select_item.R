@@ -48,16 +48,18 @@ mod_select_item_server <- function(id, data_item) {
     # Filter the data based on selected topics
     filtered_data <- reactive({
       if (!is.null(selected_topics())) {
-        data_item %>%
-          dplyr::filter(learning_area %in% selected_topics())
+        dplyr::filter(data_item, learning_area %in% selected_topics())
       } else {
-        data_item  # Return the original data if no topics are selected
+        data_item
       }
     })
 
     # Observe the submit button click
     observeEvent(input$submit_btn, {
+      # Update selected_topics to whats chosen in the pickerInput
       selected_topics(input$picker)
+
+      # If nothing selected: warning pop-up
       if (is.null(selected_topics())) {
         shinyalert::shinyalert(
           title = "Achtung!",
@@ -77,21 +79,16 @@ mod_select_item_server <- function(id, data_item) {
 
     # Display the selected variables
     output$if_empty <- renderUI({
-      if (is.null(selected_topics())) {
-        HTML("Bitte wählen Sie mindestens eine Kategorie aus.")
-      } else {
-        table_output <- renderTable(filtered_data())
-        if (nrow(filtered_data()) == 0) {
-          HTML("Keine Daten gefunden.")
-        } else {
-          table_output
-        }
+      if (!is.null(selected_topics())) {
+        renderPrint(sample(filtered_data()$id_item))
       }
     })
+
+
+
+    return(reactive(sample(filtered_data()$id_item)))
   })
-
 }
-
 
 
 ## To be copied in the UI
