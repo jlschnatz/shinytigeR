@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# tigeR <img src="inst/app/www/tigeR_hex.png" align="right" height="138"/>
+# tigeR <img src="inst/app/www/img_logo/tigeR_hex.png" align="right" height="138"/>
 
 ## Overview
 
@@ -30,7 +30,7 @@ devtools::install_github("jlschnatz/shinytigeR")
 
 ## App Architecture
 
-<img src="inst/app/www/tigeR_flowchart_horizontal.png" align="center"/>
+<img src="inst/app/www/img_flowchart/tigeR_flowchart_horizontal.png" align="center" width="80%"/>
 
 ## License
 
