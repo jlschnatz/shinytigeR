@@ -13,6 +13,7 @@ BugReports: https://github.com/jlschnatz/shinytigeR/issues
 Imports: 
     config (>= 0.3.1),
     golem (>= 0.4.1),
+    magrittr,
     shiny (>= 1.7.4.1)
 Suggests: 
     testthat (>= 3.0.0)

@@ -19,7 +19,9 @@ app_ui <- function(request) {
         value = "login",
         icon = bsicons::bs_icon("lock-fill", size = 15),
         shinyauthr::loginUI("login")
-      )
+      ),
+      fluid = TRUE,
+      theme = bslib::bs_theme(bootswatch = "zephyr")
     )
 
   )
