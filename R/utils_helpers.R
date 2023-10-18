@@ -48,7 +48,7 @@ db_get_itemdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite
 }
 
 
-db_get_userdata <- function(user_id, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite") {
+db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite", .fetch_all = FALSE) {
 
   pool <- pool::dbPool(
     drv = .drv,
@@ -57,9 +57,14 @@ db_get_userdata <- function(user_id, .drv = RSQLite::SQLite(), .db_name = "db_us
 
   con <- pool::poolCheckout(pool)
 
-  # Fetch data for the specific user
-  user_data <- dplyr::collect(dplyr::tbl(con, "user_db") %>%
-                              dplyr::filter(id_user == user_id))
+  if (.fetch_all) {
+    vec_username <- DBI::dbListTables(con)
+    user_data <- purrr::map(vec_username, ~dplyr::collect(dplyr::tbl(con, .x)) %>% purrr::list_rbind())
+  } else {
+
+    # Fetch data for the specific user
+    user_data <- dplyr::collect(dplyr::tbl(con, id_user))
+  }
 
   pool::poolReturn(con)
   pool::poolClose(pool)
