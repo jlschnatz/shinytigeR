@@ -52,7 +52,8 @@ app_server <- function(input, output, session) {
   # Load data from item database
 
   data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
-    dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/")))
+    dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/"))) %>%
+    dplyr::mutate(learning_area = forcats::fct(learning_area))
 
   # additional tabs to be added after login
   home_tab <- bslib::nav_panel(
@@ -115,9 +116,10 @@ app_server <- function(input, output, session) {
 
 
   user_id <- "user1"
-  response_analysis <- callModule(mod_response_analysis_server, "response_analysis_1", data_item = data_item, user_id = user_id)
-  callModule(mod_progress_dashboard_server, "progress_dashboard_1", feedback_data = response_analysis$feedback_data,
-             bearbeitet = response_analysis$bearbeitet, all_data = response_analysis$all_data)
+  response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, user_id)
+  mod_progress_dashboard_server("progress_dashboard_1", feedback_data = response_analysis$feedback_data(),
+             bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data())
+
 
   #bslib::bs_themer()
 }

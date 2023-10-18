@@ -20,7 +20,6 @@ mod_response_analysis_ui <- function(id){
 mod_response_analysis_server <- function(id, input, output, session, data_item, user_id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
-    data_item <- db_get_itemdata()
 
     # Fetch user's data from the database
     #user_data <- db_get_userdata(user_id)
@@ -66,7 +65,7 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       course_data <- aggregate(data_item$ia_diff ~ data_item$learning_area, FUN=mean)
       colnames(course_data) <- c("Lerneinheit", "korrekt")
 
-      all_data <- merge(feedback_data, course_data, by = "Lerneinheit", suffixes = c("", "_sample"))
+      all_data <- merge(feedback_data_reactive(), course_data, by = "Lerneinheit", suffixes = c("", "_sample"))
 
       # Return all data
       return(all_data)
@@ -74,7 +73,10 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
 
 
     bearbeitet_reactive <- reactive({
-      bearbeitet <- ifelse(levels(feedback_data_reactive$Lerneinheit) %in% feedback_data_reactive$Lerneinheit, "black", "grey")
+      bearbeitet <- ifelse(levels(feedback_data_reactive()$Lerneinheit) %in% feedback_data_reactive()$Lerneinheit, "black", "grey")
+
+      # Return bearbeitet
+      return(bearbeitet)
     })
 
 
@@ -82,9 +84,9 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     return(list(
       feedback_data = feedback_data_reactive,
       bearbeitet = bearbeitet_reactive,
+      all_data = all_data_reactive,
       todays_practice = todays_practice,
-      overall_practice = overall_practice,
-      all_data = all_data_reactive
+      overall_practice = overall_practice
 
     ))
 
