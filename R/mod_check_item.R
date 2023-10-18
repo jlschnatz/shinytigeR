@@ -35,9 +35,3 @@ mod_check_item_server <- function(id){
 
   })
 }
-
-## To be copied in the UI
-# mod_check_item_ui("check_item_1")
-
-## To be copied in the server
-# mod_check_item_server("check_item_1")

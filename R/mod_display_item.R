@@ -1,36 +1,44 @@
-#' display_item UI Function
+#' display_item UI function
 #'
-#' @description A shiny Module.
+#' @description The UI part of the display_item module that creates the stimulus and MC-questionnaire interface.
 #'
-#' @param id,input,output,session Internal parameters for {shiny}.
+#' @param id A character string of the id of the module
 #'
-#' @noRd
+#' @returns A UI definition
+#'
+#' @export
 #'
 #' @importFrom shiny NS tagList
 mod_display_item_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    rep_br(2),
-    # bslib::card(
-    # bslib::card_header("Übung"),
+    br(), br(),
+    rep_br(4),
     uiOutput(ns("stimulus")),
-    rep_br(2),
+    rep_br(4),
     uiOutput(ns("radio_item"))
-    # purrr::map(c(ns("stimulus"), ns("radio_item")), uiOutput)
-    # )
   )
 }
 
 #' display_item Server Functions
 #'
-#' @noRd
-mod_display_item_server <- function(id, data_item, index) {
+#' @description
+#' The server part of the display_item module.
+#'
+#' @param id A character string of the id of the module
+#' @param data_item A dataframe that contains the item data from the item database
+#' @param index_display A vector of the indices of the filtered data (the output of mod_select_item_server)
+#'
+#' @returns A named list with the reactive vector cur_selection of length 1L that contains the current selected answeroption of the MC-item.
+#'
+#' @export
+mod_display_item_server <- function(id, data_item, index_display) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # Reactive value to keep track of the current item index
 
-    item_index <- reactive(index()$id_display[1])
+    item_index <- reactive(index_display()[1])
 
     output$stimulus <- renderUI(
       if (!is.null(item_index())) {
@@ -53,13 +61,6 @@ mod_display_item_server <- function(id, data_item, index) {
       }
     )
 
-    return(reactive(input$radio_item))
-
+    return(list(cur_selection = reactive(input$radio_item)))
   })
 }
-
-## To be copied in the UI
-# mod_display_item_ui("display_item_1")
-
-## To be copied in the server
-# mod_display_item_server("display_item_1")

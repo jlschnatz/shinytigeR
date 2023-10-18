@@ -109,8 +109,9 @@ app_server <- function(input, output, session) {
     }
   })
 
-  index <- mod_select_item_server("select_item_1", data_item)
-  mod2_display_item <- mod_display_item_server("display_item_1", data_item, index)
+  mod1_select <- mod_select_item_server("select_item_1", data_item)
+  mod2_display <- mod_display_item_server("display_item_1", data_item, mod1_select$index_display)
+  #mod3_check <- mod_check_item_server()
 
 
 
