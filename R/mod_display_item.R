@@ -27,13 +27,22 @@ mod_display_item_ui <- function(id) {
 #'
 #' @param id A character string of the id of the module
 #' @param data_item A dataframe that contains the item data from the item database
-#' @param index_display A vector of the indices of the filtered data (the output of mod_select_item_server)
+#' @param index_display A (reactive) vector of the indices of the filtered data (the output of mod_select_item_server)
 #'
 #' @returns
-#' A named list with the reactive vector 'cur_answer_txt' of length 1L that contains the the text string of the current selected answeroption of the MC-item
-#' and a reactive vector 'cur_item_id' of length 1L that contains the current selected index of the answeroption and
-#' and a reactive vector 'cur_answer_id' of length 1L that contains the current selected index of the selected answeroption (1-5)
+#' A named list with the following elements:
+#'
+#' \itemize{
+#'   \item A reactive vector `cur_answer_txt` of length 1L that contains the the text string of
+#'    the current selected answeroption of the MC-item
+#'   \item A reactive vector `cur_item_id` of length 1L that contains the current selected
+#'    index of the answeroption
+#'   \item A reactive vector `cur_answer_id` of length 1L that contains the current selected
+#'    index of the selected answeroption (1-5)
+#' }
+#'
 #' @export
+#'
 mod_display_item_server <- function(id, data_item, index_display) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -62,12 +71,12 @@ mod_display_item_server <- function(id, data_item, index_display) {
       }
     )
 
-    return(
-      list(
-        cur_item_id = cur_item_id,
-        cur_answer_txt = reactive(input$radio_item),
-        cur_answer_id = which(get_answeroptions(data_item, cur_item_id()) == cur_answer_select())
-        )
-      )
+    out <- list(
+      cur_item_id = cur_item_id,
+      cur_answer_txt = reactive(input$radio_item),
+      cur_answer_id = reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_select()))
+    )
+    return(out)
+
   })
 }

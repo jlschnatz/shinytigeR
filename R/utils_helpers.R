@@ -61,7 +61,6 @@ db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_us
     vec_username <- DBI::dbListTables(con)
     user_data <- purrr::map(vec_username, ~dplyr::collect(dplyr::tbl(con, .x)) %>% purrr::list_rbind())
   } else {
-
     # Fetch data for the specific user
     user_data <- dplyr::collect(dplyr::tbl(con, id_user))
   }

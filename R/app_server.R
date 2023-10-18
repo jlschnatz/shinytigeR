@@ -52,7 +52,8 @@ app_server <- function(input, output, session) {
   # Load data from item database
 
   data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
-    dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/")))
+    dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/"))) %>%
+    dplyr::mutate(learning_area = forcats::fct(learning_area))
 
   # additional tabs to be added after login
   home_tab <- bslib::nav_panel(
