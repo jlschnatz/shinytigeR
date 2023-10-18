@@ -109,11 +109,24 @@ app_server <- function(input, output, session) {
     }
   })
 
-  mod1_select <- mod_select_item_server("select_item_1", data_item)
-  mod2_display <- mod_display_item_server("display_item_1", data_item, mod1_select$index_display)
-  #mod3_check <- mod_check_item_server()
+  mod1_select <- mod_select_item_server(
+    id = "select_item_1",
+    data_item = data_item
+    )
 
+  mod2_display <- mod_display_item_server(
+    id = "display_item_1",
+    data_item = data_item,
+    index_display = mod1_select$index_display
+    )
 
+  mod3_check <- mod_check_item_server(
+    id = "check_item_1",
+    data_item = data_item,
+    cur_item_id = mod2_display$cur_item_id,
+    cur_answer_txt = mod2_display$cur_answer_txt,
+    cur_answer_id = mod2_display$cur_answer_id
+    )
 
   user_id <- "user1"
   response_analysis <- callModule(mod_response_analysis_server, "response_analysis_1", data_item = data_item, user_id = user_id)

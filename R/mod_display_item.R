@@ -29,38 +29,45 @@ mod_display_item_ui <- function(id) {
 #' @param data_item A dataframe that contains the item data from the item database
 #' @param index_display A vector of the indices of the filtered data (the output of mod_select_item_server)
 #'
-#' @returns A named list with the reactive vector cur_selection of length 1L that contains the current selected answeroption of the MC-item.
-#'
+#' @returns
+#' A named list with the reactive vector 'cur_answer_txt' of length 1L that contains the the text string of the current selected answeroption of the MC-item
+#' and a reactive vector 'cur_item_id' of length 1L that contains the current selected index of the answeroption and
+#' and a reactive vector 'cur_answer_id' of length 1L that contains the current selected index of the selected answeroption (1-5)
 #' @export
 mod_display_item_server <- function(id, data_item, index_display) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # Reactive value to keep track of the current item index
-
-    item_index <- reactive(index_display()[1])
+    cur_item_id <- reactive(index_display()[1])
 
     output$stimulus <- renderUI(
-      if (!is.null(item_index())) {
+      if (!is.null(cur_item_id())) {
         displayStimulus(
-          .text = data_item$stimulus_text[item_index()],
-          .img = data_item$stimulus_image[item_index()],
-          .type_stimulus = data_item$type_stimulus[item_index()]
+          .text = data_item$stimulus_text[cur_item_id()],
+          .img = data_item$stimulus_image[cur_item_id()],
+          .type_stimulus = data_item$type_stimulus[cur_item_id()]
         )
       }
     )
 
     output$radio_item <- renderUI(
-      if (!is.null(item_index())) {
+      if (!is.null(cur_item_id())) {
         radioButtonsDynamic(
           inputId = "radio_item",
-          choices = get_answeroptions(data_item, item_index()),
-          type_answer = data_item$type_answer[item_index()],
-          correct_id = data_item$answer_correct[item_index()]
+          choices = get_answeroptions(data_item, cur_item_id()),
+          type_answer = data_item$type_answer[cur_item_id()],
+          correct_id = data_item$answer_correct[cur_item_id()]
         )
       }
     )
 
-    return(list(cur_selection = reactive(input$radio_item)))
+    return(
+      list(
+        cur_item_id = cur_item_id,
+        cur_answer_txt = reactive(input$radio_item),
+        cur_answer_id = which(get_answeroptions(data_item, cur_item_id()) == cur_answer_select())
+        )
+      )
   })
 }

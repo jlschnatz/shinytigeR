@@ -26,12 +26,19 @@ mod_check_item_ui <- function(id){
 #' check_item Server Functions
 #'
 #' @noRd
-mod_check_item_server <- function(id){
+mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cur_answer_id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    shinyjs::hide("check_button")
-    shinyjs::hide("next_button")
+    feedback_message <- reactiveVal(NULL)
+
+    observeEvent(input$check_button, {
+      if (!is.null(cur_selection())) {
+
+      }
+    })
+
+
 
   })
 }

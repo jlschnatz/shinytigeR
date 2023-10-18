@@ -14,7 +14,9 @@ mod_display_item_server(id, data_item, index_display)
 \item{index_display}{A vector of the indices of the filtered data (the output of mod_select_item_server)}
 }
 \value{
-A named list with the reactive vector cur_selection of length 1L that contains the current selected answeroption of the MC-item.
+A named list with the reactive vector 'cur_answer_txt' of length 1L that contains the the text string of the current selected answeroption of the MC-item
+and a reactive vector 'cur_item_id' of length 1L that contains the current selected index of the answeroption and
+and a reactive vector 'cur_answer_id' of length 1L that contains the current selected index of the selected answeroption (1-5)
 }
 \description{
 The server part of the display_item module.
