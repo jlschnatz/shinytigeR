@@ -9,7 +9,8 @@ mod_check_item_server(
   data_item,
   cur_item_id,
   cur_answer_txt,
-  cur_answer_id
+  cur_answer_id,
+  submit_btn_value
 )
 }
 \arguments{

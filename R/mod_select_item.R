@@ -86,7 +86,10 @@ mod_select_item_server <- function(id, data_item) {
     })
 
     # return a named list with reactive indices of the filtered data
-    out <- list(index_display = reactive(sample(filtered_data()$id_item)))
+    out <- list(
+      index_display = reactive(sample(filtered_data()$id_item)),
+      submit_btn_value = reactive(input$submit_btn)
+      )
     return(out)
   })
 }

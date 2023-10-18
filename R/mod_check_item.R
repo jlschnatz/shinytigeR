@@ -13,13 +13,15 @@ mod_check_item_ui <- function(id) {
   ns <- NS(id)
   tagList(
     # generate two action buttons
-    purrr::pmap(
+    shinyjs::hidden(
+      purrr::pmap(
       .l = tibble::tibble(
         inputId = c(ns("check_button"), ns("next_button")),
         label = c("Antwort überprüfen", "Nächste Frage"),
         icon = list(icon("check", icon("forward-step")))
       ),
       .f = actionButton
+      )
     ),
     uiOutput(ns("feedback"))
   )
@@ -38,45 +40,53 @@ mod_check_item_ui <- function(id) {
 #' @returns Test
 #'
 #' @export
-mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cur_answer_id) {
+mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cur_answer_id, submit_btn_value) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+
+    # observe if submit button is clicked, only then show both check and next buttons
+    observeEvent(submit_btn_value(), {
+      shinyjs::show("check_button")
+      shinyjs::show("next_button")
+    })
 
     feedback_message <- reactiveVal(NULL)
 
     observeEvent(input$check_button, {
       if (!is.null(cur_answer_txt())) {
-        is_correct <- cur_answer_id == data_item$answer_correct[cur_item_id()]
+        req(cur_answer_txt)
+        is_correct <- cur_answer_id() == data_item$answer_correct[cur_item_id()]
 
         # Common logic for both correct and incorrect cases
-        if (df_item$type_answer[cur_item_id()] == "image") {
+        if (data_item$type_answer[cur_item_id()] == "image") {
           class_mapping <- ifelse(is_correct, "correct_answer_img", "incorrect_answer_img")
-        } else if (df_item$type_answer[cur_item_id()] == "text") {
+        } else if (data_item$type_answer[cur_item_id()] == "text") {
           class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
         }
 
-        shinyjs::addClass(selector = paste0("#label_radio_item", selected_index), class = class_mapping)
+        shinyjs::addClass(selector = paste0("#label_radio_item", cur_answer_id()), class = class_mapping)
 
-        if (!is_correct && df_item$type_answer[cur_item_id()] == "image") {
+        if (!is_correct && data_item$type_answer[cur_item_id()] == "image") {
           shinyjs::addClass(
-            selector = paste0("#label_radio_item", df_item$answer_correct[cur_item_id()]),
+            selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_img"
             )
-        } else if (!is_correct && df_item$type_answer[cur_item_id()] == "text") {
+        } else if (!is_correct && data_item$type_answer[cur_item_id()] == "text") {
           shinyjs::addClass(
-            selector = paste0("#label_radio_item", df_item$answer_correct[cur_item_id()]),
+            selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_txt"
             )
         }
 
         feedback_message(
           HTML(
-            case_when(
-              selected_index == 1 ~ df_item$if_answeroption_01[cur_item_id()],
-              selected_index == 2 ~ df_item$if_answeroption_02[cur_item_id()],
-              selected_index == 3 ~ df_item$if_answeroption_03[cur_item_id()],
-              selected_index == 4 ~ df_item$if_answeroption_04[cur_item_id()],
-              selected_index == 5 ~ df_item$if_answeroption_05[cur_item_id()]
+            dplyr::case_when(
+              cur_answer_id() == 1 ~ data_item$if_answeroption_01[cur_item_id()],
+              cur_answer_id() == 2 ~ data_item$if_answeroption_02[cur_item_id()],
+              cur_answer_id() == 3 ~ data_item$if_answeroption_03[cur_item_id()],
+              cur_answer_id() == 4 ~ data_item$if_answeroption_04[cur_item_id()],
+              cur_answer_id() == 5 ~ data_item$if_answeroption_05[cur_item_id()]
             )
           )
         )

@@ -6,6 +6,27 @@
 #'
 #' @noRd
 
+check_na_feedback <- function(.feedback_col, .answer_correct) {
+  fb_enq <- rlang::enquo(.feedback_col)
+  fb_name <- rlang::quo_name(fb_enq)
+  assertthat::assert_that(
+    grepl("^if_answeroption_[0-9]{2}$", fb_name),
+    msg = "Column does not match the naming convention if_answeroption_0<int>"
+  )
+  assertthat::assert_that(dplyr::between(.answer_correct, 1, 5))
+  fb_number <- substr_nth(fb_name, n = 1, side = "right")
+
+  if (is.na(.feedback_col)) {
+    return(dplyr::if_else(
+      fb_number == .answer_correct,
+      paste0("Richtige Antwort. Gut gemacht! ", icon("smile")),
+      "Falsche Antwort."
+    ))
+  } else {
+    return(.feedback_col)
+  }
+}
+
 # image validation function
 is_image <- function(x) {
   pattern <- "(([\\/a-zA-Z0-9äöüÄÖÜ_-]*?)\\.(svg|pdf|png|jpeg|jpg|tiff))$"

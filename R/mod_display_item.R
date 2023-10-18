@@ -16,7 +16,8 @@ mod_display_item_ui <- function(id) {
     rep_br(4),
     uiOutput(ns("stimulus")),
     rep_br(4),
-    uiOutput(ns("radio_item"))
+    uiOutput(ns("radio_item")),
+    br(), br(),
   )
 }
 
@@ -63,7 +64,7 @@ mod_display_item_server <- function(id, data_item, index_display) {
     output$radio_item <- renderUI(
       if (!is.null(cur_item_id())) {
         radioButtonsDynamic(
-          inputId = "radio_item",
+          inputId = ns("radio_item"),
           choices = get_answeroptions(data_item, cur_item_id()),
           type_answer = data_item$type_answer[cur_item_id()],
           correct_id = data_item$answer_correct[cur_item_id()]
@@ -71,11 +72,14 @@ mod_display_item_server <- function(id, data_item, index_display) {
       }
     )
 
+    cur_answer_txt <- reactive(input$radio_item)
+    cur_answer_id <- reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_txt()))
+
     out <- list(
       cur_item_id = cur_item_id,
-      cur_answer_txt = reactive(input$radio_item),
-      cur_answer_id = reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_select()))
-    )
+      cur_answer_txt = cur_answer_txt,
+      cur_answer_id = cur_answer_id
+      )
     return(out)
 
   })
