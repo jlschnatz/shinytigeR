@@ -125,7 +125,8 @@ app_server <- function(input, output, session) {
   mod2_display <- mod_display_item_server(
     id = "display_item_1",
     data_item = data_item,
-    index_display = mod1_select$index_display
+    index_display = mod1_select$index_display,
+    check_button_value = mod3_check$check_button_value
     )
 
   mod3_check <- mod_check_item_server(

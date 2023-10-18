@@ -44,7 +44,7 @@ mod_display_item_ui <- function(id) {
 #'
 #' @export
 #'
-mod_display_item_server <- function(id, data_item, index_display) {
+mod_display_item_server <- function(id, data_item, index_display, check_button_value) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -71,6 +71,15 @@ mod_display_item_server <- function(id, data_item, index_display) {
         )
       }
     )
+
+    observe({
+      if (!is.null(check_button_value())) {
+        shinyjs::disable("radio_item")
+      } else {
+        shinyjs::enable("radio_item")
+      }
+    })
+
 
     cur_answer_txt <- reactive(input$radio_item)
     cur_answer_id <- reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_txt()))

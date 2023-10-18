@@ -44,13 +44,12 @@ mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cu
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-
     # observe if submit button is clicked, only then show both check and next buttons
     observeEvent(submit_btn_value(), {
       shinyjs::show("check_button")
-      shinyjs::show("next_button")
     })
 
+    # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
 
     observeEvent(input$check_button, {
@@ -90,9 +89,19 @@ mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cu
             )
           )
         )
+
+        shinyjs::disable("radio_item")
+        shinyjs::show("next_button")
+
       }
     })
 
     output$feedback <- renderUI(feedback_message())
+
+    out <- list(
+      check_button_value = reactive(input$check_button)
+    )
+    return(out)
+
   })
 }
