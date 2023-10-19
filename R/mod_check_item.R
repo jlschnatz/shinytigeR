@@ -136,6 +136,7 @@ mod_check_item_server <- function(id, data_item, index_display, cur_item_id, cur
         )
       } else {
         # Set the next index as the current index
+
         cur_item_id(index_display()[next_index])
       }
 

@@ -51,6 +51,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     # Reactive value to keep track of the current item index
     cur_item_id <- reactive(index_display()[1])
 
+
     output$stimulus <- renderUI(
       if (!is.null(cur_item_id())) {
         displayStimulus(
