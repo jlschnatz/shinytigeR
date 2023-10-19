@@ -117,6 +117,8 @@ app_server <- function(input, output, session) {
     }
   })
 
+  # set global reactiveValues for indexing trough the items
+
   mod1_select <- mod_select_item_server(
     id = "select_item_1",
     data_item = data_item
