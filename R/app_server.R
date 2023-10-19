@@ -24,20 +24,14 @@ app_server <- function(input, output, session) {
 
   # Login Functionality ----
 
-  # user database for logins (to be added to the db in the server)
-  user_base <- tibble::tibble(
-    user = c("user1", "user2"),
-    password = purrr::map_chr(c("pass1", "pass2"), sodium::password_store),
-    permissions = c("admin", "standard"),
-    name = c("User One", "User Two")
-  )
+  user_base <- db_get_credentialdata()
 
   # call the shinyauthr login and logout server modules
   credentials <- shinyauthr::loginServer(
     id = "login",
     data = user_base,
-    user_col = "user",
-    pwd_col = "password",
+    user_col = "user_name",
+    pwd_col = "password_hashed",
     sodium_hashed = TRUE,
     reload_on_logout = TRUE,
     log_out = reactive(logout_init())
@@ -47,7 +41,6 @@ app_server <- function(input, output, session) {
     id = "logout",
     active = reactive(credentials()$user_auth)
   )
-
 
   # Load data from item database
 
