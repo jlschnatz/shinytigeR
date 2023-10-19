@@ -92,6 +92,23 @@ db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_us
   return(user_data)
 }
 
+db_get_credentialdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_credentials.sqlite") {
+
+  pool <- pool::dbPool(
+    drv = .drv,
+    dbname = .db_name
+  )
+
+  con <- pool::poolCheckout(pool)
+  pool::poolReturn(con)
+
+  data_credentials <- dplyr::collect(dplyr::tbl(con, "credentials_db"))
+
+  pool::poolClose(pool)
+
+  return(data_credentials)
+}
+
 
 # ## IRT functions
 # # 2PL model function
