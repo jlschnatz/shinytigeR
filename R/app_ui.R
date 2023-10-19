@@ -20,7 +20,7 @@ app_ui <- function(request) {
         icon = bsicons::bs_icon("lock-fill", size = 15),
         shinyauthr::loginUI(
           id = "login",
-          title = "Benutzer Login in",
+          title = "Benutzer Login",
           user_title = "Benutzername",
           pass_title = "Passwort",
           login_title = "Einloggen"

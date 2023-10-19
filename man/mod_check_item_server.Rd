@@ -7,6 +7,7 @@
 mod_check_item_server(
   id,
   data_item,
+  index_display,
   cur_item_id,
   cur_answer_txt,
   cur_answer_id,

@@ -40,7 +40,7 @@ mod_check_item_ui <- function(id) {
 #' @returns Test
 #'
 #' @export
-mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cur_answer_id, submit_btn_value) {
+mod_check_item_server <- function(id, data_item, index_display, cur_item_id, cur_answer_txt, cur_answer_id, submit_btn_value) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -51,6 +51,16 @@ mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cu
 
     # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
+
+    # initialize empty reactive dataframe of the tracked user data
+    response_data_df <- reactiveVal(
+      tibble::tibble(
+        item_index = integer(),
+        selected_option = integer(),
+        answer_correct = integer(),
+        bool_correct = logical()
+      )
+    )
 
     observeEvent(input$check_button, {
       if (!is.null(cur_answer_txt())) {
@@ -97,6 +107,41 @@ mod_check_item_server <- function(id, data_item, cur_item_id, cur_answer_txt, cu
     })
 
     output$feedback <- renderUI(feedback_message())
+
+    observeEvent(input$next_button, {
+      if (!is.null(cur_answer_txt())) {
+        response_data_df(
+          dplyr::bind_rows(
+            response_data_df(),
+            tibble::tibble(
+              id_item = cur_item_id(),
+              selected_option = cur_answer_id(),
+              answer_correct = data_item$answer_correct[cur_item_id()],
+              bool_correct = data_item$answer_correct[cur_item_id()] == cur_answer_id()
+            )
+          )
+        )
+      }
+
+      # Find next index in random sequence that has not beed completed
+      next_index <- dplyr::first(which(!index_display() %in% response_data_df()$id_item))
+
+      # If there is no next index, it means all items have been answered, show the completion message
+      if (is.na(next_index)) {
+        shinyalert::shinyalert(
+          title = "Hurra!",
+          text = paste0("Alle Items abgeschlossen!  ", icon("thumbs-up", class = "duotone")),
+          type = "success",
+          html = TRUE
+        )
+      } else {
+        # Set the next index as the current index
+        cur_item_id(index_display()[next_index])
+      }
+
+      feedback_message(NULL)
+
+    })
 
     out <- list(
       check_button_value = reactive(input$check_button)

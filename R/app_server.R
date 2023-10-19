@@ -132,6 +132,7 @@ app_server <- function(input, output, session) {
   mod3_check <- mod_check_item_server(
     id = "check_item_1",
     data_item = data_item,
+    index_display = mod1_select$index_display,
     cur_item_id = mod2_display$cur_item_id,
     cur_answer_txt = mod2_display$cur_answer_txt,
     cur_answer_id = mod2_display$cur_answer_id,

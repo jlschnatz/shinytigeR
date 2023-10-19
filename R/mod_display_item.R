@@ -90,6 +90,5 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
       cur_answer_id = cur_answer_id
       )
     return(out)
-
   })
 }
