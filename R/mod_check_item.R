@@ -40,7 +40,10 @@ mod_check_item_ui <- function(id) {
 #' @returns Test
 #'
 #' @export
-mod_check_item_server <- function(id, data_item, index_display, cur_item_id, cur_answer_txt, cur_answer_id, submit_btn_value) {
+mod_check_item_server <- function(
+    id, data_item, index_display, cur_item_id, cur_answer_txt,
+    cur_answer_id, submit_btn_value, credentials
+    ) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -136,7 +139,6 @@ mod_check_item_server <- function(id, data_item, index_display, cur_item_id, cur
         )
       } else {
         # Set the next index as the current index
-
         cur_item_id(index_display()[next_index])
       }
 
