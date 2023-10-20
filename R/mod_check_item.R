@@ -61,7 +61,8 @@ mod_check_item_server <- function(
         id_item = integer(), #change from item_index to id_item
         selected_option = integer(),
         answer_correct = integer(),
-        bool_correct = logical()
+        bool_correct = logical()#,
+        # learning area noch dazu, plus uhrzeit
       )
     )
 
@@ -127,7 +128,10 @@ mod_check_item_server <- function(
       }
 
       # Find next index in random sequence that has not beed completed
-      next_index <- dplyr::first(which(!index_display() %in% response_data_df()$id_item))
+      #next_index <- dplyr::first(which(!index_display() %in% response_data_df()$id_item))
+      next_index <- if (!(which(index_display() == cur_item_id()) == length(index_display()))) {
+        which(index_display() == cur_item_id()) + 1
+      } else { NA }
 
       # If there is no next index, it means all items have been answered, show the completion message
       if (is.na(next_index)) {
