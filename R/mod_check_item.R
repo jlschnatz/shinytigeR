@@ -55,7 +55,7 @@ mod_check_item_server <- function(id, data_item, index_display, cur_item_id, cur
     # initialize empty reactive dataframe of the tracked user data
     response_data_df <- reactiveVal(
       tibble::tibble(
-        item_index = integer(),
+        id_item = integer(), #change from item_index to id_item
         selected_option = integer(),
         answer_correct = integer(),
         bool_correct = logical()

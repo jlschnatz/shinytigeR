@@ -49,7 +49,14 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     ns <- session$ns
 
     # Reactive value to keep track of the current item index
-    cur_item_id <- reactive(index_display()[1])
+    #cur_item_id <- reactive(index_display()[1])
+    #cur_item_id <- reactiveVal(index_display()[1])
+
+    # this fixes the error!!
+    cur_item_id <- reactiveVal()
+    observe({
+      cur_item_id(index_display()[1])
+    })
 
 
     output$stimulus <- renderUI(
