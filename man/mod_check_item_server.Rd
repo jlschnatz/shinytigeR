@@ -11,7 +11,8 @@ mod_check_item_server(
   cur_item_id,
   cur_answer_txt,
   cur_answer_id,
-  submit_btn_value
+  submit_btn_value,
+  credentials
 )
 }
 \arguments{
