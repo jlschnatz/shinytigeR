@@ -26,6 +26,8 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     user_data <- data.frame("id_user" = as.factor(rep("user1",8)),
                             "id_session" = as.factor(c(rep("sess1",3), rep("sess2",2), rep("sess3",3))),
                             "id_item" = as.factor(c(1, 2, 3, 4, 5, 6, 7, 8)),
+                            "learning_area" = factor(as.factor(rep(c("Datenrepräsentationen", "Maße zentraler Tendenz"), each = 4)),
+                                                     levels = unique(data_item$learning_area), labels = unique(data_item$learning_area)),
                             "selected_option" = c(3, 3, 4, 4, 3, 1, 4, 2),
                             "answer_correct" = c(1, 4, 4, 4, 3, 1, 4, 2),
                             "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE),
@@ -41,8 +43,15 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     # feedback generation
     feedback_data_reactive <- reactive({
 
-      feedback_data <- aggregate(user_data$bool_correct ~ data_item$learning_area[data_item$id_item %in% user_data$id_item], FUN=mean)
-      colnames(feedback_data) <- c("Lerneinheit", "korrekt")
+      feedback_data <- with(user_data,
+                            by(user_data, learning_area,
+                               function(x) estimate_theta(x$bool_correct, data_item$irt_discr[x$id_item], data_item$irt_diff[x$id_item])))
+
+      feedback_data <- as.data.frame(feedback_data)
+      colnames(feedback_data) <- "theta"
+      feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
+      rownames(feedback_data) <- 1:8
+      feedback_data$theta <- as.numeric(feedback_data$theta)
 
       # Return the feedback data
       return(feedback_data)
@@ -61,11 +70,20 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
 
     # Combine user data and course data
     all_data_reactive <- reactive({
-      #course_data <- db_get_userdata(user_id)
-      course_data <- aggregate(data_item$ia_diff ~ data_item$learning_area, FUN=mean)
-      colnames(course_data) <- c("Lerneinheit", "korrekt")
 
-      all_data <- merge(feedback_data_reactive(), course_data, by = "Lerneinheit", suffixes = c("", "_sample"))
+      sample_data <- with(data_item,
+                          by(data_item, learning_area,
+                             function(x) estimate_theta(x$ia_diff, x$irt_discr, x$irt_diff)))
+
+      sample_data <- as.data.frame(sample_data)
+      colnames(sample_data) <- "theta_sample"
+      sample_data$Lerneinheit <- rownames(sample_data)
+      sample_data$Lerneinheit <- factor(rownames(sample_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
+      rownames(sample_data) <- 1:8
+      sample_data$theta_sample <- as.numeric(sample_data$theta_sample)
+      str(sample_data)
+
+      all_data <- merge(feedback_data_reactive(), sample_data, by = "Lerneinheit")
 
       # Return all data
       return(all_data)
@@ -73,7 +91,7 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
 
 
     bearbeitet_reactive <- reactive({
-      bearbeitet <- ifelse(levels(feedback_data_reactive()$Lerneinheit) %in% feedback_data_reactive()$Lerneinheit, "black", "grey")
+      bearbeitet <- ifelse(feedback_data_reactive()$Lerneinheit %in% subset(feedback_data_reactive(), !is.na(theta))$Lerneinheit, "black", "grey")
 
       # Return bearbeitet
       return(bearbeitet)

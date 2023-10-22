@@ -2,6 +2,7 @@
 
 export("%>%")
 export(run_app)
+import(cowplot)
 import(ggplot2)
 import(shiny)
 importFrom(golem,activate_js)
