@@ -46,7 +46,6 @@ app_server <- function(input, output, session) {
 
   data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
     dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/"))) %>%
-<<<<<<< HEAD
     dplyr::mutate(learning_area = forcats::fct(learning_area)) %>%
     dplyr::filter(!is.na(stimulus_text)) %>%
     dplyr::rowwise() %>%
@@ -55,13 +54,9 @@ app_server <- function(input, output, session) {
       .fns = ~ check_na_feedback(.x, answer_correct)
     )) %>%
     dplyr::ungroup()
-=======
-    dplyr::mutate(learning_area = forcats::fct(learning_area))
 
   user_id <- "user1"
   response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, user_id = user_id)
-
->>>>>>> adb03cc1ba842f441b4ad878aa8855ffd8d51c1b
 
   # additional tabs to be added after login
   home_tab <- bslib::nav_panel(
