@@ -17,8 +17,6 @@ mod_display_item_ui <- function(id) {
     uiOutput(ns("stimulus")),
     rep_br(4),
     uiOutput(ns("radio_item")),
-    br(), br(),
-    verbatimTextOutput(ns("test"))
   )
 }
 
@@ -93,7 +91,6 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     cur_answer_txt <- reactive(input$radio_item)
     cur_answer_id <- reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_txt()))
 
-    output$test <- renderPrint(cur_item_id())
 
     out <- list(
       cur_item_id = cur_item_id,

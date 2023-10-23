@@ -31,8 +31,7 @@ mod_select_item_ui <- function(id, data_item) {
           `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
         )
       ),
-      actionButton(ns("submit_btn"), "Start"),
-      verbatimTextOutput(ns("test"))
+      actionButton(ns("submit_btn"), "Start")
     )
   )
 }
@@ -87,8 +86,6 @@ mod_select_item_server <- function(id, data_item) {
     })
 
     index_display <- reactive(sample(filtered_data()$id_item))
-
-    output$test <- renderPrint(index_display())
 
 
     # return a named list with reactive indices of the filtered data
