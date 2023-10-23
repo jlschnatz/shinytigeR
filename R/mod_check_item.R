@@ -68,7 +68,6 @@ mod_check_item_server <- function(
         selected_option = integer(),
         answer_correct = integer(),
         bool_correct = logical()
-        # learning area noch dazu, plus uhrzeit
       )
     )
 
@@ -141,19 +140,6 @@ mod_check_item_server <- function(
     output$test <- renderTable(response_data_df())
 
     observeEvent(input$next_button, {
-      if (!is.null(cur_answer_txt())) {
-        # response_data_df(
-        #   dplyr::bind_rows(
-        #     response_data_df(),
-        #     tibble::tibble(
-        #       id_item = cur_item_id(),
-        #       selected_option = cur_answer_id(),
-        #       answer_correct = data_item$answer_correct[cur_item_id()],
-        #       bool_correct = data_item$answer_correct[cur_item_id()] == cur_answer_id()
-        #     )
-        #   )
-        # )
-      }
 
       # Find next index in random sequence that has not beed completed
       next_index <- if (!(which(index_display() == cur_item_id()) == length(index_display()))) {
