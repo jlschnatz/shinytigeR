@@ -23,7 +23,8 @@ mod_check_item_ui <- function(id) {
       .f = actionButton
       )
     ),
-    uiOutput(ns("feedback"))
+    uiOutput(ns("feedback")),
+    tableOutput(ns("test"))
   )
 }
 
@@ -47,7 +48,7 @@ mod_check_item_server <- function(
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # observe if submit button is clicked, only then show both check and next buttons
+    #observe if submit button is clicked, only then show both check and next buttons
     observeEvent(submit_btn_value(), {
       shinyjs::show("check_button")
     })
@@ -58,13 +59,21 @@ mod_check_item_server <- function(
     # initialize empty reactive dataframe of the tracked user data
     response_data_df <- reactiveVal(
       tibble::tibble(
-        id_item = integer(), #change from item_index to id_item
+        id_user = character(),
+        id_session = character(),
+        id_date = integer(),
+        id_datetime = integer(),
+        id_item = integer(),
+        learning_area = character(),
         selected_option = integer(),
         answer_correct = integer(),
-        bool_correct = logical()#,
+        bool_correct = logical()
         # learning area noch dazu, plus uhrzeit
       )
     )
+
+    shinyjs::hide("next_button")
+
 
     observeEvent(input$check_button, {
       if (!is.null(cur_answer_txt())) {
@@ -107,24 +116,43 @@ mod_check_item_server <- function(
         shinyjs::disable("radio_item")
         shinyjs::show("next_button")
 
-      }
-    })
-
-    output$feedback <- renderUI(feedback_message())
-
-    observeEvent(input$next_button, {
-      if (!is.null(cur_answer_txt())) {
         response_data_df(
           dplyr::bind_rows(
             response_data_df(),
             tibble::tibble(
-              id_item = cur_item_id(),
-              selected_option = cur_answer_id(),
-              answer_correct = data_item$answer_correct[cur_item_id()],
-              bool_correct = data_item$answer_correct[cur_item_id()] == cur_answer_id()
+              id_user = as.character(credentials()$info$user_name),
+              id_session = as.character(session$token),
+              id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
+              id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
+              id_item = as.integer(cur_item_id()),
+              learning_area = as.character(data_item$learning_area[cur_item_id()]),
+              selected_option = as.integer(cur_answer_id()),
+              answer_correct = as.integer(data_item$answer_correct[cur_item_id()]),
+              bool_correct = as.logical(data_item$answer_correct[cur_item_id()] == cur_answer_id())
             )
           )
         )
+
+      }
+
+    })
+
+    output$feedback <- renderUI(feedback_message())
+    output$test <- renderTable(response_data_df())
+
+    observeEvent(input$next_button, {
+      if (!is.null(cur_answer_txt())) {
+        # response_data_df(
+        #   dplyr::bind_rows(
+        #     response_data_df(),
+        #     tibble::tibble(
+        #       id_item = cur_item_id(),
+        #       selected_option = cur_answer_id(),
+        #       answer_correct = data_item$answer_correct[cur_item_id()],
+        #       bool_correct = data_item$answer_correct[cur_item_id()] == cur_answer_id()
+        #     )
+        #   )
+        # )
       }
 
       # Find next index in random sequence that has not beed completed
@@ -146,6 +174,8 @@ mod_check_item_server <- function(
       }
 
       feedback_message(NULL)
+      shinyjs::hide("next_button")
+      shinyjs::enable("radio_item")
 
     })
 

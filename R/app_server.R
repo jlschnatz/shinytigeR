@@ -132,7 +132,7 @@ app_server <- function(input, output, session) {
     cur_answer_txt = mod2_display$cur_answer_txt,
     cur_answer_id = mod2_display$cur_answer_id,
     submit_btn_value = mod1_select$submit_btn_value,
-    credentials = credentials()
+    credentials = credentials
     )
 
   user_id <- "user1"
