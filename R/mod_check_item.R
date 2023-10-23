@@ -56,21 +56,6 @@ mod_check_item_server <- function(
     # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
 
-    # initialize empty reactive dataframe of the tracked user data
-    response_data_df <- reactiveVal(
-      tibble::tibble(
-        id_user = character(),
-        id_session = character(),
-        id_date = integer(),
-        id_datetime = integer(),
-        id_item = integer(),
-        learning_area = character(),
-        selected_option = integer(),
-        answer_correct = integer(),
-        bool_correct = logical()
-      )
-    )
-
     shinyjs::hide("next_button")
 
 
@@ -115,21 +100,21 @@ mod_check_item_server <- function(
         shinyjs::disable("radio_item")
         shinyjs::show("next_button")
 
-        response_data_df(
-          dplyr::bind_rows(
-            response_data_df(),
-            tibble::tibble(
-              id_user = as.character(credentials()$info$user_name),
-              id_session = as.character(session$token),
-              id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
-              id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
-              id_item = as.integer(cur_item_id()),
-              learning_area = as.character(data_item$learning_area[cur_item_id()]),
-              selected_option = as.integer(cur_answer_id()),
-              answer_correct = as.integer(data_item$answer_correct[cur_item_id()]),
-              bool_correct = as.logical(data_item$answer_correct[cur_item_id()] == cur_answer_id())
-            )
-          )
+        response_data_df <- tibble::tibble(
+          id_user = as.character(credentials()$info$user_name),
+          id_session = as.character(session$token),
+          id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
+          id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
+          id_item = as.integer(cur_item_id()),
+          learning_area = as.character(data_item$learning_area[cur_item_id()]),
+          selected_option = as.integer(cur_answer_id()),
+          answer_correct = as.integer(data_item$answer_correct[cur_item_id()]),
+          bool_correct = as.logical(data_item$answer_correct[cur_item_id()] == cur_answer_id())
+        )
+
+        write_userdata_db(
+          id_user = as.character(credentials()$info$user_name),
+          .response_data_df = response_data_df
         )
 
       }
@@ -137,7 +122,7 @@ mod_check_item_server <- function(
     })
 
     output$feedback <- renderUI(feedback_message())
-    output$test <- renderTable(response_data_df())
+   #output$test <- renderTable(response_data_df())
 
     observeEvent(input$next_button, {
 
