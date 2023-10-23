@@ -46,6 +46,7 @@ app_server <- function(input, output, session) {
 
   data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
     dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~stringr::str_replace(.x, "www/", "www/img_item/"))) %>%
+<<<<<<< HEAD
     dplyr::mutate(learning_area = forcats::fct(learning_area)) %>%
     dplyr::filter(!is.na(stimulus_text)) %>%
     dplyr::rowwise() %>%
@@ -54,6 +55,13 @@ app_server <- function(input, output, session) {
       .fns = ~ check_na_feedback(.x, answer_correct)
     )) %>%
     dplyr::ungroup()
+=======
+    dplyr::mutate(learning_area = forcats::fct(learning_area))
+
+  user_id <- "user1"
+  response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, user_id = user_id)
+
+>>>>>>> adb03cc1ba842f441b4ad878aa8855ffd8d51c1b
 
   # additional tabs to be added after login
   home_tab <- bslib::nav_panel(
@@ -86,16 +94,75 @@ app_server <- function(input, output, session) {
     )
   )
 
+
   progress_tab <- bslib::nav_panel(
     title = "Fortschritt",
     value = "data",
     icon = bsicons::bs_icon("check-circle-fill", size = 15),
     fluidRow(
       h3("Fortschritt"),
-      tags$a("Hier der Fortschritt mit Dashboard"),
+      tags$a("Hier erfährst du mehr über deinen bisherigen Fortschritt in tigeR"),
+      div(style = "padding-top: 8px; padding-bottom: 30px;"),
+
+      bslib::layout_columns(
+        bslib::value_box(
+          title = "Heute bearbeitete Aufgaben", value = isolate(response_analysis$todays_practice()),
+          shiny::markdown("Super, weiter so!"),
+          #theme = bslib::value_box_theme(bg = "#860047", fg = "#FFFFFF"),
+          style = 'background-color: #860047!important; padding-left: 10px;',
+          showcase = bsicons::bs_icon("emoji-smile", style="font-size: 45px; color: white"),
+          #showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE,
+          height = NULL
+        ),
+        bslib::value_box(
+          title = "Insgesamt bearbeitete Aufgaben", value = isolate(response_analysis$total_practice()), #,
+          #theme = value_box_theme(bg = "#FFFFFF", fg = "#C96215"),
+          style = 'background-color: #C96215!important;',
+          showcase = bsicons::bs_icon("bar-chart-fill", style="font-size: 45px; color: white"), #showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        ),
+        bslib::value_box(
+          title = "Noch", value = isolate(response_analysis$xmas_countdown()), shiny::markdown("Tage bis Weihnachten"),
+         # theme = value_box_theme(bg = "#FFFFFF", fg = "#B3062C"),
+          style = 'background-color: #B3062C!important;',
+          showcase = fontawesome::fa_i("candy-cane", style="font-size: 45px; color: white"), #showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        ),
+        bslib::value_box(
+          title = " ", value = paste0(isolate(response_analysis$session_practice())," mal"), shiny::markdown("warst du schon auf tigeR aktiv"),
+        #  theme = value_box_theme(bg = "#737C45", fg = "#000000"),
+          style = 'background-color: #737C45!important; padding-right: 10px;',
+          showcase = bsicons::bs_icon("calendar4-week", style="font-size: 45px; color: white"), #showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        )
+      ),
+      div(style = "padding-bottom: 30px;"),
+
+
+      column(10,   # Left column
+             tags$head(
+               tags$style(HTML("
+          .shiny-input-container:not(.shiny-input-container-inline) {
+            width:100%;
+          }
+          #feedback_plot, #comparison_plot {
+            padding-bottom: 100px;
+          }"))
+             ),
+
+      tags$div(style="margin-bottom:40px;"),
+
       #mod_response_analysis_ui("response_analysis_1"),
       mod_progress_dashboard_ui("progress_dashboard_1")
+    ),
+    column(1,   # right column
+
+           # Add your action buttons here
+           #   actionButton(ns("plot1_button"), "Plot 1"),
+           #  actionButton(ns("plot2_button"), "Plot 2")
     )
+  )
   )
 
   observeEvent(credentials()$user_auth, {
@@ -135,10 +202,11 @@ app_server <- function(input, output, session) {
     credentials = credentials
     )
 
-  user_id <- "user1"
-  response_analysis <- callModule(mod_response_analysis_server, "response_analysis_1", data_item = data_item, user_id = user_id)
-  callModule(mod_progress_dashboard_server, "progress_dashboard_1", feedback_data = response_analysis$feedback_data,
-             bearbeitet = response_analysis$bearbeitet, all_data = response_analysis$all_data)
+#  user_id <- "user1"
+#  response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, user_id = user_id)
+  mod_progress_dashboard_server("progress_dashboard_1", feedback_data = response_analysis$feedback_data(),
+             bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data())
+
 
   #bslib::bs_themer()
 }
