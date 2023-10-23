@@ -18,7 +18,7 @@ mod_response_analysis_ui <- function(id){
 #'
 #' @noRd
 mod_response_analysis_server <- function(id, input, output, session, data_item, user_id){
-  moduleServer( id, function(input, output, session){
+  moduleServer(id, function(input, output, session){
     ns <- session$ns
 
     # Fetch user's data from the database
@@ -31,16 +31,56 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
                             "selected_option" = c(3, 3, 4, 4, 3, 1, 4, 2),
                             "answer_correct" = c(1, 4, 4, 4, 3, 1, 4, 2),
                             "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE),
-                            "data" = rep(Sys.Date(), 8))
+                            "id_date" = rep(Sys.Date(), 8))
 
 
     # Analyze today's practice
-    todays_date <- Sys.Date()
-    todays_practice <- sum(user_data$date == todays_date)
-    overall_practice <- length(user_data$id_user)
+  #   todays_practice_reactive <- reactive({
+  #     todays_date <- Sys.Date()
+  #     todays_practice <- sum(user_data$date == todays_date)
+  #
+  #     # Return the today's practice
+  #     return(todays_practice)
+  # })
+
+    todays_practice_reactiveVal <- reactiveVal({
+      todays_practice = sum(user_data$id_date == Sys.Date())
+    })
 
 
-    # feedback generation
+    # Analyze overall total practice
+    total_practice_reactive <- reactive({
+      total_practice <- length(user_data$id_user)
+
+      # Return number of total practice items
+      return(total_practice)
+    })
+
+
+
+    # Analyze number of sessions
+    session_practice_reactive <- reactive({
+      session_practice <- length(unique(user_data$id_session))
+      return(session_practice)
+    })
+
+
+    # Christmas countdown
+    xmas_reactive <- reactive({
+      if (format(Sys.Date(), "%Y") == 2023){
+        xmas <- as.Date("2023-12-24")
+      } else {
+        xmas <- as.Date("2024-12-24")
+      }
+
+      today <- Sys.Date()
+      xmas_countdown <- length(seq(from = today, to = xmas, by = 'day')) - 1
+
+      return(xmas_countdown)
+    })
+
+
+    # Feedback generation
     feedback_data_reactive <- reactive({
 
       feedback_data <- with(user_data,
@@ -97,13 +137,16 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     })
 
 
+
     # Return the feedback data so it can be used outside this module if needed.
     return(list(
       feedback_data = feedback_data_reactive,
       bearbeitet = bearbeitet_reactive,
       all_data = all_data_reactive,
-      todays_practice = todays_practice,
-      overall_practice = overall_practice
+      todays_practice = todays_practice_reactiveVal,
+      total_practice = total_practice_reactive,
+      session_practice = session_practice_reactive,
+      xmas_countdown = xmas_reactive
 
     ))
 
