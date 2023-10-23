@@ -37,6 +37,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
 
 
 
+
     # Render feedback lollipop plot
     output$feedback_plot <- renderPlot({
 
@@ -46,7 +47,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
         geom_segment(aes(x=Lerneinheit ,xend=Lerneinheit, y=0, yend=theta), color="darkgrey") +
         geom_point(size=7) +
         scale_x_discrete(limits = levels(feedback_data$Lerneinheit)) +
-        scale_y_continuous(limits = c(-3,+3), n.breaks = 3, labels = c(":(", " ", ":)")) +
+        scale_y_continuous(limits = c(-3,+3), n.breaks = 3, labels = c(":(", "Durchschnitt", ":)")) +
         scale_color_goethe() +
         theme_classic() +
         theme(
@@ -129,7 +130,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
 
 
      # Combine Main Plot with Extracted Legend
-     (combined_plot_new <- plot_grid(p2, p1, rel_widths = c(.25, 1)))
+#     (combined_plot_new <- plot_grid(p2, p1, rel_widths = c(.25, 1)))
 
    })
 

@@ -81,7 +81,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       sample_data$Lerneinheit <- factor(rownames(sample_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
       rownames(sample_data) <- 1:8
       sample_data$theta_sample <- as.numeric(sample_data$theta_sample)
-      str(sample_data)
 
       all_data <- merge(feedback_data_reactive(), sample_data, by = "Lerneinheit")
 
