@@ -51,65 +51,6 @@ get_answeroptions <- function(.df, .row) {
   na.omit(as.character(.df[.row, paste0("answeroption_0", seq_len(5))]))
 }
 
-db_get_itemdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") {
-
-  pool <- pool::dbPool(
-    drv = .drv,
-    dbname = .db_name
-  )
-
-  con <- pool::poolCheckout(pool)
-  pool::poolReturn(con)
-
-  data_item <- dplyr::collect(dplyr::tbl(con, "item_db"))
-
-  pool::poolClose(pool)
-
-  return(data_item)
-}
-
-
-db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite", .fetch_all = FALSE) {
-
-  pool <- pool::dbPool(
-    drv = .drv,
-    dbname = .db_name
-  )
-
-  con <- pool::poolCheckout(pool)
-
-  if (.fetch_all) {
-    vec_username <- DBI::dbListTables(con)
-    user_data <- purrr::map(vec_username, ~dplyr::collect(dplyr::tbl(con, .x)) %>% purrr::list_rbind())
-  } else {
-    # Fetch data for the specific user
-    user_data <- dplyr::collect(dplyr::tbl(con, id_user))
-  }
-
-  pool::poolReturn(con)
-  pool::poolClose(pool)
-
-  return(user_data)
-}
-
-db_get_credentialdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_credentials.sqlite") {
-
-  pool <- pool::dbPool(
-    drv = .drv,
-    dbname = .db_name
-  )
-
-  con <- pool::poolCheckout(pool)
-  pool::poolReturn(con)
-
-  data_credentials <- dplyr::collect(dplyr::tbl(con, "credentials_db"))
-
-  pool::poolClose(pool)
-
-  return(data_credentials)
-}
-
-
 ## IRT functions
 # 2PL model function
 prob_2pl <- function(theta, discrimination, difficulty) {
