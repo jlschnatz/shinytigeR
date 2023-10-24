@@ -24,7 +24,7 @@ mod_check_item_ui <- function(id) {
       )
     ),
     uiOutput(ns("feedback")),
-    tableOutput(ns("test"))
+    textOutput(ns("test"))
   )
 }
 
@@ -122,7 +122,7 @@ mod_check_item_server <- function(
     })
 
     output$feedback <- renderUI(feedback_message())
-   #output$test <- renderTable(response_data_df())
+   output$test <- renderText(as.character(credentials()$info$user_name))
 
     observeEvent(input$next_button, {
 

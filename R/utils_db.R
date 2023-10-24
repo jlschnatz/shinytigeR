@@ -62,10 +62,11 @@ write_userdata_db <- function(id_user, .response_data_df, .drv = RSQLite::SQLite
   user_vec <- pool::dbListTables(pool)
 
   if (!id_user %in% user_vec) {
+    col_names <- colnames(.response_data_df)
     pool::dbCreateTable(
       conn = pool,
       name = id_user,
-      fields = colnames(.response_data_df)
+      fields = setNames(col_names, col_names)
     )
   }
 
