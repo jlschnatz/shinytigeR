@@ -82,7 +82,7 @@ app_server <- function(input, output, session) {
     title = "Üben",
     value = "data",
     icon = bsicons::bs_icon("ui-radios", size = 15),
-    fluidRow(
+    tagList(
       mod_select_item_ui("select_item_1", data_item),
       mod_display_item_ui("display_item_1"),
       mod_check_item_ui("check_item_1")

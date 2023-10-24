@@ -19,7 +19,7 @@ mod_check_item_ui <- function(id) {
           .l = tibble::tibble(
             inputId = c(ns("check_button"), ns("next_button")),
             label = c("Antwort überprüfen", "Nächste Frage"),
-            icon = list(icon("check", icon("forward-step")))
+            icon = list(icon("check"), icon("forward-step"))
           ),
           .f = actionButton
         )

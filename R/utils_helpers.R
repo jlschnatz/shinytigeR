@@ -122,3 +122,7 @@ scale_fill_goethe <- function(palette = "main", discrete = TRUE, reverse = FALSE
   }
 }
 
+pill <- function(...) {
+  shiny::tabPanel(..., class = "p-3 border")
+}
+

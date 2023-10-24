@@ -14,26 +14,34 @@
 #'
 mod_select_item_ui <- function(id, data_item) {
   ns <- NS(id)
-  tagList(
-    fluidRow(
-      tags$h4(tags$b("Auswahl der Übungsinhalte")),
-      tags$text("Wähle einen Pool an Items aus, die du üben möchtest. Diese kannst du inhaltlich auswählen."),
-      rep_br(2),
-      shinyWidgets::pickerInput(
-        inputId = ns("picker"),
-        choices = unique(data_item$learning_area), # here reali_item topic names as input
-        selected = NULL,
-        multiple = TRUE,
-        options = list(
-          `actions-box` = TRUE,
-          `deselect-all-text` = "Auswahl löschen",
-          `select-all-text` = "Alle auswählen",
-          `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
-        )
-      ),
-      actionButton(ns("submit_btn"), "Start")
+  #tagList(
+  bslib::card(
+    bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
+    bslib::card_body(
+      fillable = TRUE,
+      fluidRow(
+        column(7,
+        tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
+        tags$li("Schaue regelmäßig bei der App vorbei, "),
+
+        rep_br(1),
+        shinyWidgets::pickerInput(
+          inputId = ns("picker"),
+          choices = unique(data_item$learning_area), # here reali_item topic names as input
+          selected = NULL,
+          multiple = TRUE,
+          options = list(
+            `actions-box` = TRUE,
+            `deselect-all-text` = "Auswahl löschen",
+            `select-all-text` = "Alle auswählen",
+            `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
+          )
+        )),
+        column(7, actionButton(ns("submit_btn"), "Start"))
+      )
     )
   )
+  #)
 }
 
 #' select_item Server Functions
