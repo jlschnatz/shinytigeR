@@ -13,18 +13,19 @@ mod_check_item_ui <- function(id) {
   ns <- NS(id)
   tagList(
     # generate two action buttons
-    shinyjs::hidden(
-      purrr::pmap(
-      .l = tibble::tibble(
-        inputId = c(ns("check_button"), ns("next_button")),
-        label = c("Antwort überprüfen", "Nächste Frage"),
-        icon = list(icon("check", icon("forward-step")))
+    shinyjs::disabled(
+      shinyjs::hidden(
+        purrr::pmap(
+          .l = tibble::tibble(
+            inputId = c(ns("check_button"), ns("next_button")),
+            label = c("Antwort überprüfen", "Nächste Frage"),
+            icon = list(icon("check", icon("forward-step")))
+          ),
+          .f = actionButton
+        )
       ),
-      .f = actionButton
-      )
-    ),
-    uiOutput(ns("feedback")),
-    textOutput(ns("test"))
+      uiOutput(ns("feedback"))
+    )
   )
 }
 
@@ -43,20 +44,20 @@ mod_check_item_ui <- function(id) {
 #' @export
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
-    cur_answer_id, submit_btn_value, credentials
-    ) {
+    cur_answer_id, submit_btn_value, credentials) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    #observe if submit button is clicked, only then show both check and next buttons
+    # observe if submit button is clicked, only then show both check and next buttons
     observeEvent(submit_btn_value(), {
       shinyjs::show("check_button")
+      shinyjs::show("next_button")
+      shinyjs::enable("check_button")
     })
 
     # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
 
-    shinyjs::hide("next_button")
 
 
     observeEvent(input$check_button, {
@@ -77,12 +78,12 @@ mod_check_item_server <- function(
           shinyjs::addClass(
             selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_img"
-            )
+          )
         } else if (!is_correct && data_item$type_answer[cur_item_id()] == "text") {
           shinyjs::addClass(
             selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_txt"
-            )
+          )
         }
 
         feedback_message(
@@ -98,7 +99,8 @@ mod_check_item_server <- function(
         )
 
         shinyjs::disable("radio_item")
-        shinyjs::show("next_button")
+        # shinyjs::show("next_button")
+        shinyjs::enable("next_button")
 
         response_data_df <- tibble::tibble(
           id_user = as.character(credentials()$info$user_name),
@@ -116,20 +118,18 @@ mod_check_item_server <- function(
           id_user = as.character(credentials()$info$user_name),
           .response_data_df = response_data_df
         )
-
       }
-
     })
 
     output$feedback <- renderUI(feedback_message())
-   output$test <- renderText(as.character(credentials()$info$user_name))
 
     observeEvent(input$next_button, {
-
       # Find next index in random sequence that has not beed completed
       next_index <- if (!(which(index_display() == cur_item_id()) == length(index_display()))) {
         which(index_display() == cur_item_id()) + 1
-      } else NA
+      } else {
+        NA
+      }
 
       # If there is no next index, it means all items have been answered, show the completion message
       if (is.na(next_index)) {
@@ -145,9 +145,8 @@ mod_check_item_server <- function(
       }
 
       feedback_message(NULL)
-      shinyjs::hide("next_button")
       shinyjs::enable("radio_item")
-
+      shinyjs::disable("next_button")
     })
 
     out <- list(
