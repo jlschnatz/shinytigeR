@@ -12,10 +12,9 @@
 mod_display_item_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    br(), br(),
-    rep_br(4),
+    rep_br(2),
     uiOutput(ns("stimulus")),
-    rep_br(4),
+    rep_br(2),
     uiOutput(ns("radio_item")),
   )
 }
