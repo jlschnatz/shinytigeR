@@ -89,7 +89,6 @@ app_server <- function(input, output, session) {
     )
   )
 
-
   progress_tab <- bslib::nav_panel(
     title = "Fortschritt",
     value = "data",
