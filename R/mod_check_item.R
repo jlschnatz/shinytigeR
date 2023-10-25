@@ -12,22 +12,7 @@
 mod_check_item_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # generate two action buttons
-    shinyjs::disabled(
-      shinyjs::hidden(
-        purrr::pmap(
-          .l = tibble::tibble(
-            inputId = c(ns("check_button"), ns("next_button")),
-            label = c("Antwort überprüfen", "Nächste Frage"),
-            icon = list(icon("check"), icon("forward-step")),
-            class = list(class = "btn btn-primary", class = "btn btn-primary")
-          ),
-          .f = actionButton
-          )
-        )
-      ),
-    rep_br(3),
-    uiOutput(ns("feedback"))
+    uiOutput(ns("check"))
   )
 }
 
@@ -46,7 +31,9 @@ mod_check_item_ui <- function(id) {
 #' @export
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
-    cur_answer_id, submit_btn_value, credentials) {
+    cur_answer_id, submit_btn_value, credentials
+    ) {
+
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -123,6 +110,27 @@ mod_check_item_server <- function(
       }
     })
 
+    output$check <- renderUI({
+      req(credentials()$user_auth)
+      tagList(
+        # generate two action buttons
+        shinyjs::disabled(
+          shinyjs::hidden(
+            purrr::pmap(
+              .l = tibble::tibble(
+                inputId = c(ns("check_button"), ns("next_button")),
+                label = c("Antwort überprüfen", "Nächste Frage"),
+                icon = list(icon("check"), icon("forward-step")),
+                class = list(class = "btn btn-primary", class = "btn btn-primary")
+              ),
+              .f = actionButton
+            )
+          )
+        ),
+        rep_br(3),
+        uiOutput(ns("feedback"))
+      )
+    })
     output$feedback <- renderUI(feedback_message())
 
     observeEvent(input$next_button, {
@@ -150,6 +158,7 @@ mod_check_item_server <- function(
       shinyjs::enable("radio_item")
       shinyjs::disable("next_button")
     })
+
 
     out <- list(
       check_button_value = reactive(input$check_button)

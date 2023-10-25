@@ -26,7 +26,7 @@ app_server <- function(input, output, session) {
   user_base <- db_get_credentialdata()
 
   # call the shinyauthr login and logout server modules
-  credentials <- shinyauthr::loginServer(
+  credentials <- loginServer(
     id = "login",
     data = user_base,
     user_col = "user_name",

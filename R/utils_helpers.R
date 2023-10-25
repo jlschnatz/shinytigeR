@@ -40,8 +40,8 @@ substr_nth <- function(x, n = 1, side = "right") {
   assertthat::assert_that(is.character(x))
   assertthat::assert_that(n < nchar(x))
   out <- switch(side,
-                "right" = substr(x, nchar(x) - n + 1, nchar(x)),
-                "left"  = substr(x, 1, n)
+    "right" = substr(x, nchar(x) - n + 1, nchar(x)),
+    "left"  = substr(x, 1, n)
   )
 
   return(out)
@@ -65,9 +65,11 @@ negative_log_likelihood <- function(theta, responses, discrimination, difficulty
 
 # Function to estimate theta for a person using Maximum Likelihood
 estimate_theta <- function(responses, discrimination, difficulty) {
-  result <- optim(0, negative_log_likelihood, method="L-BFGS-B",
-                  lower=-4, upper=4, responses=responses,
-                  discrimination=discrimination, difficulty=difficulty)
+  result <- optim(0, negative_log_likelihood,
+    method = "L-BFGS-B",
+    lower = -4, upper = 4, responses = responses,
+    discrimination = discrimination, difficulty = difficulty
+  )
   return(result$par)
 }
 
@@ -75,25 +77,30 @@ estimate_theta <- function(responses, discrimination, difficulty) {
 #### Goethe Color Palette ----
 # thanks @ https://drsimonj.svbtle.com/
 # define colors
-goethe_colors <- c(`blue`='#00618f',
-                   `yellow` = '#e3ba0f',
-                   `magenta` = '#ad3b76',
-                   `green` = '#737c45',
-                   `orange` = '#c96215')
+goethe_colors <- c(
+  `blue` = "#00618f",
+  `yellow` = "#e3ba0f",
+  `magenta` = "#ad3b76",
+  `green` = "#737c45",
+  `orange` = "#c96215"
+)
 
 # define extractor
 goethe_cols <- function(...) {
   cols <- c(...)
-  if (is.null(cols)) return(goethe_colors)
-  else goethe_colors[cols]
+  if (is.null(cols)) {
+    return(goethe_colors)
+  } else {
+    goethe_colors[cols]
+  }
 }
 
 # define palette
 goethe_palettes <- list(
-  `main` = goethe_cols('blue', 'yellow', 'magenta'),
+  `main` = goethe_cols("blue", "yellow", "magenta"),
   `long` = goethe_cols(),
-  `reds` = goethe_cols('yellow', 'orange', 'magenta'),
-  `blues` = goethe_cols('yellow', 'green', 'blue')
+  `reds` = goethe_cols("yellow", "orange", "magenta"),
+  `blues` = goethe_cols("yellow", "green", "blue")
 )
 
 # palette grabber
@@ -126,3 +133,216 @@ pill <- function(...) {
   shiny::tabPanel(..., class = "p-3 border")
 }
 
+bs_table <- function(x, class = NULL, ...) {
+  class <- paste(c("table", class), collapse = " ")
+  class <- sprintf('class="%s"', class)
+  HTML(knitr::kable(x, format = "html", table.attr = class))
+}
+
+loginUI <- function(id, title = "Please log in", user_title = "User Name",
+                    pass_title = "Password", login_title = "Log in", error_message = "Invalid username or password!",
+                    additional_ui = NULL, cookie_expiry = 7) {
+  ns <- shiny::NS(id)
+
+  shinyjs::hidden(
+    shiny::div(
+      id = ns("panel"),
+      style = "width: 500px; max-width: 100%; margin: 0 auto; padding: 20px;",
+      bslib::card(
+        style = "background-color: #f6f6f6;",
+        shinyjs::useShinyjs(),
+        shinyauthr:::jscookie_script(),
+        shinyjs::extendShinyjs(
+          text = shinyauthr:::js_cookie_to_r_code(ns("jscookie"),
+            expire_days = cookie_expiry
+          ),
+          functions = c(
+            "getcookie",
+            "setcookie",
+            "rmcookie"
+          )
+        ),
+        shinyjs::extendShinyjs(
+          text = shinyauthr:::js_return_click(
+            ns("password"),
+            ns("button")
+          ),
+          functions = c()
+        ),
+        bslib::card_title(tags$b(title), class = "text-center"),
+        bslib::card_body(
+          shiny::textInput(
+            ns("user_name"),
+            shiny::tagList(
+              bsicons::bs_icon("person-fill"),
+              user_title
+            )
+          ),
+          shiny::passwordInput(
+            ns("password"),
+            shiny::tagList(
+              bsicons::bs_icon("unlock-fill"),
+              pass_title
+            )
+          ),
+          shiny::div(
+            style = "text-align: center;",
+            shiny::actionButton(
+              ns("button"),
+              login_title,
+              class = "btn-primary",
+              style = "color: white;"
+            )
+          ),
+          additional_ui,
+          fillable = TRUE,
+          fill = TRUE,
+          padding = 25
+        )
+      )
+    )
+  )
+}
+
+loginServer <- function(id, data, user_col, pwd_col, sodium_hashed = FALSE,
+                        log_out = shiny::reactiveVal(), reload_on_logout = FALSE,
+                        cookie_logins = FALSE, sessionid_col, cookie_getter, cookie_setter) {
+  try_class_uc <- try(class(user_col), silent = TRUE)
+  if (try_class_uc == "character") {
+    user_col <- rlang::sym(user_col)
+  }
+  try_class_pc <- try(class(pwd_col), silent = TRUE)
+  if (try_class_pc == "character") {
+    pwd_col <- rlang::sym(pwd_col)
+  }
+  if (cookie_logins && (missing(cookie_getter) | missing(cookie_setter) |
+    missing(sessionid_col))) {
+    stop("if cookie_logins = TRUE, cookie_getter, cookie_setter and sessionid_col must be provided")
+  } else {
+    try_class_sc <- try(class(sessionid_col), silent = TRUE)
+    if (try_class_sc == "character") {
+      sessionid_col <- rlang::sym(sessionid_col)
+    }
+  }
+  data <- dplyr::mutate_if(data, is.factor, as.character)
+  shiny::moduleServer(id, function(input, output, session) {
+    credentials <- shiny::reactiveValues(
+      user_auth = FALSE,
+      info = NULL, cookie_already_checked = FALSE
+    )
+    shiny::observeEvent(log_out(), {
+      if (cookie_logins) {
+        shinyjs::js$rmcookie()
+      }
+      if (reload_on_logout) {
+        session$reload()
+      } else {
+        shiny::updateTextInput(session, "password", value = "")
+        credentials$user_auth <- FALSE
+        credentials$info <- NULL
+      }
+    })
+    shiny::observe({
+      if (cookie_logins) {
+        if (credentials$user_auth) {
+          shinyjs::hide(id = "panel")
+        } else if (credentials$cookie_already_checked) {
+          shinyjs::show(id = "panel")
+        }
+      } else {
+        shinyjs::toggle(id = "panel", condition = !credentials$user_auth)
+      }
+    })
+    if (cookie_logins) {
+      shiny::observeEvent(shiny::isTruthy(shinyjs::js$getcookie()), {
+        shinyjs::js$getcookie()
+      })
+      shiny::observeEvent(input$jscookie, {
+        credentials$cookie_already_checked <- TRUE
+        shiny::req(credentials$user_auth == FALSE, is.null(input$jscookie) ==
+          FALSE, nchar(input$jscookie) > 0)
+        cookie_data <- dplyr::filter(
+          cookie_getter(),
+          {{ sessionid_col }} == input$jscookie
+        )
+        if (nrow(cookie_data) != 1) {
+          shinyjs::js$rmcookie()
+        } else {
+          .userid <- dplyr::pull(cookie_data, {{ user_col }})
+          .sessionid <- randomString()
+          shinyjs::js$setcookie(.sessionid)
+          cookie_setter(.userid, .sessionid)
+          cookie_data <- utils::head(dplyr::filter(
+            cookie_getter(),
+            {{ sessionid_col }} == .sessionid, {{ user_col }} == .userid
+          ))
+          credentials$user_auth <- TRUE
+          credentials$info <- dplyr::bind_cols(dplyr::filter(
+            data,
+            {{ user_col }} == .userid
+          ), dplyr::select(
+            cookie_data,
+            -{{ user_col }}
+          ))
+        }
+      })
+    }
+    shiny::observeEvent(input$button, {
+      row_username <- which(dplyr::pull(data, {{ user_col }}) == input$user_name)
+      if (length(row_username)) {
+        row_password <- dplyr::filter(data, dplyr::row_number() ==
+          row_username)
+        row_password <- dplyr::pull(row_password, {{ pwd_col }})
+        if (sodium_hashed) {
+          password_match <- sodium::password_verify(
+            row_password,
+            input$password
+          )
+        } else {
+          password_match <- identical(row_password, input$password)
+        }
+      } else {
+        password_match <- FALSE
+      }
+      if (length(row_username) == 1 && password_match) {
+        credentials$user_auth <- TRUE
+        credentials$info <- dplyr::filter(data, {{ user_col }} == input$user_name)
+        if (cookie_logins) {
+          .sessionid <- randomString()
+          shinyjs::js$setcookie(.sessionid)
+          cookie_setter(input$user_name, .sessionid)
+          cookie_data <- dplyr::filter(dplyr::select(
+            cookie_getter(),
+            -{{ user_col }}
+          ), {{ sessionid_col }} == .sessionid)
+          if (nrow(cookie_data) == 1) {
+            credentials$info <- dplyr::bind_cols(
+              credentials$info,
+              cookie_data
+            )
+          }
+        }
+      } else {
+        shinyalert::shinyalert(
+          title = "Achtung",
+          text = "Invalider Benutzername oder Passwort!",
+          size = "s",
+          closeOnEsc = TRUE,
+          closeOnClickOutside = FALSE,
+          html = FALSE,
+          type = "error",
+          showConfirmButton = TRUE,
+          showCancelButton = FALSE,
+          confirmButtonText = "OK",
+          confirmButtonCol = "#AEDEF4",
+          timer = 0,
+          imageUrl = "",
+          animation = TRUE
+        )
+      }
+    })
+    shiny::reactive({
+      shiny::reactiveValuesToList(credentials)
+    })
+  })
+}

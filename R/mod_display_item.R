@@ -11,12 +11,7 @@
 #' @importFrom shiny NS tagList
 mod_display_item_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    rep_br(2),
-    uiOutput(ns("stimulus")),
-    rep_br(2),
-    uiOutput(ns("radio_item")),
-  )
+  tagList(uiOutput(ns("display")))
 }
 
 #' display_item Server Functions
@@ -94,6 +89,16 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     cur_answer_txt <- reactive(input$radio_item)
     cur_answer_id <- reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_txt()))
 
+
+    output$display <- renderUI({
+      req(credentials()$user_auth)
+      tagList(
+        rep_br(1),
+        uiOutput(ns("stimulus")),
+        rep_br(1),
+        uiOutput(ns("radio_item")),
+      )
+    })
 
     out <- list(
       cur_item_id = cur_item_id,

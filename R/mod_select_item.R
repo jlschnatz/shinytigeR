@@ -75,8 +75,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
         bslib::card_body(
           fillable = TRUE,
           fluidRow(
-            col_7(
-                   tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
+            tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
                    tags$li("Schaue regelmäßig bei der App vorbei, "),
                    rep_br(1),
                    shinyWidgets::pickerInput(
@@ -90,8 +89,8 @@ mod_select_item_server <- function(id, data_item, credentials) {
                        `select-all-text` = "Alle auswählen",
                        `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
                      )
-                   )),
-            col_7(actionButton(ns("submit_btn"), "Start"))
+                   ),
+            actionButton(ns("submit_btn"), "Start")
           )
         )
       )
