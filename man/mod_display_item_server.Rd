@@ -4,7 +4,13 @@
 \alias{mod_display_item_server}
 \title{display_item Server Functions}
 \usage{
-mod_display_item_server(id, data_item, index_display, check_button_value)
+mod_display_item_server(
+  id,
+  data_item,
+  index_display,
+  check_button_value,
+  credentials
+)
 }
 \arguments{
 \item{id}{A character string of the id of the module}

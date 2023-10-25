@@ -42,7 +42,7 @@ mod_display_item_ui <- function(id) {
 #'
 #' @export
 #'
-mod_display_item_server <- function(id, data_item, index_display, check_button_value) {
+mod_display_item_server <- function(id, data_item, index_display, check_button_value, credentials) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -57,7 +57,8 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     })
 
 
-    output$stimulus <- renderUI(
+    output$stimulus <- renderUI({
+      req(credentials()$user_auth) # require authentification before eval
       if (!is.null(cur_item_id())) {
         displayStimulus(
           .text = data_item$stimulus_text[cur_item_id()],
@@ -65,9 +66,11 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
           .type_stimulus = data_item$type_stimulus[cur_item_id()]
         )
       }
+    }
     )
 
-    output$radio_item <- renderUI(
+    output$radio_item <- renderUI({
+      req(credentials()$user_auth) # require authentification before eval
       if (!is.null(cur_item_id())) {
         radioButtonsDynamic(
           inputId = ns("radio_item"),
@@ -76,6 +79,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
           correct_id = data_item$answer_correct[cur_item_id()]
         )
       }
+    }
     )
 
     observe({
