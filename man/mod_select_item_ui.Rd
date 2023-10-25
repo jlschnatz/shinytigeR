@@ -4,7 +4,7 @@
 \alias{mod_select_item_ui}
 \title{select_item UI Function}
 \usage{
-mod_select_item_ui(id, data_item)
+mod_select_item_ui(id)
 }
 \arguments{
 \item{id}{A character string of the id of the module}

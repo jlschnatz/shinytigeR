@@ -4,7 +4,7 @@
 \alias{mod_select_item_server}
 \title{select_item Server Functions}
 \usage{
-mod_select_item_server(id, data_item)
+mod_select_item_server(id, data_item, credentials)
 }
 \arguments{
 \item{id}{A character string of the if of the module}

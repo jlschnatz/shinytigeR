@@ -16,7 +16,7 @@ app_ui <- function(request) {
       # login tab to be rendered on launch (hiding the other tabs)
       bslib::nav_panel(
         title = "Login",
-        value = "login",
+        value = "login_panel",
         icon = bsicons::bs_icon("lock-fill", size = 15),
         shinyauthr::loginUI(
           id = "login",
@@ -25,6 +25,27 @@ app_ui <- function(request) {
           pass_title = "Passwort",
           login_title = "Einloggen"
           )
+      ),
+      # Home Panel
+      bslib::nav_panel(
+        id = "home_test",
+        title = "Home",
+        value = "home_panel",
+        icon = bsicons::bs_icon("house-fill", size = 15),
+        tagList(
+          mod_home_ui("home_1")
+        )
+      ),
+      # Training Panel
+      bslib::nav_panel(
+        title = "Üben",
+        value = "train_panel",
+        icon = bsicons::bs_icon("ui-radios", size = 15),
+        tagList(
+          mod_select_item_ui("select_item_1"),
+          mod_display_item_ui("display_item_1"),
+          mod_check_item_ui("check_item_1")
+        )
       ),
       fluid = TRUE,
       theme = bslib::bs_theme(

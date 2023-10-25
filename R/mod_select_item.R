@@ -12,36 +12,11 @@
 #'
 #' @importFrom shiny NS tagList
 #'
-mod_select_item_ui <- function(id, data_item) {
+mod_select_item_ui <- function(id) {
   ns <- NS(id)
-  #tagList(
-  bslib::card(
-    bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
-    bslib::card_body(
-      fillable = TRUE,
-      fluidRow(
-        column(7,
-        tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
-        tags$li("Schaue regelmäßig bei der App vorbei, "),
-
-        rep_br(1),
-        shinyWidgets::pickerInput(
-          inputId = ns("picker"),
-          choices = unique(data_item$learning_area), # here reali_item topic names as input
-          selected = NULL,
-          multiple = TRUE,
-          options = list(
-            `actions-box` = TRUE,
-            `deselect-all-text` = "Auswahl löschen",
-            `select-all-text` = "Alle auswählen",
-            `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
-          )
-        )),
-        column(7, actionButton(ns("submit_btn"), "Start"))
-      )
-    )
+  tagList(
+    uiOutput(ns("select"))
   )
-  #)
 }
 
 #' select_item Server Functions
@@ -57,7 +32,7 @@ mod_select_item_ui <- function(id, data_item) {
 #'
 #' @export
 #'
-mod_select_item_server <- function(id, data_item) {
+mod_select_item_server <- function(id, data_item, credentials) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -93,13 +68,42 @@ mod_select_item_server <- function(id, data_item) {
       }
     })
 
+    output$select <- renderUI({
+      req(credentials()$user_auth) # only show after user authentification
+      bslib::card(
+        bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
+        bslib::card_body(
+          fillable = TRUE,
+          fluidRow(
+            col_7(
+                   tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
+                   tags$li("Schaue regelmäßig bei der App vorbei, "),
+                   rep_br(1),
+                   shinyWidgets::pickerInput(
+                     inputId = ns("picker"),
+                     choices = unique(data_item$learning_area), # here reali_item topic names as input
+                     selected = NULL,
+                     multiple = TRUE,
+                     options = list(
+                       `actions-box` = TRUE,
+                       `deselect-all-text` = "Auswahl löschen",
+                       `select-all-text` = "Alle auswählen",
+                       `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
+                     )
+                   )),
+            col_7(actionButton(ns("submit_btn"), "Start"))
+          )
+        )
+      )
+    })
+
     index_display <- reactive(sample(filtered_data()$id_item))
 
     # return a named list with reactive indices of the filtered data
     out <- list(
       index_display = index_display,
       submit_btn_value = reactive(input$submit_btn)
-      )
+    )
     return(out)
   })
 }
