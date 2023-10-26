@@ -3,18 +3,20 @@ displayStimulus <- function(.text = NULL, .img = NULL, .type_stimulus = c("text"
   if (.type_stimulus == "image") {
     assertthat::assert_that(is_image(.img), msg = "x is not an image!")
     out <- tagList(
-      HTML(.text),
-      br(),
-      tags$img(
+      #HTML(.text),
+      tags$p(.text, style = "text-align: justify"),
+      rep_br(2),
+      HTML(paste0("<center>",tags$img(
         src = .img,
-        width = "50%",
+        width = "600px",
+        #width = "40%",
         #height = "30%",
         class = "center"
-      )
-    )
+      ), "</center>")
+    ))
   } else if (.type_stimulus == "text") {
     assertthat::assert_that(!is_image(.img), msg = "x is an image, but is tagged as normal text!")
-    out <- HTML(.text)
+    out <- tags$p(.text, style = "text-align: justify")
   }
   return(out)
 }

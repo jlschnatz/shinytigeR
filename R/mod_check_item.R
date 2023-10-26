@@ -135,6 +135,7 @@ mod_check_item_server <- function(
         # bslib::card("Test", class="p-3 mb-2 bg-success text-white")
       )
     })
+
     output$feedback <- renderUI(feedback_message())
 
     observeEvent(input$next_button, {
@@ -159,6 +160,7 @@ mod_check_item_server <- function(
       }
 
       feedback_message(NULL)
+      shinyjs::enable("radio_item")
       shinyjs::enable("radio_item")
       shinyjs::disable("next_button")
     })

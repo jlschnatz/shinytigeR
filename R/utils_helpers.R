@@ -133,6 +133,12 @@ pill <- function(...) {
   shiny::tabPanel(..., class = "p-3 border")
 }
 
+tab <- function(...) {
+  #bslib::nav_panel(..., class = "p-3 border border-top-0 rounded-bottom")
+  bslib::nav_panel(..., class = "p-3")
+
+}
+
 bs_table <- function(x, class = NULL, ...) {
   class <- paste(c("table", class), collapse = " ")
   class <- sprintf('class="%s"', class)

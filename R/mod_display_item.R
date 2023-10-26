@@ -100,6 +100,33 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
       )
     })
 
+    output$display <- renderUI({
+      # req(credentials()$user_auth)
+      # if (!is.null(cur_item_id())) {
+      #   tagList(
+      #     rep_br(1),
+      #     displayStimulus(
+      #       .text = data_item$stimulus_text[cur_item_id()],
+      #       .img = data_item$stimulus_image[cur_item_id()],
+      #       .type_stimulus = data_item$type_stimulus[cur_item_id()]
+      #     ),
+      #     rep_br(1),
+      #     radioButtonsDynamic(
+      #       inputId = ns("radio_item"),
+      #       choices = get_answeroptions(data_item, cur_item_id()),
+      #       type_answer = data_item$type_answer[cur_item_id()],
+      #       correct_id = data_item$answer_correct[cur_item_id()]
+      #       )
+      #     )
+      #}
+      tagList(
+        rep_br(1),
+        uiOutput(ns("stimulus")),
+        rep_br(1),
+        uiOutput(ns("radio_item")),
+      )
+    })
+
     out <- list(
       cur_item_id = cur_item_id,
       cur_answer_txt = cur_answer_txt,

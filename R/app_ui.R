@@ -17,11 +17,10 @@ app_ui <- function(request) {
       theme = bslib::bs_theme(
         bootswatch = "zephyr",
         primary = "#285f8a",
-        #success = "#1E88E5",
+        # success = "#1E88E5",
         success = "#285f8a",
         danger = "#D81B60",
         "navbar-bg" = "#285f8a",
-        #danger = rgb(274 / 355, 0, 0)
       ),
       header = tags$head(shinyjs::inlineCSS(
         list(
@@ -31,9 +30,14 @@ app_ui <- function(request) {
           ".correct_answer_img" = "outline: 2px solid #1E88E5", # Use outline instead of border
           ".incorrect_answer_img" = "outline: 2px solid #D81B60", # Use outline instead of border
           ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels
-          ".center" = "style='display: block; margin-left: auto; margin-right: auto;'"
+          ".center" = "display: flex; justify-content: center;"
+          # ".center" = "style='display: block; margin-left: auto; margin-right: auto;'"
         )
-      )),
+      ), tags$style("
+    ul.nav-pills{
+      display: flex !important;
+      justify-content: center !important;
+    }")),
 
       # login tab to be rendered on launch (hiding the other tabs)
       bslib::nav_panel(
@@ -54,9 +58,9 @@ app_ui <- function(request) {
                 Wenn du deinen Benutzernamen/Passwort vergessen haben solltest, wende dich an
                 <a href='mailto:beitner@psych.uni-frankfurt.de'>Julia Beitner</a>,
                 um einen neuen Zugang zu erhalten."
-                ),
-              class = "text-left"
               ),
+              class = "text-left"
+            ),
             tags$p(
               HTML(
                 knitr::kable(
@@ -94,7 +98,7 @@ app_ui <- function(request) {
         icon = bsicons::bs_icon("ui-radios", size = 15),
         bslib::navset_pill(
           id = "navset_train",
-          bslib::nav_panel(
+          tab(
             value = "auswahl",
             title = bslib::tooltip(
               span(
@@ -106,7 +110,7 @@ app_ui <- function(request) {
             ),
             mod_select_item_ui("select_item_1")
           ),
-          bslib::nav_panel(
+          tab(
             value = "item",
             title = bslib::tooltip(
               span(
@@ -116,12 +120,18 @@ app_ui <- function(request) {
               "Hier kannst du die Aufgaben beantworten.",
               placement = "bottom",
             ),
-            tagList(
-              bslib::card(
-                mod_display_item_ui("display_item_1"),
-                mod_check_item_ui("check_item_1")
-              )
+            # tagList(
+            fluidRow(
+              col_1(),
+              col_10(
+                bslib::card(
+                  mod_display_item_ui("display_item_1"),
+                  mod_check_item_ui("check_item_1")
+                )
+              ),
+              col_1()
             )
+            # )
           )
         )
       )
