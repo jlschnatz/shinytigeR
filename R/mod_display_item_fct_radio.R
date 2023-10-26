@@ -44,8 +44,9 @@ radioButtonsDynamic <- function(inputId, choices, type_answer = c("text", "image
             class = "default_answer",
             tags$img(
               src = choices[i],
-              width = "30%", # Adjust the width as needed
-              height = "30%", # Adjust the height as needed
+              #width = "30%", # Adjust the width as needed
+              width = "500px",
+              #height = "30%", # Adjust the height as needed
               id = paste0("label_", id)
             )
           )

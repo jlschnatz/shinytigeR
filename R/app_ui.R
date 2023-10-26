@@ -108,7 +108,7 @@ app_ui <- function(request) {
               "Hier wählst du die Items aus, die du üben möchtest.",
               placement = "bottom",
             ),
-            mod_select_item_ui("select_item_1")
+            fluidRow(mod_select_item_ui("select_item_1"))
           ),
           tab(
             value = "item",
@@ -120,7 +120,6 @@ app_ui <- function(request) {
               "Hier kannst du die Aufgaben beantworten.",
               placement = "bottom",
             ),
-            # tagList(
             fluidRow(
               col_1(),
               col_10(
@@ -131,7 +130,6 @@ app_ui <- function(request) {
               ),
               col_1()
             )
-            # )
           )
         )
       )
