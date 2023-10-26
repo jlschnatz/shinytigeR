@@ -31,9 +31,7 @@ mod_check_item_ui <- function(id) {
 #' @export
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
-    cur_answer_id, submit_btn_value, credentials
-    ) {
-
+    cur_answer_id, submit_btn_value, credentials) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -61,24 +59,14 @@ mod_check_item_server <- function(
           class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
         }
 
-        #shinyjs::addClass(selector = paste0("#label_radio_item", cur_answer_id()), class = class_mapping)
         shinyjs::addClass(selector = paste0("#label_display_item_1-radio_item", cur_answer_id()), class = class_mapping)
 
         if (!is_correct && data_item$type_answer[cur_item_id()] == "image") {
-
-          # shinyjs::addClass(
-          #   selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
-          #   class = "correct_answer_img"
-          # )
           shinyjs::addClass(
             selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_img"
           )
         } else if (!is_correct && data_item$type_answer[cur_item_id()] == "text") {
-          # shinyjs::addClass(
-          #   selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
-          #   class = "correct_answer_txt"
-          # )
           shinyjs::addClass(
             selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_txt"
@@ -86,14 +74,20 @@ mod_check_item_server <- function(
         }
 
         feedback_message(
-          HTML(
-            dplyr::case_when(
-              cur_answer_id() == 1 ~ data_item$if_answeroption_01[cur_item_id()],
-              cur_answer_id() == 2 ~ data_item$if_answeroption_02[cur_item_id()],
-              cur_answer_id() == 3 ~ data_item$if_answeroption_03[cur_item_id()],
-              cur_answer_id() == 4 ~ data_item$if_answeroption_04[cur_item_id()],
-              cur_answer_id() == 5 ~ data_item$if_answeroption_05[cur_item_id()]
-            )
+          bslib::card(
+            bslib::card_title(tags$b(dplyr::if_else(is_correct, "Richtige Antwort!", "Leider falsch!"))),
+            bslib::card_body(
+              HTML(
+                dplyr::case_when(
+                  cur_answer_id() == 1 ~ data_item$if_answeroption_01[cur_item_id()],
+                  cur_answer_id() == 2 ~ data_item$if_answeroption_02[cur_item_id()],
+                  cur_answer_id() == 3 ~ data_item$if_answeroption_03[cur_item_id()],
+                  cur_answer_id() == 4 ~ data_item$if_answeroption_04[cur_item_id()],
+                  cur_answer_id() == 5 ~ data_item$if_answeroption_05[cur_item_id()]
+                )
+              )
+            ),
+            class = dplyr::if_else(is_correct, "p-3 mb-2 bg-success text-white", "p-3 mb-2 bg-danger text-white")
           )
         )
 
@@ -124,20 +118,21 @@ mod_check_item_server <- function(
       tagList(
         # generate two action buttons
         shinyjs::disabled(
-          #shinyjs::hidden(
-            purrr::pmap(
-              .l = tibble::tibble(
-                inputId = c(ns("check_button"), ns("next_button")),
-                label = c("Antwort überprüfen", "Nächste Frage"),
-                icon = list(icon("check"), icon("forward-step")),
-                class = list(class = "btn btn-primary", class = "btn btn-primary")
-              ),
-              .f = actionButton
-            )
-          #)
+          # shinyjs::hidden(
+          purrr::pmap(
+            .l = tibble::tibble(
+              inputId = c(ns("check_button"), ns("next_button")),
+              label = c("Antwort überprüfen", "Nächste Frage"),
+              icon = list(icon("check"), icon("forward-step")),
+              class = list(class = "btn btn-primary", class = "btn btn-primary")
+            ),
+            .f = actionButton
+          )
+          # )
         ),
         rep_br(3),
-        uiOutput(ns("feedback"))
+        uiOutput(ns("feedback")) # ,
+        # bslib::card("Test", class="p-3 mb-2 bg-success text-white")
       )
     })
     output$feedback <- renderUI(feedback_message())

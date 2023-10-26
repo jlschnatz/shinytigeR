@@ -17,8 +17,11 @@ app_ui <- function(request) {
       theme = bslib::bs_theme(
         bootswatch = "zephyr",
         primary = "#285f8a",
+        #success = "#1E88E5",
+        success = "#285f8a",
+        danger = "#D81B60",
         "navbar-bg" = "#285f8a",
-        danger = rgb(274 / 355, 0, 0)
+        #danger = rgb(274 / 355, 0, 0)
       ),
       header = tags$head(shinyjs::inlineCSS(
         list(
