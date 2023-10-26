@@ -26,7 +26,7 @@ mod_home_server <- function(id, credentials){
       req(credentials()$user_auth)
       fluidRow(
         col_6(
-          tags$h5("Willkommen bei tigeR – deinem Selbstlerntools für Statistik"),
+          tags$h5("Willkommen bei tigeR – deinem Selbstlerntool für Statistik"),
           tags$p("Wir freuen uns, dich auf tigeR begrüßen zu dürfen!"),
           tags$p("Hier findest du Übungsaufgaben begleitend zu den Inhalten des Moduls PsyBSc2."),
           tags$p("Unter dem Reiter Üben geht es direkt zu den Aufgaben und unter Fortschritt erhältst du einen Überblick über deine bisherigen Aktivitäten in tigeR."),

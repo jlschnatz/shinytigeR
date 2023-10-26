@@ -72,7 +72,8 @@ mod_select_item_server <- function(id, data_item, credentials) {
     output$select <- renderUI({
       req(credentials()$user_auth) # only show after user authentification
       fluidRow(
-        col_8(
+        col_1(),
+        col_10(
           br(),
           bslib::card(
             bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
@@ -97,27 +98,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
             )
           )
         ),
-        # col_6(
-        #   if (!is.null(selected_topics())) {
-        #     tagList(
-        #     renderPlot(filtered_data() %>%
-        #       dplyr::count(learning_area) %>%
-        #       ggplot(aes(x = learning_area, y = n, fill = learning_area)) +
-        #       geom_col() +
-        #       scale_fill_goethe() +
-        #       guides(fill = "none") +
-        #       scale_y_continuous(expand = c(0, 0)) +
-        #       theme(
-        #         plot.background = element_blank(),
-        #         panel.background = element_blank(),
-        #         panel.grid.major = element_line(colour = "grey", linewidth = .3),
-        #         axis.line = element_line(colour = "grey", linewidth = .3)
-        #       )
-        #     ),
-        #     renderTable(filtered_data() %>% dplyr::count(learning_area))
-        #     )
-        #   }
-        # )
+        col_1()
       )
     })
 
