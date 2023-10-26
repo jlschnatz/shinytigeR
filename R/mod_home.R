@@ -26,7 +26,8 @@ mod_home_server <- function(id, credentials){
       req(credentials()$user_auth)
       fluidRow(
         col_6(
-          tags$h4("Hallo und herzlich willkommen bei tigeR!"),
+          tags$h5("Willkommen bei tigeR – deinem Selbstlerntools für Statistik"),
+          tags$p("Wir freuen uns, dich auf tigeR begrüßen zu dürfen!"),
           tags$p("Hier findest du Übungsaufgaben begleitend zu den Inhalten des Moduls PsyBSc2."),
           tags$p("Unter dem Reiter Üben geht es direkt zu den Aufgaben und unter Fortschritt erhältst du einen Überblick über deine bisherigen Aktivitäten in tigeR."),
           tags$p("Bei Fragen, Problemen oder Anmerkungen kannst du dich jederzeit an Julia Beitner unter beitner@psych.uni-frankfurt.de wenden."),

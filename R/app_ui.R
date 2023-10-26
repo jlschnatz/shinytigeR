@@ -20,6 +20,17 @@ app_ui <- function(request) {
         "navbar-bg" = "#285f8a",
         danger = rgb(274 / 355, 0, 0)
       ),
+      header = tags$head(shinyjs::inlineCSS(
+        list(
+          ".default_answer" = "color: black",
+          ".correct_answer_txt" = "color: #1E88E5; font-weight: 500;",
+          ".incorrect_answer_txt" = "color: #D81B60; font-weight: 500;",
+          ".correct_answer_img" = "outline: 2px solid #1E88E5", # Use outline instead of border
+          ".incorrect_answer_img" = "outline: 2px solid #D81B60", # Use outline instead of border
+          ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels
+          ".center" = "style='display: block; margin-left: auto; margin-right: auto;'"
+        )
+      )),
 
       # login tab to be rendered on launch (hiding the other tabs)
       bslib::nav_panel(
@@ -34,22 +45,27 @@ app_ui <- function(request) {
           login_title = "Einloggen",
           error_message = "Invalider Benutzername oder Passwort!",
           additional_ui = tagList(
-            tags$p(HTML("Bitte melde dich mit deinem im R-Praktikum erhaltenen Benutzernamen und Passwort an.
-               Wenn du deinen Benutzernamen/Passwort vergessen haben solltest,
-               wende dich an <a href='mailto:beitner@psych.uni-frankfurt.de'>Julia Beitner</a>,
-               um einen neuen Zugang zu erhalten."), class = "text-left"),
+            tags$p(
+              HTML(
+                "Bitte melde dich mit deinem im R-Praktikum erhaltenen Benutzernamen und Passwort an.
+                Wenn du deinen Benutzernamen/Passwort vergessen haben solltest, wende dich an
+                <a href='mailto:beitner@psych.uni-frankfurt.de'>Julia Beitner</a>,
+                um einen neuen Zugang zu erhalten."
+                ),
+              class = "text-left"
+              ),
             tags$p(
               HTML(
                 knitr::kable(
                   data.frame(
                     Benutzername = "test",
                     Passwort = "test123"
-                    ),
+                  ),
                   format = "html",
                   col.names = c("Benutzername", "Passwort"),
                   table.attr = "style='width:100%;'"
-                  )
-                ),
+                )
+              ),
               class = "center"
             )
           )
@@ -71,28 +87,41 @@ app_ui <- function(request) {
       bslib::nav_panel(
         title = "Üben",
         value = "train_panel",
+        id = "train",
         icon = bsicons::bs_icon("ui-radios", size = 15),
-        tagList(
-          bslib::navset_pill(
-            bslib::nav_panel(
-              title = bslib::tooltip(
-                span(
-                  HTML("Itemselektion &nbsp;"),
-                  bsicons::bs_icon("info-circle")
-                ),
-                "Hier wählst du deine aus, die du üben möchtest.",
-                placement = "bottom",
+        bslib::navset_pill(
+          id = "navset_train",
+          bslib::nav_panel(
+            value = "auswahl",
+            title = bslib::tooltip(
+              span(
+                HTML("Auswahlbereich &nbsp;"),
+                bsicons::bs_icon("info-circle")
               ),
-              mod_select_item_ui("select_item_1")
+              "Hier wählst du die Items aus, die du üben möchtest.",
+              placement = "bottom",
             ),
-            bslib::nav_panel(
-              title = "Übungen",
-              mod_display_item_ui("display_item_1"),
-              mod_check_item_ui("check_item_1")
+            mod_select_item_ui("select_item_1")
+          ),
+          bslib::nav_panel(
+            value = "item",
+            title = bslib::tooltip(
+              span(
+                HTML("Übungsbereich &nbsp;"),
+                bsicons::bs_icon("info-circle")
+              ),
+              "Hier kannst du die Aufgaben beantworten.",
+              placement = "bottom",
             ),
+            tagList(
+              bslib::card(
+                mod_display_item_ui("display_item_1"),
+                mod_check_item_ui("check_item_1")
+              )
+            )
           )
         )
-      ),
+      )
     )
   )
 }

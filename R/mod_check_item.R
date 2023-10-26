@@ -47,11 +47,11 @@ mod_check_item_server <- function(
     # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
 
-
-
     observeEvent(input$check_button, {
       if (!is.null(cur_answer_txt())) {
         req(cur_answer_txt)
+        req(credentials()$user_auth)
+
         is_correct <- cur_answer_id() == data_item$answer_correct[cur_item_id()]
 
         # Common logic for both correct and incorrect cases
@@ -61,16 +61,26 @@ mod_check_item_server <- function(
           class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
         }
 
-        shinyjs::addClass(selector = paste0("#label_radio_item", cur_answer_id()), class = class_mapping)
+        #shinyjs::addClass(selector = paste0("#label_radio_item", cur_answer_id()), class = class_mapping)
+        shinyjs::addClass(selector = paste0("#label_display_item_1-radio_item", cur_answer_id()), class = class_mapping)
 
         if (!is_correct && data_item$type_answer[cur_item_id()] == "image") {
+
+          # shinyjs::addClass(
+          #   selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
+          #   class = "correct_answer_img"
+          # )
           shinyjs::addClass(
-            selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
+            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_img"
           )
         } else if (!is_correct && data_item$type_answer[cur_item_id()] == "text") {
+          # shinyjs::addClass(
+          #   selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
+          #   class = "correct_answer_txt"
+          # )
           shinyjs::addClass(
-            selector = paste0("#label_radio_item", data_item$answer_correct[cur_item_id()]),
+            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_txt"
           )
         }
@@ -88,7 +98,6 @@ mod_check_item_server <- function(
         )
 
         shinyjs::disable("radio_item")
-        # shinyjs::show("next_button")
         shinyjs::enable("next_button")
 
         response_data_df <- tibble::tibble(
@@ -115,7 +124,7 @@ mod_check_item_server <- function(
       tagList(
         # generate two action buttons
         shinyjs::disabled(
-          shinyjs::hidden(
+          #shinyjs::hidden(
             purrr::pmap(
               .l = tibble::tibble(
                 inputId = c(ns("check_button"), ns("next_button")),
@@ -125,7 +134,7 @@ mod_check_item_server <- function(
               ),
               .f = actionButton
             )
-          )
+          #)
         ),
         rep_br(3),
         uiOutput(ns("feedback"))

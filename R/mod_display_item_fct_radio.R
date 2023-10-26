@@ -9,7 +9,7 @@ displayStimulus <- function(.text = NULL, .img = NULL, .type_stimulus = c("text"
         src = .img,
         width = "50%",
         #height = "30%",
-       # class = "center"
+        class = "center"
       )
     )
   } else if (.type_stimulus == "text") {
@@ -38,12 +38,13 @@ radioButtonsDynamic <- function(inputId, choices, type_answer = c("text", "image
           ),
           tags$label(
             `for` = id,
-            id = paste0("label_", id), # Add a unique ID for the label
+            #id = paste0("label_", id), # Add a unique ID for the label
             class = "default_answer",
             tags$img(
               src = choices[i],
               width = "30%", # Adjust the width as needed
               height = "30%", # Adjust the height as needed
+              id = paste0("label_", id)
             )
           )
         )

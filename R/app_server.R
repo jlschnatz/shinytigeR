@@ -72,6 +72,15 @@ app_server <- function(input, output, session) {
     }
   })
 
+  bslib::nav_select("test", "auswahl")
+
+  observeEvent(mod1_select$submit_btn_value, {
+
+    req(mod1_select$submit_btn_value)
+    shiny::updateTabsetPanel(session = session, inputId = "navset_train", "auswahl")
+    #bslib::nav_select("test", "übung")
+  })
+
   progress_tab <- bslib::nav_panel(
     title = "Fortschritt",
     value = "data",

@@ -11,6 +11,7 @@
 #' @export
 #'
 #' @importFrom shiny NS tagList
+#' @import ggplot2
 #'
 mod_select_item_ui <- function(id) {
   ns <- NS(id)
@@ -70,29 +71,53 @@ mod_select_item_server <- function(id, data_item, credentials) {
 
     output$select <- renderUI({
       req(credentials()$user_auth) # only show after user authentification
-      bslib::card(
-        bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
-        bslib::card_body(
-          fillable = TRUE,
-          fluidRow(
-            tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
-                   tags$li("Schaue regelmäßig bei der App vorbei, "),
-                   rep_br(1),
-                   shinyWidgets::pickerInput(
-                     inputId = ns("picker"),
-                     choices = unique(data_item$learning_area), # here reali_item topic names as input
-                     selected = NULL,
-                     multiple = TRUE,
-                     options = list(
-                       `actions-box` = TRUE,
-                       `deselect-all-text` = "Auswahl löschen",
-                       `select-all-text` = "Alle auswählen",
-                       `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
-                     )
-                   ),
-            actionButton(ns("submit_btn"), "Start")
+      fluidRow(
+        col_8(
+          br(),
+          bslib::card(
+            bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
+            bslib::card_body(
+              fillable = TRUE,
+              tags$li("Wähle einen Pool an Items aus, nach denen du filtern und diese üben möchtest"),
+              tags$li("Schaue regelmäßig bei der App vorbei, "),
+              rep_br(1),
+              shinyWidgets::pickerInput(
+                inputId = ns("picker"),
+                choices = unique(data_item$learning_area), # here reali_item topic names as input
+                selected = NULL,
+                multiple = TRUE,
+                options = list(
+                  `actions-box` = TRUE,
+                  `deselect-all-text` = "Auswahl löschen",
+                  `select-all-text` = "Alle auswählen",
+                  `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
+                )
+              ),
+              actionButton(ns("submit_btn"), "Start")
+            )
           )
-        )
+        ),
+        # col_6(
+        #   if (!is.null(selected_topics())) {
+        #     tagList(
+        #     renderPlot(filtered_data() %>%
+        #       dplyr::count(learning_area) %>%
+        #       ggplot(aes(x = learning_area, y = n, fill = learning_area)) +
+        #       geom_col() +
+        #       scale_fill_goethe() +
+        #       guides(fill = "none") +
+        #       scale_y_continuous(expand = c(0, 0)) +
+        #       theme(
+        #         plot.background = element_blank(),
+        #         panel.background = element_blank(),
+        #         panel.grid.major = element_line(colour = "grey", linewidth = .3),
+        #         axis.line = element_line(colour = "grey", linewidth = .3)
+        #       )
+        #     ),
+        #     renderTable(filtered_data() %>% dplyr::count(learning_area))
+        #     )
+        #   }
+        # )
       )
     })
 
