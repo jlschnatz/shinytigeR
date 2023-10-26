@@ -31,7 +31,9 @@ mod_check_item_ui <- function(id) {
 #' @export
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
-    cur_answer_id, submit_btn_value, credentials) {
+    cur_answer_id, submit_btn_value, credentials
+    ) {
+
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -117,8 +119,8 @@ mod_check_item_server <- function(
       req(credentials()$user_auth)
       tagList(
         # generate two action buttons
-        shinyjs::disabled(
-          # shinyjs::hidden(
+        #shinyjs::disabled(
+         # shinyjs::hidden(
           purrr::pmap(
             .l = tibble::tibble(
               inputId = c(ns("check_button"), ns("next_button")),
@@ -127,12 +129,11 @@ mod_check_item_server <- function(
               class = list(class = "btn btn-primary", class = "btn btn-primary")
             ),
             .f = actionButton
-          )
-          # )
-        ),
+          ),
+           #)
+        #),
         rep_br(3),
-        uiOutput(ns("feedback")) # ,
-        # bslib::card("Test", class="p-3 mb-2 bg-success text-white")
+        uiOutput(ns("feedback"))
       )
     })
 

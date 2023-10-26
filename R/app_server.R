@@ -62,6 +62,16 @@ app_server <- function(input, output, session) {
   shinyjs::disable(selector = '.navbar-nav a[data-value="train_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="home_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="train_panel"')
+  shinyjs::disable(selector = '.nav-item a[data-value="item"]') # disable nav-item for training
+
+  observeEvent(mod1_select$submit_btn_value(), {
+    #req(mod1_select$submit_btn_value)
+
+    if (!is.null(mod1_select$selected_topics())) {
+      #shinyjs::enable(selector = '.nav-item a[data-value="item"]')
+      shiny::updateTabsetPanel(session = session, "navset_train", "item")
+    }
+  })
 
   observeEvent(credentials()$user_auth, {
     if (credentials()$user_auth) {
@@ -75,8 +85,7 @@ app_server <- function(input, output, session) {
   bslib::nav_select("test", "auswahl")
 
   observeEvent(mod1_select$submit_btn_value, {
-
-    req(mod1_select$submit_btn_value)
+    #req(mod1_select$submit_btn_value)
     shiny::updateTabsetPanel(session = session, inputId = "navset_train", "auswahl")
     #bslib::nav_select("test", "übung")
   })

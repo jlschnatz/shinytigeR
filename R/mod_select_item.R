@@ -113,10 +113,22 @@ mod_select_item_server <- function(id, data_item, credentials) {
 
     index_display <- reactive(sample(filtered_data()$id_item))
 
+    observeEvent(input$submit_btn, {
+      #req(mod1_select$submit_btn_value)
+
+      if (!is.null(selected_topics())) {
+        shinyjs::enable(selector = '.nav-item a[data-value="item"]')
+        shiny::updateTabsetPanel(session = session, "navset_train", "item")
+      }
+    })
+
+
+
     # return a named list with reactive indices of the filtered data
     out <- list(
       index_display = index_display,
-      submit_btn_value = reactive(input$submit_btn)
+      submit_btn_value = reactive(input$submit_btn),
+      selected_topics = selected_topics
     )
     return(out)
   })
