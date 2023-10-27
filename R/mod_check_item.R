@@ -121,17 +121,17 @@ mod_check_item_server <- function(
         # generate two action buttons
         #shinyjs::disabled(
          # shinyjs::hidden(
-          purrr::pmap(
-            .l = tibble::tibble(
-              inputId = c(ns("check_button"), ns("next_button")),
-              label = c("Antwort überprüfen", "Nächste Frage"),
-              icon = list(icon("check"), icon("forward-step")),
-              class = list(class = "btn btn-primary", class = "btn btn-primary")
+          actionButton(
+            ns("check_button"),
+               tags$p(bsicons::bs_icon("ui-checks"), HTML("&nbsp"), "Antwort überprüfen"),
+               class = "btn btn-primary"
             ),
-            .f = actionButton
-          ),
-           #)
-        #),
+          shinyjs::disabled(actionButton(
+            ns("next_button"),
+            tags$p(bsicons::bs_icon("arrow-right"), HTML("&nbsp"), "Nächste Frage", ),
+
+            class = "btn btn-primary"
+          )),
         rep_br(3),
         uiOutput(ns("feedback"))
       )
