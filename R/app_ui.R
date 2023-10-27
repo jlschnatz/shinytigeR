@@ -124,6 +124,7 @@ app_ui <- function(request) {
               col_1(),
               col_10(
                 bslib::card(
+                  bslib::card_header(tags$h6(tags$b(textOutput("cardheader_train")))),
                   mod_display_item_ui("display_item_1"),
                   mod_check_item_ui("check_item_1")
                 )

@@ -89,8 +89,8 @@ mod_check_item_server <- function(
                   cur_answer_id() == 5 ~ data_item$if_answeroption_05[cur_item_id()]
                 )
               )
-            ),
-          )
+            )
+            )
         )
 
         shinyjs::disable("radio_item")

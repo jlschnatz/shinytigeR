@@ -168,8 +168,10 @@ app_server <- function(input, output, session) {
 
   # set global reactiveValues for indexing trough the items
 
-  mod_home_server("home_1", credentials)
+  output$cardheader_train <- renderText({paste0("Item ", data_item$id_item[mod2_display$cur_item_id()])})
 
+
+  mod_home_server("home_1", credentials)
 
   mod1_select <- mod_select_item_server(
     id = "select_item_1",

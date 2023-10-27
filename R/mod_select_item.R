@@ -107,7 +107,14 @@ mod_select_item_server <- function(id, data_item, credentials) {
               col_4(
                 actionButton(
                   ns("submit_btn"),
-                  tags$p("Weiter zum Übungsbereich", bsicons::bs_icon("shuffle")),
+                  bslib::tooltip(
+                    span(
+                      HTML("Weiter zum Übungsbereich"),
+                      bsicons::bs_icon("shuffle")
+                      ),
+                    HTML("<b>Doppelklick</b>, um direkt auf den Übungsbereich weitergeleitet zu werden"),
+                    placement = "bottom"
+                  ),
                   class = "btn-primary"
                   )
               )

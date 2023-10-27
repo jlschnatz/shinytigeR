@@ -93,10 +93,11 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     output$display <- renderUI({
       req(credentials()$user_auth)
       tagList(
-        rep_br(1),
+        bslib::card_header(paste0("Frage", data_item$id_item[cur_item_id()])),
+        bslib::card_body(
         uiOutput(ns("stimulus")),
         rep_br(1),
-        uiOutput(ns("radio_item")),
+        uiOutput(ns("radio_item"))),
       )
     })
 
