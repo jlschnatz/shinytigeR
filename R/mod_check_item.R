@@ -75,7 +75,10 @@ mod_check_item_server <- function(
 
         feedback_message(
           bslib::card(
-            bslib::card_title(tags$b(dplyr::if_else(is_correct, "Richtige Antwort!", "Leider falsch!"))),
+            bslib::card_header(
+              tags$b(dplyr::if_else(is_correct, "Richtige Antwort!", "Leider falsch!")),
+              class = dplyr::if_else(is_correct, "bg-success text-white", "bg-danger text-white")
+              ),
             bslib::card_body(
               HTML(
                 dplyr::case_when(
@@ -87,7 +90,6 @@ mod_check_item_server <- function(
                 )
               )
             ),
-            class = dplyr::if_else(is_correct, "p-3 mb-2 bg-success text-white", "p-3 mb-2 bg-danger text-white")
           )
         )
 
