@@ -31,9 +31,7 @@ mod_check_item_ui <- function(id) {
 #' @export
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
-    cur_answer_id, submit_btn_value, credentials
-    ) {
-
+    cur_answer_id, submit_btn_value, credentials) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -119,19 +117,16 @@ mod_check_item_server <- function(
       req(credentials()$user_auth)
       tagList(
         # generate two action buttons
-        #shinyjs::disabled(
-         # shinyjs::hidden(
-          actionButton(
-            ns("check_button"),
-               tags$p(bsicons::bs_icon("ui-checks"), HTML("&nbsp"), "Antwort überprüfen"),
-               class = "btn btn-primary"
-            ),
-          shinyjs::disabled(actionButton(
-            ns("next_button"),
-            tags$p(bsicons::bs_icon("arrow-right"), HTML("&nbsp"), "Nächste Frage", ),
-
-            class = "btn btn-primary"
-          )),
+        actionButton(
+          ns("check_button"),
+          tags$p(bsicons::bs_icon("ui-checks"), HTML("&nbsp"), "Antwort überprüfen"),
+          class = "btn btn-primary"
+        ),
+        shinyjs::disabled(actionButton(
+          ns("next_button"),
+          tags$p(bsicons::bs_icon("arrow-right"), HTML("&nbsp"), "Nächste Frage", ),
+          class = "btn btn-primary"
+        )),
         rep_br(3),
         uiOutput(ns("feedback"))
       )
@@ -150,8 +145,8 @@ mod_check_item_server <- function(
       # If there is no next index, it means all items have been answered, show the completion message
       if (is.na(next_index)) {
         shinyalert::shinyalert(
-          title = "Hurra!",
-          text = paste0("Alle Items abgeschlossen!  ", icon("thumbs-up", class = "duotone")),
+          title = "Geschafft!",
+          text = paste0("Du bist alle ausgewählten Fragen einmal durchgegangen. ", icon("thumbs-up", class = "solid")),
           type = "success",
           html = TRUE
         )

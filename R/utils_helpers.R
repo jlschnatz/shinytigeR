@@ -182,14 +182,18 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
             shiny::tagList(
               bsicons::bs_icon("person-fill"),
               user_title
-            )
+            ),
+            width = "90%",
+            placeholder = "user-id"
           ),
           shiny::passwordInput(
             ns("password"),
             shiny::tagList(
               bsicons::bs_icon("unlock-fill"),
               pass_title
-            )
+            ),
+            placeholder = "password",
+            width = "90%"
           ),
           shiny::div(
             style = "text-align: center;",
@@ -203,7 +207,8 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
           additional_ui,
           fillable = TRUE,
           fill = TRUE,
-          padding = 25
+          padding = 25,
+          style="text-align: justify;"
         )
       )
     )

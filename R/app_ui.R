@@ -46,7 +46,7 @@ app_ui <- function(request) {
         icon = bsicons::bs_icon("lock-fill", size = 15),
         loginUI(
           id = "login",
-          title = "Benutzer Login",
+          title = "Login",
           user_title = "Benutzername",
           pass_title = "Passwort",
           login_title = "Einloggen",
@@ -57,9 +57,9 @@ app_ui <- function(request) {
                 "Bitte melde dich mit deinem im R-Praktikum erhaltenen Benutzernamen und Passwort an.
                 Wenn du deinen Benutzernamen/Passwort vergessen haben solltest, wende dich an
                 <a href='mailto:beitner@psych.uni-frankfurt.de'>Julia Beitner</a>,
-                um einen neuen Zugang zu erhalten."
+                um einen neuen Zugang zu erhalten. Falls du die App einfach nur probieren möchtest, melde dich mit der unten stehenden Benutzerkennung an."
               ),
-              class = "text-left"
+              align = "justify"
             ),
             tags$p(
               HTML(

@@ -80,8 +80,8 @@ mod_select_item_server <- function(id, data_item, credentials) {
             bslib::card_header(tags$h5(tags$b("Auswahl der Übungsinhalte"))),
             bslib::card_body(
               fillable = TRUE,
-              tags$li("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen."),
-              tags$li("Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen."),
+              tags$p("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen."),
+              tags$p("Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen."),
               rep_br(1),
               col_10(
                 shinyWidgets::pickerInput(
@@ -93,8 +93,15 @@ mod_select_item_server <- function(id, data_item, credentials) {
                     `actions-box` = TRUE,
                     `deselect-all-text` = "Auswahl löschen",
                     `select-all-text` = "Alle auswählen",
-                    `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus."
-                  )
+                    `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus.",
+                    iconBase = "fas",
+                    `multiple-separator` = " | "
+                  ),
+                  choicesOpt = list(
+                    disabled = c(rep(FALSE, 2), rep(TRUE, 6)),
+                    subtext = paste0("Themengebiet ", 1:8)
+                    ),
+                  width = "auto"
                 )
               ),
               col_4(
