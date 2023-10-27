@@ -103,7 +103,6 @@ mod_select_item_server <- function(id, data_item, credentials) {
                   width = "auto"
                 )
               ),
-              checkboxInput(ns("test"), "Checkbox"),
               col_4(
                 actionButton(
                   ns("submit_btn"),
