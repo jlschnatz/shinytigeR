@@ -32,10 +32,11 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
     output$feedback_plot <- renderPlot({
 
       # Lolliplot alone - thematisch sortiert
-      p1 <- ggplot(feedback_data, aes(x=Lerneinheit, y=theta, color=Lerneinheit)) +
+      p1 <- ggplot(all_data, aes(x=Lerneinheit, y=theta, color=Lerneinheit)) +
         geom_abline(intercept = 0, slope = 0) +
-        geom_segment(aes(x=Lerneinheit ,xend=Lerneinheit, y=0, yend=theta), color="darkgrey") +
+        geom_segment(aes(x=Lerneinheit, xend=Lerneinheit, y=0, yend=theta), color="darkgrey") +
         geom_point(size=8) +
+        #geom_point(aes(y=theta_sample, color = Lerneinheit), size=8, alpha=ifelse(is.na(all_data$theta), 0, 0.25)) +
         scale_x_discrete(limits = levels(feedback_data$Lerneinheit)) +
         scale_y_continuous(limits = c(-3,+3), n.breaks = 3, labels = c(":(", "Durchschnitt", ":)")) +
         scale_color_goethe() +

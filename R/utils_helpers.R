@@ -67,7 +67,7 @@ negative_log_likelihood <- function(theta, responses, discrimination, difficulty
 estimate_theta <- function(responses, discrimination, difficulty) {
   result <- optim(0, negative_log_likelihood,
     method = "L-BFGS-B",
-    lower = -4, upper = 4, responses = responses,
+    lower = -3, upper = 3, responses = responses,
     discrimination = discrimination, difficulty = difficulty
   )
   return(result$par)

@@ -142,7 +142,9 @@ app_ui <- function(request) {
         icon = bsicons::bs_icon("check-circle-fill", size = 15),
         fluidRow(
           h3("Fortschritt"),
-          tags$a("Hier erfährst du mehr über deinen bisherigen Fortschritt in tigeR"),
+          tags$a("Hier erfährst du mehr über deinen bisherigen Fortschritt in tigeR."),
+          tags$a("Im Laufe der Zeit wird das Feedback immer ausführlicher werden."),
+          tags$a("Es lohnt sich also, regelmäßig vorbeizuschauen! :)"),
           div(style = "padding-top: 8px; padding-bottom: 30px;"),
           mod_response_analysis_ui("response_analysis_1"),
           div(style = "padding-bottom: 30px;"),
@@ -163,7 +165,7 @@ app_ui <- function(request) {
             mod_progress_dashboard_ui("progress_dashboard_1")
           ),
           column(
-            1, # right column
+            2, # right column
 
             # Add your action buttons here
             #   actionButton(ns("plot1_button"), "Plot 1"),
