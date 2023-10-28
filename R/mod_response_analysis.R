@@ -10,63 +10,68 @@
 mod_response_analysis_ui <- function(id){
   ns <- NS(id)
   tagList(
-
+    uiOutput(ns("response_analysis"))
+    # actionButton(ns("refresh_data"), "Refresh Data")
   )
 }
 
 #' response_analysis Server Functions
 #'
 #' @noRd
-mod_response_analysis_server <- function(id, input, output, session, data_item, user_id){
+mod_response_analysis_server <- function(id, input, output, session, data_item, credentials, check_button){
   moduleServer(id, function(input, output, session){
     ns <- session$ns
 
     # Fetch user's data from the database
-    #user_data <- db_get_userdata(user_id)
-    user_data <- data.frame("id_user" = as.factor(rep("user1",8)),
-                            "id_session" = as.factor(c(rep("sess1",3), rep("sess2",2), rep("sess3",3))),
-                            "id_item" = as.factor(c(1, 2, 3, 4, 5, 6, 7, 8)),
-                            "learning_area" = factor(as.factor(rep(c("Datenrepräsentationen", "Maße zentraler Tendenz"), each = 4)),
-                                                     levels = unique(data_item$learning_area), labels = unique(data_item$learning_area)),
-                            "selected_option" = c(3, 3, 4, 4, 3, 1, 4, 2),
-                            "answer_correct" = c(1, 4, 4, 4, 3, 1, 4, 2),
-                            "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE),
-                            "id_date" = rep(Sys.Date(), 8))
+    user_data <- reactive({
+      # Fetch the user data from the SQLite database for the specific user
+      print("Fetching data...")
+      req(credentials()$user_auth)
+      # This line forces the reactive to re-evaluate whenever the button is clicked
+      check_button()
+
+      db_get_userdata(as.character(credentials()$info$user_name))
+    })
+
+    # observeEvent(input$refresh_data, {
+    #   print("Button clicked.")
+    #   temp_data <- user_data()
+    #   print(dim(temp_data))
+    # })
+
+    # user_data <- data.frame("id_user" = as.factor(rep("user1",8)),
+    #                         "id_session" = as.factor(c(rep("sess1",3), rep("sess2",2), rep("sess3",3))),
+    #                         "id_item" = as.factor(c(1, 2, 3, 4, 5, 6, 7, 8)),
+    #                         "learning_area" = factor(as.factor(rep(c("Datenrepräsentationen", "Maße zentraler Tendenz"), each = 4)),
+    #                                                  levels = unique(data_item$learning_area), labels = unique(data_item$learning_area)),
+    #                         "selected_option" = c(3, 3, 4, 4, 3, 1, 4, 2),
+    #                         "answer_correct" = c(1, 4, 4, 4, 3, 1, 4, 2),
+    #                         "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE),
+    #                         "id_date" = rep(Sys.Date(), 8))
 
 
     # Analyze today's practice
-  #   todays_practice_reactive <- reactive({
-  #     todays_date <- Sys.Date()
-  #     todays_practice <- sum(user_data$date == todays_date)
-  #
-  #     # Return the today's practice
-  #     return(todays_practice)
-  # })
-
-    todays_practice_reactiveVal <- reactiveVal({
-      todays_practice = sum(user_data$id_date == Sys.Date())
+    output$todays_practice <- renderText({
+      sum(user_data()$id_date == Sys.Date())
     })
 
 
     # Analyze overall total practice
-    total_practice_reactive <- reactive({
-      total_practice <- length(user_data$id_user)
-
-      # Return number of total practice items
-      return(total_practice)
+    output$total_practice <- renderText({
+      length(user_data()$id_user)
     })
 
 
 
     # Analyze number of sessions
-    session_practice_reactive <- reactive({
-      session_practice <- length(unique(user_data$id_session))
-      return(session_practice)
+    output$session_practice <- renderText({
+      length(unique(user_data()$id_session))
     })
 
 
+
     # Christmas countdown
-    xmas_reactive <- reactive({
+    output$xmas_countdown <- renderText({
       if (format(Sys.Date(), "%Y") == 2023){
         xmas <- as.Date("2023-12-24")
       } else {
@@ -74,23 +79,21 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       }
 
       today <- Sys.Date()
-      xmas_countdown <- length(seq(from = today, to = xmas, by = 'day')) - 1
-
-      return(xmas_countdown)
+      length(seq(from = today, to = xmas, by = 'day')) - 1
     })
 
 
     # Feedback generation
     feedback_data_reactive <- reactive({
 
-      feedback_data <- with(user_data,
-                            by(user_data, learning_area,
+      feedback_data <- with(user_data(),
+                            by(user_data(), learning_area,
                                function(x) estimate_theta(x$bool_correct, data_item$irt_discr[x$id_item], data_item$irt_diff[x$id_item])))
 
       feedback_data <- as.data.frame(feedback_data)
       colnames(feedback_data) <- "theta"
       feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
-      rownames(feedback_data) <- 1:8
+      #rownames(feedback_data) <- 1:8
       feedback_data$theta <- as.numeric(feedback_data$theta)
 
       # Return the feedback data
@@ -98,14 +101,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     })
 
 
-    #  # IRT analysis
-    #  irt_score_reactive <- reactive({
-    #
-    #   estimated_theta <- estimate_theta(user_data$bool_correct, data_item$irt_discr[user_data$id_item], data_item$irt_diff[user_data$id_item])
-    #
-    #    # Return the IRT score
-    #    return(estimated_theta)
-    #  })
 
 
     # Combine user data and course data
@@ -119,7 +114,7 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       colnames(sample_data) <- "theta_sample"
       sample_data$Lerneinheit <- rownames(sample_data)
       sample_data$Lerneinheit <- factor(rownames(sample_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
-      rownames(sample_data) <- 1:8
+      #rownames(sample_data) <- 1:8
       sample_data$theta_sample <- as.numeric(sample_data$theta_sample)
 
       all_data <- merge(feedback_data_reactive(), sample_data, by = "Lerneinheit")
@@ -137,16 +132,51 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     })
 
 
+    output$response_analysis <- renderUI({
+      bslib::layout_columns(
+        bslib::value_box(
+          title = "Heute bearbeitete Aufgaben", value = textOutput(ns("todays_practice")),
+          shiny::markdown("Super, weiter so!"),
+          # theme = bslib::value_box_theme(bg = "#860047", fg = "#FFFFFF"),
+          style = "background-color: #860047!important; padding-left: 10px;",
+          showcase = bsicons::bs_icon("emoji-smile", style = "font-size: 45px; color: white"),
+          # showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        ),
+        bslib::value_box(
+          title = "Insgesamt bearbeitete Aufgaben", value = textOutput(ns("total_practice")),
+          # theme = value_box_theme(bg = "#FFFFFF", fg = "#C96215"),
+          style = "background-color: #C96215!important;",
+          showcase = bsicons::bs_icon("bar-chart-fill", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        ),
+        bslib::value_box(
+          title = "Noch", value = textOutput(ns("xmas_countdown")),
+          shiny::markdown("Tage bis Weihnachten"),
+          # theme = value_box_theme(bg = "#FFFFFF", fg = "#B3062C"),
+          style = "background-color: #B3062C!important;",
+          showcase = fontawesome::fa_i("candy-cane", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        ),
+        bslib::value_box(
+          title = " ", value = tags$span(textOutput(ns("session_practice")), " mal"), #paste0(textOutput(ns("session_practice")), " mal"),
+          shiny::markdown("warst du schon auf tigeR aktiv"),
+          #  theme = value_box_theme(bg = "#737C45", fg = "#000000"),
+          style = "background-color: #737C45!important; padding-right: 10px;",
+          showcase = bsicons::bs_icon("calendar4-week", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
+          full_screen = FALSE, fill = TRUE, height = NULL
+        )
+      )
+    })
+
+
+
 
     # Return the feedback data so it can be used outside this module if needed.
     return(list(
       feedback_data = feedback_data_reactive,
       bearbeitet = bearbeitet_reactive,
-      all_data = all_data_reactive,
-      todays_practice = todays_practice_reactiveVal,
-      total_practice = total_practice_reactive,
-      session_practice = session_practice_reactive,
-      xmas_countdown = xmas_reactive
+      all_data = all_data_reactive
 
     ))
 

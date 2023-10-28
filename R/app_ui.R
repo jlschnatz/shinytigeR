@@ -105,7 +105,7 @@ app_ui <- function(request) {
                 HTML("Auswahlbereich &nbsp;"),
                 bsicons::bs_icon("info-circle")
               ),
-              "Hier wählst du die Items aus, die du üben möchtest.",
+              "Hier wählst du Themengebiete aus, aus denen du üben möchtest.",
               placement = "bottom",
             ),
             fluidRow(mod_select_item_ui("select_item_1"))
@@ -131,6 +131,43 @@ app_ui <- function(request) {
               ),
               col_1()
             )
+          )
+        )
+      ),
+
+      # Progress panel
+      bslib::nav_panel(
+        title = "Fortschritt",
+        value = "progress_panel",
+        icon = bsicons::bs_icon("check-circle-fill", size = 15),
+        fluidRow(
+          h3("Fortschritt"),
+          tags$a("Hier erfährst du mehr über deinen bisherigen Fortschritt in tigeR"),
+          div(style = "padding-top: 8px; padding-bottom: 30px;"),
+          mod_response_analysis_ui("response_analysis_1"),
+          div(style = "padding-bottom: 30px;"),
+          column(
+            10, # Left column
+            tags$head(
+              tags$style(HTML("
+            .shiny-input-container:not(.shiny-input-container-inline) {
+              width:100%;
+            }
+            #feedback_plot, #comparison_plot {
+              padding-bottom: 100px;
+            }"))
+            ),
+            tags$div(style = "margin-bottom:40px;"),
+
+            #mod_response_analysis_ui("response_analysis_1"),
+            mod_progress_dashboard_ui("progress_dashboard_1")
+          ),
+          column(
+            1, # right column
+
+            # Add your action buttons here
+            #   actionButton(ns("plot1_button"), "Plot 1"),
+            #  actionButton(ns("plot2_button"), "Plot 2")
           )
         )
       )

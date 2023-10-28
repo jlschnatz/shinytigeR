@@ -16,6 +16,7 @@ db_get_itemdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite
 }
 
 db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite", .fetch_all = FALSE) {
+  message("Fetching user data for ", id_user)
 
   pool <- pool::dbPool(
     drv = .drv,

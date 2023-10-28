@@ -54,14 +54,13 @@ app_server <- function(input, output, session) {
     )) %>%
     dplyr::ungroup()
 
-  user_id <- "user1"
-  response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, user_id = user_id)
+
 
   # additional tabs to be added after login
 
   shinyjs::disable(selector = '.navbar-nav a[data-value="train_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="home_panel"')
-  shinyjs::disable(selector = '.navbar-nav a[data-value="train_panel"')
+  shinyjs::disable(selector = '.navbar-nav a[data-value="progress_panel"')
   shinyjs::disable(selector = '.nav-item a[data-value="item"]') # disable nav-item for training
 
   observeEvent(mod1_select$submit_btn_value(), {
@@ -77,8 +76,16 @@ app_server <- function(input, output, session) {
     if (credentials()$user_auth) {
     shinyjs::enable(selector = '.navbar-nav a[data-value="train_panel"')
     shinyjs::enable(selector = '.navbar-nav a[data-value="home_panel"')
-    shinyjs::enable(selector = '.navbar-nav a[data-value="train_panel"')
+    shinyjs::enable(selector = '.navbar-nav a[data-value="progress_panel"')
     shinyjs::disable(selector = '.navbar-nav a[data-value="login_panel"')
+    bslib::nav_select("tabs", "home_panel")
+
+    response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, credentials = credentials,
+                                                      check_button = mod3_check$check_button_value)
+    mod_progress_dashboard_server("progress_dashboard_1",
+                                  feedback_data = response_analysis$feedback_data(),
+                                  bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data()
+    )
     }
   })
 
@@ -90,81 +97,7 @@ app_server <- function(input, output, session) {
     #bslib::nav_select("test", "übung")
   })
 
-  progress_tab <- bslib::nav_panel(
-    title = "Fortschritt",
-    value = "data",
-    icon = bsicons::bs_icon("check-circle-fill", size = 15),
-    fluidRow(
-      h3("Fortschritt"),
-      tags$a("Hier erfährst du mehr über deinen bisherigen Fortschritt in tigeR"),
-      div(style = "padding-top: 8px; padding-bottom: 30px;"),
-      bslib::layout_columns(
-        bslib::value_box(
-          title = "Heute bearbeitete Aufgaben", value = isolate(response_analysis$todays_practice()),
-          shiny::markdown("Super, weiter so!"),
-          # theme = bslib::value_box_theme(bg = "#860047", fg = "#FFFFFF"),
-          style = "background-color: #860047!important; padding-left: 10px;",
-          showcase = bsicons::bs_icon("emoji-smile", style = "font-size: 45px; color: white"),
-          # showcase_layout = "left center",
-          full_screen = FALSE, fill = TRUE,
-          height = NULL
-        ),
-        bslib::value_box(
-          title = "Insgesamt bearbeitete Aufgaben", value = isolate(response_analysis$total_practice()), # ,
-          # theme = value_box_theme(bg = "#FFFFFF", fg = "#C96215"),
-          style = "background-color: #C96215!important;",
-          showcase = bsicons::bs_icon("bar-chart-fill", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
-          full_screen = FALSE, fill = TRUE, height = NULL
-        ),
-        bslib::value_box(
-          title = "Noch", value = isolate(response_analysis$xmas_countdown()), shiny::markdown("Tage bis Weihnachten"),
-          # theme = value_box_theme(bg = "#FFFFFF", fg = "#B3062C"),
-          style = "background-color: #B3062C!important;",
-          showcase = fontawesome::fa_i("candy-cane", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
-          full_screen = FALSE, fill = TRUE, height = NULL
-        ),
-        bslib::value_box(
-          title = " ", value = paste0(isolate(response_analysis$session_practice()), " mal"), shiny::markdown("warst du schon auf tigeR aktiv"),
-          #  theme = value_box_theme(bg = "#737C45", fg = "#000000"),
-          style = "background-color: #737C45!important; padding-right: 10px;",
-          showcase = bsicons::bs_icon("calendar4-week", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
-          full_screen = FALSE, fill = TRUE, height = NULL
-        )
-      ),
-      div(style = "padding-bottom: 30px;"),
-      column(
-        10, # Left column
-        tags$head(
-          tags$style(HTML("
-          .shiny-input-container:not(.shiny-input-container-inline) {
-            width:100%;
-          }
-          #feedback_plot, #comparison_plot {
-            padding-bottom: 100px;
-          }"))
-        ),
-        tags$div(style = "margin-bottom:40px;"),
 
-        # mod_response_analysis_ui("response_analysis_1"),
-        mod_progress_dashboard_ui("progress_dashboard_1")
-      ),
-      column(
-        1, # right column
-
-        # Add your action buttons here
-        #   actionButton(ns("plot1_button"), "Plot 1"),
-        #  actionButton(ns("plot2_button"), "Plot 2")
-      )
-    )
-  )
-
-  observeEvent(credentials()$user_auth, {
-    # if user logs in successfully
-    if (credentials()$user_auth) {
-      bslib::nav_select("tabs", "home_panel")
-      bslib::nav_insert("tabs", progress_tab)
-    }
-  })
 
   # set global reactiveValues for indexing trough the items
 
@@ -198,12 +131,7 @@ app_server <- function(input, output, session) {
     credentials = credentials
   )
 
-  #  user_id <- "user1"
-  #  response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, user_id = user_id)
-  mod_progress_dashboard_server("progress_dashboard_1",
-    feedback_data = response_analysis$feedback_data(),
-    bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data()
-  )
+
 
 
   # bslib::bs_themer()
