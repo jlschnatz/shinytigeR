@@ -184,7 +184,7 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
               user_title
             ),
             width = "90%",
-            placeholder = "user-id"
+            placeholder = "Adjektiv-Tier"
           ),
           shiny::passwordInput(
             ns("password"),
@@ -192,7 +192,7 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
               bsicons::bs_icon("unlock-fill"),
               pass_title
             ),
-            placeholder = "password",
+            placeholder = "Passwort",
             width = "90%"
           ),
           shiny::div(
@@ -356,4 +356,24 @@ loginServer <- function(id, data, user_col, pwd_col, sodium_hashed = FALSE,
       shiny::reactiveValuesToList(credentials)
     })
   })
+}
+
+parse_clock <- function(.seconds) {
+  clock_sec <- .seconds %% 60
+  clock_min <- .seconds %/% 60
+  clock_hour <- .seconds %/% 3600
+
+  clock_parsed <- dplyr::case_when(
+    .seconds < 60 ~ paste0(clock_sec, " sek."),
+    .seconds < 3600 ~ paste0(clock_min, "min, ", clock_sec, " sek."),
+    .seconds < 86400 ~ paste0(clock_hour, "h, ", clock_min - clock_hour*60, "min, ", clock_sec, " sek."),
+    .seconds >= 86400 ~ "Du solltest definitiv aufhören...1 Tag!"
+  )
+
+  return(clock_parsed)
+}
+
+parse_difftime <- function(.cur_time_reactive, .start_time) {
+  diff_time <- difftime(.cur_time_reactive, .start_time, units = "secs")
+  return(round(as.numeric(diff_time), 0))
 }

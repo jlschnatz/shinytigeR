@@ -7,11 +7,19 @@
 
 app_server <- function(input, output, session) {
   # Your application server logic
-  # hack to add the logout button to the navbar on app launch
+  # hack to add the logout button and timer to the navbar on app launch
   insertUI(
     selector = ".navbar .container-fluid .navbar-collapse",
+    # logout button
     ui = tags$ul(
       class = "nav navbar-nav navbar-right",
+      tags$li(
+        div(
+          style = "padding: 10px; padding-top: 17px; padding-bottom: 10px; color: white;",
+          uiOutput("time_spent")
+          )
+      ),
+      # timer
       tags$li(
         div(
           style = "padding: 10px; padding-top: 8px; padding-bottom: 0;",
@@ -20,6 +28,30 @@ app_server <- function(input, output, session) {
       )
     )
   )
+
+  # Timer Logic ----
+
+  observeEvent(credentials()$user_auth, {
+    start_time <- Sys.time()
+    current_time <- reactiveVal(NULL)
+
+    observe({
+      invalidateLater(1000, session)
+      current_time(Sys.time())
+    })
+
+    time_parsed <- reactive(parse_clock(parse_difftime(current_time(), start_time)))
+
+    output$time_spent <- renderUI({
+      req(credentials()$user_auth)
+      fluidRow(
+        span(
+          HTML("Zeit:&nbsp;"),
+          bsicons::bs_icon("clock-history"),
+          time_parsed()
+        ))
+    })
+  })
 
   # Login Functionality ----
 
@@ -41,7 +73,7 @@ app_server <- function(input, output, session) {
     active = reactive(credentials()$user_auth)
   )
 
-  # Load data from item database
+  # Load Itemdata ----
 
   data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
     dplyr::mutate(dplyr::across(stimulus_image:answeroption_05, ~ stringr::str_replace(.x, "www/", "www/img_item/"))) %>%
@@ -64,10 +96,7 @@ app_server <- function(input, output, session) {
   shinyjs::disable(selector = '.nav-item a[data-value="item"]') # disable nav-item for training
 
   observeEvent(mod1_select$submit_btn_value(), {
-    #req(mod1_select$submit_btn_value)
-
     if (!is.null(mod1_select$selected_topics())) {
-      #shinyjs::enable(selector = '.nav-item a[data-value="item"]')
       shiny::updateTabsetPanel(session = session, "navset_train", "item")
     }
   })
@@ -92,15 +121,11 @@ app_server <- function(input, output, session) {
   bslib::nav_select("test", "auswahl")
 
   observeEvent(mod1_select$submit_btn_value, {
-    #req(mod1_select$submit_btn_value)
     shiny::updateTabsetPanel(session = session, inputId = "navset_train", "auswahl")
-    #bslib::nav_select("test", "übung")
   })
 
 
-
   # set global reactiveValues for indexing trough the items
-
   output$cardheader_train <- renderText({paste0("Item ", data_item$id_item[mod2_display$cur_item_id()])})
 
 
@@ -131,8 +156,4 @@ app_server <- function(input, output, session) {
     credentials = credentials
   )
 
-
-
-
-  # bslib::bs_themer()
 }
