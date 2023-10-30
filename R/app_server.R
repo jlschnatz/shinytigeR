@@ -113,7 +113,8 @@ app_server <- function(input, output, session) {
                                                       check_button = mod3_check$check_button_value)
     mod_progress_dashboard_server("progress_dashboard_1",
                                   feedback_data = response_analysis$feedback_data(),
-                                  bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data()
+                                  bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data(),
+                                  credentials = credentials
     )
     }
   })
