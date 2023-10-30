@@ -177,8 +177,8 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
           full_screen = FALSE, fill = TRUE, height = "150px"
         ),
         bslib::value_box(
-          title = " ", value = tags$span(textOutput(ns("session_practice"))," mal", .noWS = "after"),
-          shiny::markdown("warst du schon auf tigeR aktiv"),
+          title = "Schon", value = textOutput(ns("session_practice")), #tags$span(textOutput(ns("session_practice"))," mal"),
+          shiny::markdown("mal warst du auf tigeR aktiv"),
           #  theme = value_box_theme(bg = "#737C45", fg = "#000000"),
           style = "background-color: #737C45!important; padding-right: 10px;",
           showcase = bsicons::bs_icon("calendar4-week", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
