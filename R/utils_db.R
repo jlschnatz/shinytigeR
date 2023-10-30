@@ -39,6 +39,22 @@ db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_us
   return(user_data)
 }
 
+
+db_check_userexists <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite") {
+
+  pool <- pool::dbPool(
+    drv = .drv,
+    dbname = .db_name
+  )
+
+  con <- pool::poolCheckout(pool)
+  vec_username <- DBI::dbListTables(con)
+  pool::poolReturn(con)
+  pool::poolClose(pool)
+
+  return(as.logical(id_user %in% vec_username))
+}
+
 db_get_credentialdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_credentials.sqlite") {
 
   pool <- pool::dbPool(
