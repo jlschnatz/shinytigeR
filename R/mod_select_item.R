@@ -82,6 +82,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
               fillable = TRUE,
               tags$p("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen."),
               tags$p("Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen."),
+              #br(),
               col_10(
                 shinyWidgets::pickerInput(
                   inputId = ns("picker"),
@@ -117,7 +118,9 @@ mod_select_item_server <- function(id, data_item, credentials) {
                   class = "btn-primary"
                   )
               )
-            )
+            ),
+            height = 640,
+            full_screen = FALSE
           )
         ),
         col_1()

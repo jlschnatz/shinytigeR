@@ -30,14 +30,16 @@ app_ui <- function(request) {
           ".correct_answer_img" = "outline: 2px solid #1E88E5", # Use outline instead of border
           ".incorrect_answer_img" = "outline: 2px solid #D81B60", # Use outline instead of border
           ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels
-          ".center" = "display: flex; justify-content: center;"
+          ".center" = "display: flex; justify-content: center;",
+          ".value-box-showcase"  = "overflow: hidden;"
           # ".center" = "style='display: block; margin-left: auto; margin-right: auto;'"
         )
       ), tags$style("
     ul.nav-pills{
       display: flex !important;
       justify-content: center !important;
-    }")),
+    }
+    ")),
 
       # login tab to be rendered on launch (hiding the other tabs)
       bslib::nav_panel(
