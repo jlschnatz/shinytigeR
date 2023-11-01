@@ -149,9 +149,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       #
       #       all_data <- merge(all_data_tmp, course_data, by = "Lerneinheit", all = TRUE)
 
-      print(all_data)
-      print("all data end")
-
       # Return all data
       return(all_data)
     })

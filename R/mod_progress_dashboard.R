@@ -15,7 +15,7 @@ mod_progress_dashboard_ui <- function(id) {
     #uiOutput(ns("progress")),
     #div(style = "padding-bottom: 100px; padding-left: 30px; padding-right: 0px;", plotOutput(ns("feedback_plot"))),
     bslib::card(
-      bslib::card_header("Test"),
+      bslib::card_header(""),
       bslib::card_body(
         plotOutput(ns("feedback_plot")
       )
