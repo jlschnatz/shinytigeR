@@ -283,7 +283,7 @@ loginServer <- function(id, data, user_col, pwd_col, sodium_hashed = FALSE,
           .sessionid <- randomString()
           shinyjs::js$setcookie(.sessionid)
           cookie_setter(.userid, .sessionid)
-          cookie_data <- utils::head(dplyr::filter(
+          cookie_data <- dplyr::slice_head(dplyr::filter(
             cookie_getter(),
             {{ sessionid_col }} == .sessionid, {{ user_col }} == .userid
           ))

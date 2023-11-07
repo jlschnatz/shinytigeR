@@ -1,3 +1,4 @@
+#' @import dbplyr
 db_get_itemdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") {
 
   pool <- pool::dbPool(
@@ -15,8 +16,8 @@ db_get_itemdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite
   return(data_item)
 }
 
+#' @import dbplyr
 db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite", .fetch_all = FALSE) {
-  message("Fetching user data for ", id_user)
 
   pool <- pool::dbPool(
     drv = .drv,
@@ -39,7 +40,7 @@ db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_us
   return(user_data)
 }
 
-
+#' @import dbplyr
 db_check_userexists <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_user.sqlite") {
 
   pool <- pool::dbPool(
@@ -55,6 +56,7 @@ db_check_userexists <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "d
   return(as.logical(id_user %in% vec_username))
 }
 
+#' @import dbplyr
 db_get_credentialdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_credentials.sqlite") {
 
   pool <- pool::dbPool(
@@ -73,7 +75,7 @@ db_get_credentialdata <- function(.drv = RSQLite::SQLite(), .db_name = "db_crede
 }
 
 
-
+#' @import dbplyr
 write_userdata_db <- function(id_user, .response_data_df, .drv = RSQLite::SQLite(), .db = "db_user.sqlite") {
   pool <- pool::dbPool(drv = .drv, dbname = .db)
   user_vec <- pool::dbListTables(pool)

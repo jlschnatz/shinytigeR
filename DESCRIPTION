@@ -17,16 +17,23 @@ Imports:
     cli,
     config (>= 0.3.1),
     cowplot,
+    curl,
     DBI,
+    dbplyr,
+    dockerfiler,
     dplyr (>= 1.1.3),
     fontawesome,
     forcats,
     ggplot2,
+    glue,
     golem (>= 0.4.1),
+    jsonlite,
     knitr,
     magrittr,
+    pkgbuild,
     pool,
     purrr,
+    renv,
     rlang (>= 1.1.1),
     RSQLite,
     shiny (>= 1.7.4.1),
@@ -37,7 +44,7 @@ Imports:
     sodium,
     stringr,
     tibble,
-    utils
+    usethis
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

@@ -17,7 +17,6 @@ app_ui <- function(request) {
       theme = bslib::bs_theme(
         bootswatch = "zephyr",
         primary = "#285f8a",
-        # success = "#1E88E5",
         success = "#285f8a",
         danger = "#D81B60",
         "navbar-bg" = "#285f8a",
@@ -32,7 +31,6 @@ app_ui <- function(request) {
           ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels
           ".center" = "display: flex; justify-content: center;",
           ".value-box-showcase"  = "overflow: hidden;"
-          # ".center" = "style='display: block; margin-left: auto; margin-right: auto;'"
         )
       ), tags$style("
     ul.nav-pills{
@@ -87,9 +85,7 @@ app_ui <- function(request) {
         title = "Home",
         value = "home_panel",
         icon = bsicons::bs_icon("house-fill", size = 15),
-        tagList(
-          mod_home_ui("home_1")
-        )
+        mod_home_ui("home_1")
       ),
 
       # Training Panel
@@ -143,36 +139,9 @@ app_ui <- function(request) {
         value = "progress_panel",
         icon = bsicons::bs_icon("check-circle-fill", size = 15),
         fluidRow(
-          h3("Fortschritt"),
-          tags$a("Hier erfährst du mehr über deinen bisherigen Fortschritt in tigeR."),
-          tags$a("Im Laufe der Zeit wird das Feedback immer ausführlicher werden."),
-          tags$a("Es lohnt sich also, regelmäßig vorbeizuschauen! :)"),
-          div(style = "padding-top: 8px; padding-bottom: 30px;"),
-          mod_response_analysis_ui("response_analysis_1"),
-          div(style = "padding-bottom: 30px;"),
-          column(
-            10, # Left column
-            tags$head(
-              tags$style(HTML("
-            .shiny-input-container:not(.shiny-input-container-inline) {
-              width:100%;
-            }
-            #feedback_plot, #comparison_plot {
-              padding-bottom: 100px;
-            }"))
-            ),
-            tags$div(style = "margin-bottom:40px;"),
-
-            #mod_response_analysis_ui("response_analysis_1"),
-            mod_progress_dashboard_ui("progress_dashboard_1")
-          ),
-          column(
-            2, # right column
-
-            # Add your action buttons here
-            #   actionButton(ns("plot1_button"), "Plot 1"),
-            #  actionButton(ns("plot2_button"), "Plot 2")
-          )
+        col_1(),
+        col_10(mod_progress_dashboard_ui("progress_dashboard_1")),
+        col_1()
         )
       )
     )

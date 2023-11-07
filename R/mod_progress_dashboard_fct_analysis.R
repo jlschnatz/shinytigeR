@@ -1,9 +1,7 @@
-prepare_response_analysis <- function(data_item, credentials, check_button) {
+response_analysis <- function(data_item, credentials, check_button) {
   # Fetch user data everytime the check button is pressed
   user_data <- reactive({
     # Fetch the user data from the SQLite database for the specific user
-    # print("Fetching data...")
-    cli::cli_alert_info("Fetching user data...")
     req(credentials()$user_auth)
     # This line forces the reactive to re-evaluate whenever the button is clicked
     check_button()
@@ -12,6 +10,7 @@ prepare_response_analysis <- function(data_item, credentials, check_button) {
 
   # Feedback generation (estimate IRT scores theta)
   feedback_data_reactive <- reactive({
+
     feedback_data <- with(
       user_data(),
       by(
@@ -32,6 +31,7 @@ prepare_response_analysis <- function(data_item, credentials, check_button) {
 
   # Combine user data and course data
   all_data_reactive <- reactive({
+
     sample_data <- with(
       data_item,
       by(
@@ -62,11 +62,6 @@ prepare_response_analysis <- function(data_item, credentials, check_button) {
     #
     #       all_data <- merge(all_data_tmp, course_data, by = "Lerneinheit", all = TRUE)
 
-    cli::cli_h1("Print User Data:")
-    print(all_data)
-    cli::cli_alert_success("All data end!")
-    #print("all data end")
-
     # Return all data
     return(all_data)
   })
@@ -83,6 +78,7 @@ prepare_response_analysis <- function(data_item, credentials, check_button) {
   # })
 
   bearbeitet_reactive <- reactive({
+
     bearbeitet <- ifelse(levels(feedback_data_reactive()$Lerneinheit) %in% feedback_data_reactive()$Lerneinheit, "black", "grey")
     # Return bearbeitet
     return(bearbeitet)
@@ -92,7 +88,8 @@ prepare_response_analysis <- function(data_item, credentials, check_button) {
     list(
       feedback_data = feedback_data_reactive,
       bearbeitet = bearbeitet_reactive,
-      all_data = all_data_reactive
+      all_data = all_data_reactive,
+      user_data = user_data
     )
   )
 }

@@ -17,7 +17,7 @@ app_server <- function(input, output, session) {
         div(
           style = "padding: 10px; padding-top: 17px; padding-bottom: 10px; color: white;",
           uiOutput("time_spent")
-          )
+        )
       ),
       # timer
       tags$li(
@@ -41,7 +41,6 @@ app_server <- function(input, output, session) {
     })
 
     time_parsed <- reactive(parse_clock(parse_difftime(current_time(), start_time)))
-
     output$time_spent <- renderUI({
       req(credentials()$user_auth)
       fluidRow(
@@ -49,7 +48,8 @@ app_server <- function(input, output, session) {
           HTML("Zeit:&nbsp;"),
           bsicons::bs_icon("clock-history"),
           time_parsed()
-        ))
+        )
+      )
     })
   })
 
@@ -87,9 +87,9 @@ app_server <- function(input, output, session) {
     dplyr::ungroup()
 
 
+  # Tab (Dis)-able Logic ----
 
   # additional tabs to be added after login
-
   shinyjs::disable(selector = '.navbar-nav a[data-value="train_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="home_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="progress_panel"')
@@ -103,32 +103,22 @@ app_server <- function(input, output, session) {
 
   observeEvent(credentials()$user_auth, {
     if (credentials()$user_auth) {
-    shinyjs::enable(selector = '.navbar-nav a[data-value="train_panel"')
-    shinyjs::enable(selector = '.navbar-nav a[data-value="home_panel"')
-    shinyjs::enable(selector = '.navbar-nav a[data-value="progress_panel"')
-    shinyjs::disable(selector = '.navbar-nav a[data-value="login_panel"')
-    bslib::nav_select("tabs", "home_panel")
-
-    response_analysis <- mod_response_analysis_server("response_analysis_1", data_item = data_item, credentials = credentials,
-                                                      check_button = mod3_check$check_button_value)
-    mod_progress_dashboard_server("progress_dashboard_1",
-                                  feedback_data = response_analysis$feedback_data(),
-                                  bearbeitet = response_analysis$bearbeitet(), all_data = response_analysis$all_data(),
-                                  credentials = credentials
-    )
+      shinyjs::enable(selector = '.navbar-nav a[data-value="train_panel"')
+      shinyjs::enable(selector = '.navbar-nav a[data-value="home_panel"')
+      shinyjs::enable(selector = '.navbar-nav a[data-value="progress_panel"')
+      shinyjs::disable(selector = '.navbar-nav a[data-value="login_panel"')
+      bslib::nav_select("tabs", "home_panel")
     }
   })
 
-  bslib::nav_select("test", "auswahl")
 
-  observeEvent(mod1_select$submit_btn_value, {
-    shiny::updateTabsetPanel(session = session, inputId = "navset_train", "auswahl")
+  # Global RV Item Card Header ----
+  output$cardheader_train <- renderText({
+    paste0("Item ", data_item$id_item[mod2_display$cur_item_id()])
   })
 
 
-  # set global reactiveValues for indexing trough the items
-  output$cardheader_train <- renderText({paste0("Item ", data_item$id_item[mod2_display$cur_item_id()])})
-
+  # Call Modules ----
 
   mod_home_server("home_1", credentials)
 
@@ -157,4 +147,18 @@ app_server <- function(input, output, session) {
     credentials = credentials
   )
 
+  res_response_analysis <- response_analysis(
+    data_item = data_item,
+    credentials = credentials,
+    check_button = mod3_check$check_button_value
+  )
+
+  mod_progress_dashboard_server(
+    "progress_dashboard_1",
+    feedback_data = res_response_analysis$feedback_data(),
+    bearbeitet = res_response_analysis$bearbeitet(),
+    all_data = res_response_analysis$all_data(),
+    credentials = credentials,
+    user_data = res_response_analysis$user_data
+  )
 }

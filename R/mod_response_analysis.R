@@ -58,7 +58,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     # })
 
 
-
     # Analyze today's practice
     output$todays_practice <- renderText({
       sum(user_data()$id_date == Sys.Date())
@@ -76,7 +75,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     output$session_practice <- renderText({
       length(unique(user_data()$id_session))
     })
-
 
 
     # Christmas countdown
@@ -111,9 +109,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       # Return the feedback data
       return(feedback_data)
     })
-
-
-
 
     # Combine user data and course data
     all_data_reactive <- reactive({

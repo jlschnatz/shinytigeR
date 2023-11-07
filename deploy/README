@@ -1,4 +1,1 @@
-docker build -f Dockerfile_base  -t shinytiger_base .
-docker build -f Dockerfile  -t shinytiger:latest .
-docker run -p 80:80 shinytiger:latest
-# then go to 127.0.0.1:80
+sudo docker build -t shinytiger deploy/

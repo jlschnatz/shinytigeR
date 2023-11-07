@@ -259,6 +259,10 @@ col_12 <- function(...) {
   column(12, ...)
 }
 
+col_11 <- function(...) {
+  column(11, ...)
+}
+
 #' @importFrom shiny column
 col_10 <- function(...) {
   column(10, ...)
