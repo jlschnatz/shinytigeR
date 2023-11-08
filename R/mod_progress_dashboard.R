@@ -199,7 +199,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
 
         bslib::layout_columns(
           bslib::card(
-            height = 600,
+            height = 700,
             full_screen = TRUE,
             bslib::card_header(tags$b("Individuelle Fähigkeitsschätzungen in 8 Lernbereichen")),
             bslib::card_body(
@@ -207,8 +207,11 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
             ),
             bslib::card_body(
               #fill = TRUE, gap = 0,
-              bslib::card_title("A subtitle"),
-              p(class = "text-muted", "And a caption"),
+              bslib::card_title("Erklärung zur Abbildung"),
+              p(class = "text-muted", "In dieser Abbildung siehst du deine geschätzten Fähigkeitsskills aufgeteilt nach den 8
+                verschiedenen Lernbereichen. Die Schätzung basiert auf einem psychometrischen Modell, das anhand einer Stichprobe
+                von mehreren hundert Teilnehmenden erstellt wurde. Der Durchschnitt stellt dabei den Durchschnitt dieser Stichprobe
+                dar. In die Schätzung der Fähigkeit geht dabei auch mit ein, wie schwierig eine Aufgabe ist."),
             )
           )
         )
