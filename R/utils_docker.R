@@ -119,4 +119,9 @@ write_dockerfile_renv <- function(
   }
 }
 
-#write_dockerfile_renv()
+build_deploy <- function(.deploy_path = "deploy", .lock_file = "renv.lock") {
+  devtools::build(path = .deploy_path)
+  cli::cli_alert_info("Copying lockfile to deploy path")
+  file.copy(.lock_file, file.path(.deploy_path, .lock_file))
+  cli::cli_alert_success("Done!")
+}
