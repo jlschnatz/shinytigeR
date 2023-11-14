@@ -95,6 +95,7 @@ mod_check_item_server <- function(
 
         shinyjs::disable("radio_item")
         shinyjs::enable("next_button")
+        shinyjs::disable("check_button")
 
         response_data_df <- tibble::tibble(
           id_user = as.character(credentials()$info$user_name),
@@ -159,7 +160,7 @@ mod_check_item_server <- function(
 
       feedback_message(NULL)
       shinyjs::enable("radio_item")
-      shinyjs::enable("radio_item")
+      shinyjs::enable("check_button")
       shinyjs::disable("next_button")
     })
 
