@@ -119,6 +119,17 @@ write_dockerfile_renv <- function(
   }
 }
 
+#' Build Package and Copy renv.lock
+#'
+#' @description
+#' Build the package into a tar-ball and copy renv.lock into the deploy-folder.
+#'
+#' @param .deploy_path A character string of the deploy path
+#' @param .lock_file A characterstring of the lock file
+#'
+#'
+#' @export
+#'
 build_deploy <- function(.deploy_path = "deploy", .lock_file = "renv.lock") {
   devtools::build(path = .deploy_path)
   cli::cli_alert_info("Copying lockfile to deploy path")
