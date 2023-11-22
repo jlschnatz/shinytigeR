@@ -8,7 +8,7 @@
 #'
 #' @returns A UI definition
 #'
-#' @export
+#'
 #'
 #' @importFrom shiny NS tagList
 #' @import ggplot2
@@ -31,7 +31,7 @@ mod_select_item_ui <- function(id) {
 #' @returns
 #' A named list with the reactive vector index_display which contains the randomized order in which the items of the filtered learning areas should be passed on to the display_item module
 #'
-#' @export
+#'
 #'
 mod_select_item_server <- function(id, data_item, credentials) {
   moduleServer(id, function(input, output, session) {
@@ -82,7 +82,6 @@ mod_select_item_server <- function(id, data_item, credentials) {
               fillable = TRUE,
               tags$p("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen."),
               tags$p("Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen."),
-              #br(),
               col_10(
                 shinyWidgets::pickerInput(
                   inputId = ns("picker"),
@@ -98,7 +97,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
                     `multiple-separator` = " | "
                   ),
                   choicesOpt = list(
-                    disabled = c(rep(FALSE, 2), rep(TRUE, 6)),
+                    disabled = c(rep(FALSE, 3), rep(TRUE, 5)),
                     subtext = paste0("Themengebiet ", 1:8)
                     ),
                   width = "auto"
@@ -130,7 +129,6 @@ mod_select_item_server <- function(id, data_item, credentials) {
     index_display <- reactive(sample(filtered_data()$id_item))
 
     observeEvent(input$submit_btn, {
-      #req(mod1_select$submit_btn_value)
 
       if (!is.null(selected_topics())) {
         shinyjs::enable(selector = '.nav-item a[data-value="item"]')

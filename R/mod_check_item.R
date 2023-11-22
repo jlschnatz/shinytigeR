@@ -6,7 +6,7 @@
 #'
 #' @returns A UI definition
 #'
-#' @export
+#'
 #'
 #' @importFrom shiny NS tagList
 mod_check_item_ui <- function(id) {
@@ -28,7 +28,7 @@ mod_check_item_ui <- function(id) {
 #'
 #' @returns Test
 #'
-#' @export
+#'
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
     cur_answer_id, submit_btn_value, credentials) {

@@ -6,7 +6,7 @@
 #'
 #' @returns A UI definition
 #'
-#' @export
+#'
 #'
 #' @importFrom shiny NS tagList
 mod_display_item_ui <- function(id) {
@@ -35,7 +35,7 @@ mod_display_item_ui <- function(id) {
 #'    index of the selected answeroption (1-5)
 #' }
 #'
-#' @export
+#'
 #'
 mod_display_item_server <- function(id, data_item, index_display, check_button_value, credentials) {
   moduleServer(id, function(input, output, session) {
