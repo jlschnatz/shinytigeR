@@ -97,7 +97,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
                     `multiple-separator` = " | "
                   ),
                   choicesOpt = list(
-                    disabled = c(rep(FALSE, 3), rep(TRUE, 5)),
+                    disabled = c(rep(FALSE, 3), TRUE, rep(FALSE, 3), TRUE),
                     subtext = paste0("Themengebiet ", 1:8)
                     ),
                   width = "auto"
