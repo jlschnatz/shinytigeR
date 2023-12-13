@@ -56,9 +56,9 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
       req(credentials()$user_auth) # require authentification before eval
       if (!is.null(cur_item_id())) {
         displayStimulus(
-          .text = data_item$stimulus_text[cur_item_id()],
-          .img = data_item$stimulus_image[cur_item_id()],
-          .type_stimulus = data_item$type_stimulus[cur_item_id()]
+          .text = data_item$stimulus_text[data_item$id_item == cur_item_id()],
+          .img = data_item$stimulus_image[data_item$id_item == cur_item_id()],
+          .type_stimulus = data_item$type_stimulus[data_item$id_item == cur_item_id()]
         )
       }
     }
@@ -69,9 +69,9 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
       if (!is.null(cur_item_id())) {
         radioButtonsDynamic(
           inputId = ns("radio_item"),
-          choices = get_answeroptions(data_item, cur_item_id()),
-          type_answer = data_item$type_answer[cur_item_id()],
-          correct_id = data_item$answer_correct[cur_item_id()]
+          choices = get_answeroptions(data_item, data_item$id_item == cur_item_id()),
+          type_answer = data_item$type_answer[data_item$id_item == cur_item_id()],
+          correct_id = data_item$answer_correct[data_item$id_item == cur_item_id()]
         )
       }
     }
@@ -87,13 +87,13 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
 
 
     cur_answer_txt <- reactive(input$radio_item)
-    cur_answer_id <- reactive(which(get_answeroptions(data_item, cur_item_id()) == cur_answer_txt()))
+    cur_answer_id <- reactive(which(get_answeroptions(data_item, data_item$id_item == cur_item_id()) == cur_answer_txt()))
 
 
     output$display <- renderUI({
       req(credentials()$user_auth)
       tagList(
-        bslib::card_header(paste0("Frage", data_item$id_item[cur_item_id()])),
+        bslib::card_header(paste0("Frage", data_item$id_item[data_item$id_item == cur_item_id()])),
         bslib::card_body(
         uiOutput(ns("stimulus")),
         rep_br(1),
