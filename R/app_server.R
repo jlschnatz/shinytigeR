@@ -114,7 +114,7 @@ app_server <- function(input, output, session) {
 
   # Global RV Item Card Header ----
   output$cardheader_train <- renderText({
-    paste0("Item ", data_item$id_item[mod2_display$cur_item_id()])
+    paste0("Item ", data_item$id_item[data_item$id_item == mod2_display$cur_item_id()])
   })
 
 
