@@ -53,20 +53,20 @@ mod_check_item_server <- function(
         is_correct <- cur_answer_id() == data_item$answer_correct[cur_item_id()]
 
         # Common logic for both correct and incorrect cases
-        if (data_item$type_answer[cur_item_id()] == "image") {
+        if (data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
           class_mapping <- ifelse(is_correct, "correct_answer_img", "incorrect_answer_img")
-        } else if (data_item$type_answer[cur_item_id()] == "text") {
+        } else if (data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
           class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
         }
 
         shinyjs::addClass(selector = paste0("#label_display_item_1-radio_item", cur_answer_id()), class = class_mapping)
 
-        if (!is_correct && data_item$type_answer[cur_item_id()] == "image") {
+        if (!is_correct && data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
           shinyjs::addClass(
             selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_img"
           )
-        } else if (!is_correct && data_item$type_answer[cur_item_id()] == "text") {
+        } else if (!is_correct && data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
           shinyjs::addClass(
             selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
             class = "correct_answer_txt"
@@ -82,11 +82,11 @@ mod_check_item_server <- function(
             bslib::card_body(
               HTML(
                 dplyr::case_when(
-                  cur_answer_id() == 1 ~ data_item$if_answeroption_01[cur_item_id()],
-                  cur_answer_id() == 2 ~ data_item$if_answeroption_02[cur_item_id()],
-                  cur_answer_id() == 3 ~ data_item$if_answeroption_03[cur_item_id()],
-                  cur_answer_id() == 4 ~ data_item$if_answeroption_04[cur_item_id()],
-                  cur_answer_id() == 5 ~ data_item$if_answeroption_05[cur_item_id()]
+                  cur_answer_id() == 1 ~ data_item$if_answeroption_01[data_item$id_item == cur_item_id()],
+                  cur_answer_id() == 2 ~ data_item$if_answeroption_02[data_item$id_item == cur_item_id()],
+                  cur_answer_id() == 3 ~ data_item$if_answeroption_03[data_item$id_item == cur_item_id()],
+                  cur_answer_id() == 4 ~ data_item$if_answeroption_04[data_item$id_item == cur_item_id()],
+                  cur_answer_id() == 5 ~ data_item$if_answeroption_05[data_item$id_item == cur_item_id()]
                 )
               )
             )
@@ -103,10 +103,10 @@ mod_check_item_server <- function(
           id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
           id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
           id_item = as.integer(cur_item_id()),
-          learning_area = as.character(data_item$learning_area[cur_item_id()]),
+          learning_area = as.character(data_item$learning_area[data_item$id_item == cur_item_id()]),
           selected_option = as.integer(cur_answer_id()),
-          answer_correct = as.integer(data_item$answer_correct[cur_item_id()]),
-          bool_correct = as.logical(data_item$answer_correct[cur_item_id()] == cur_answer_id())
+          answer_correct = as.integer(data_item$answer_correct[data_item$id_item == cur_item_id()]),
+          bool_correct = as.logical(data_item$answer_correct[data_item$id_item == cur_item_id()] == cur_answer_id())
         )
 
         write_userdata_db(
