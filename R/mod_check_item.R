@@ -50,7 +50,7 @@ mod_check_item_server <- function(
         req(cur_answer_txt)
         req(credentials()$user_auth)
 
-        is_correct <- cur_answer_id() == data_item$answer_correct[cur_item_id()]
+        is_correct <- cur_answer_id() == data_item$answer_correct[data_item$id_item == cur_item_id()]
 
         # Common logic for both correct and incorrect cases
         if (data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
@@ -63,12 +63,12 @@ mod_check_item_server <- function(
 
         if (!is_correct && data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
           shinyjs::addClass(
-            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
+            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[data_item$id_item == cur_item_id()]),
             class = "correct_answer_img"
           )
         } else if (!is_correct && data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
           shinyjs::addClass(
-            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[cur_item_id()]),
+            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[data_item$id_item == cur_item_id()]),
             class = "correct_answer_txt"
           )
         }
