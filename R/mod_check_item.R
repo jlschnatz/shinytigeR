@@ -45,6 +45,10 @@ mod_check_item_server <- function(
     # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
 
+    observeEvent(cur_answer_txt(), {
+      shinyjs::enable("check_button")
+    })
+
     observeEvent(input$check_button, {
       if (!is.null(cur_answer_txt())) {
         req(cur_answer_txt)
@@ -108,11 +112,11 @@ mod_check_item_server <- function(
       req(credentials()$user_auth)
       tagList(
         # generate two action buttons
-        actionButton(
+        shinyjs::disabled(actionButton(
           ns("check_button"),
           tags$p(bsicons::bs_icon("ui-checks"), HTML("&nbsp"), "Antwort überprüfen"),
           class = "btn btn-primary"
-        ),
+        )),
         shinyjs::disabled(actionButton(
           ns("next_button"),
           tags$p(bsicons::bs_icon("arrow-right"), HTML("&nbsp"), "Nächste Frage", ),
@@ -151,7 +155,6 @@ mod_check_item_server <- function(
       shinyjs::enable("check_button")
       shinyjs::disable("next_button")
     })
-
 
     out <- list(
       check_button_value = reactive(input$check_button)
