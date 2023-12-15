@@ -61,24 +61,12 @@ mod_check_item_server <- function(
 
         shinyjs::addClass(selector = paste0("#label_display_item_1-radio_item", cur_answer_id()), class = class_mapping)
 
-        if (!is_correct && data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
-          shinyjs::addClass(
-            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[data_item$id_item == cur_item_id()]),
-            class = "correct_answer_img"
-          )
-        } else if (!is_correct && data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
-          shinyjs::addClass(
-            selector = paste0("#label_display_item_1-radio_item", data_item$answer_correct[data_item$id_item == cur_item_id()]),
-            class = "correct_answer_txt"
-          )
-        }
-
         feedback_message(
           bslib::card(
             bslib::card_header(
               tags$b(dplyr::if_else(is_correct, "Richtige Antwort!", "Leider falsch!")),
               class = dplyr::if_else(is_correct, "bg-success text-white", "bg-danger text-white")
-              ),
+            ),
             bslib::card_body(
               HTML(
                 dplyr::case_when(
@@ -90,7 +78,7 @@ mod_check_item_server <- function(
                 )
               )
             )
-            )
+          )
         )
 
         shinyjs::disable("radio_item")
