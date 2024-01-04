@@ -38,7 +38,7 @@ duck_download_files <- function(.x, .user, .cmd, .rsa_path, .return_path) {
     for (i in seq_along(.x)) {
       if (grepl(pattern = "^/", x = .x[i])) cli::cli_abort(".x must not start with a foward slash `/`!")
       .dpath <- file.path(server_path, .x[i])
-      arg <- c("-u", .user, "-i", .rsa_path, "-d", .dpath, .return_path[i], "-e", "overwrite")
+      arg <- c("-u", .user, "-i", .rsa_path, "--download", .dpath, .return_path[i], "-e", "overwrite")
       process_run(.x[i], .cmd, arg, .user, .rsa_path, .dpath, .return_path[i])
     }
   }
@@ -142,10 +142,17 @@ pool_connect <- function(.return_path) {
 }
 
 
-# .cmd <- "/opt/homebrew/bin/duck"
-# .rsa_path <- "/Users/luca/.ssh/id_rsa"
-# .return_path <- c("/Users/luca/Desktop/db_user.sqlite")
-# .user <- "beitner"
-# .x <- c("shinyapps/shinytigeR-DB/db_user.sqlite")
-# duck_download_files(.x, .user, .cmd, .rsa_path, .return_path)
-# pool_connect(.return_path)
+duck_update_tarball <- function(.local_path, .user, .cmd, .rsa_path, .server_path) {
+  server_path <- "sftp://tiger.uni-frankfurt.de"
+  if(missing(.tar_path)) {
+    cli::cli_abort("Argument .tar_path is missing. Please provide at least one path to a file on the remote server to download.")
+  } else if (length(.tar_path) > 0) {
+    for (i in seq_along(.tar_path)) {
+      if (grepl(pattern = "^/", x = .tar_path[i])) cli::cli_abort(".tar_path must not start with a foward slash `/`!")
+      .dpath <- file.path(server_path, .tar_path[i])
+      arg <- c("-u", .user, "-i", .rsa_path, "--upload", .dpath, .return_path[i], "-e", "overwrite")
+      process_run(.tar_path[i], .cmd, arg, .user, .rsa_path, .dpath, .return_path[i])
+    }
+  }
+
+}
