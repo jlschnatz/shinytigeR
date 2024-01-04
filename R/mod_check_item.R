@@ -152,7 +152,7 @@ mod_check_item_server <- function(
 
       feedback_message(NULL)
       shinyjs::enable("radio_item")
-      shinyjs::enable("check_button")
+      shinyjs::disable("check_button")
       shinyjs::disable("next_button")
     })
 
