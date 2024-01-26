@@ -11,7 +11,7 @@
 #' @importFrom shiny NS tagList
 mod_display_item_ui <- function(id) {
   ns <- NS(id)
-  tagList(uiOutput(ns("display")))
+  tagList(uiOutput(ns("display")), uiOutput(ns("test")))
 }
 
 #' display_item Server Functions
@@ -50,6 +50,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     observe({
       cur_item_id(index_display()[1])
     })
+
 
 
     output$stimulus <- renderUI({
@@ -107,6 +108,12 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
         uiOutput(ns("stimulus")),
         rep_br(1),
         uiOutput(ns("radio_item")),
+      )
+    })
+
+    output$test <- renderUI({
+      tagList(
+        renderPrint(index_display())
       )
     })
 
