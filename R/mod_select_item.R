@@ -115,11 +115,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
       )
     )
 
-    rvs <- reactiveValues(
-      filter_data = NULL,
-      index_display = NULL,
 
-    )
 
     # fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
 
@@ -129,8 +125,8 @@ mod_select_item_server <- function(id, data_item, credentials) {
     #fh$observeSubmit()
 
     fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
-   # fh$observe_filters(reactive(input$picker), reactive(input$filter_unsolved))
-   # fh$observe_submit(reactive(input$submit_btn))
+    fh$observeFilters()
+    fh$observeSubmit()
 
 
     #     observeEvent(
