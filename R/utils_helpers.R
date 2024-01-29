@@ -377,3 +377,6 @@ parse_difftime <- function(.cur_time_reactive, .start_time) {
   diff_time <- difftime(.cur_time_reactive, .start_time, units = "secs")
   return(round(as.numeric(diff_time), 0))
 }
+
+sample_vec <- function(x, ...) x[sample(length(x), ...)]
+

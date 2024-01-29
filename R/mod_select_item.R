@@ -95,7 +95,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
               shiny::updateTabsetPanel(session = session, "navset_train", "item")
             }
             if (self$msg == "pass") {
-              self$index <- sample(self$filter$id_item, size = length(self$filter$id_item))
+              self$index <- sample_vec(self$filter$id_item)
               print(self$index)
             } else if (self$msg == "error_topics") {
               shinyalert::shinyalert(
@@ -115,59 +115,9 @@ mod_select_item_server <- function(id, data_item, credentials) {
       )
     )
 
-
-
-    # fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
-
-
-    #fh <- DataManager$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
-    #fh$observeFilters()
-    #fh$observeSubmit()
-
     fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
     fh$observeFilters()
     fh$observeSubmit()
-
-
-    #     observeEvent(
-    #       eventExpr = input$picker,
-    #       # handlerExpr = {
-    #       #   filter_handler$selected_topics <- input$picker
-    #       # },
-    #       handlerExpr = selected_topics(input$picker),
-    #       ignoreNULL = FALSE # default = TRUE -> setting to false will trigger the handler when the value is NULL
-    #     )
-
-    # Observes the pickerInput and updates the selected_topics reactiveVal
-    # selected_topics <- reactiveVal(NULL) # old
-
-    # Filter the data based on selected topics old
-    # filtered_data <- reactive({
-    #   # only filter if topics are selected
-    #   if (!is.null(selected_topics())) {
-    #     dplyr::filter(data_item, learning_area %in% isolate(selected_topics()))
-    #   }
-    # })
-
-    # Observe the submit button click
-    # observeEvent(input$submit_btn, {
-    #   # If nothing selected: warning pop-up
-    #   if (is.null(selected_topics())) {
-    #     shinyalert::shinyalert(
-    #       title = "Achtung!",
-    #       text = "Bitte wählen Sie mindestens eine Kategorie aus.",
-    #       type = "warning",
-    #       size = "s",
-    #       closeOnEsc = TRUE,
-    #       closeOnClickOutside = TRUE,
-    #       html = TRUE,
-    #       showConfirmButton = TRUE,
-    #       showCancelButton = FALSE,
-    #       confirmButtonText = "OK",
-    #       confirmButtonCol = "#25607D"
-    #     )
-    #   }
-    # })
 
     output$select <- renderUI({
       req(credentials()$user_auth) # only show after user authentification
@@ -234,39 +184,19 @@ mod_select_item_server <- function(id, data_item, credentials) {
       )
     })
 
-    observeEvent(list(input$picker, input$filter_unsolved), {
+    observeEvent(list(input$submit_btn), {
       output$test <- renderUI({
         tagList(
-          renderText(paste0("Selected topics: ", fh$topics)),
-          renderText(paste0("submit_btn: ", input$submit_btn)),
-          renderText(paste0("filter_unsolved: ", input$filter_unsolved)),
           renderPrint(fh$index),
           renderTable(fh$filter)
         )
       })
     })
 
-    # index_display <- reactive(sample(filtered_data()$id_item))
-
-    # index_display <- reactive(sample(fh$filter$id_item))
-    # observeEvent(input$submit_btn, {
-    #   if (!is.null(selected_topics())) {
-    #     shinyjs::enable(selector = '.nav-item a[data-value="item"]')
-    #     shiny::updateTabsetPanel(session = session, "navset_train", "item")
-    #   }
-    # })
-
-    # return a named list with reactive indices of the filtered data
-    # out <- list(
-    #   index_display = index_display,
-    #   submit_btn_value = reactive(input$submit_btn),
-    #   selected_topics = selected_topics
-    # )
-
     out <- list(
       index_display = fh$index,
       submit_btn_value = reactive(input$submit_btn),
-      selected_topics = reactive(fh$topics)
+      selected_topics = fh$topics
     )
     return(out)
   })
