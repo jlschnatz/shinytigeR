@@ -37,7 +37,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
     ns <- session$ns
 
     # build observe events into r6 class
-    DataManager <- R6::R6Class(
+    FilterHandler <- R6::R6Class(
       classname = "FilterHandler",
       public = list(
         data = NULL,
@@ -60,7 +60,6 @@ mod_select_item_server <- function(id, data_item, credentials) {
             req(credentials()$user_auth)
             self$topics <- input$picker
             self$unsolved <- input$filter_unsolved
-
             if (!is.null(input$picker)) {
               self$filter <- dplyr::filter(self$data, learning_area %in% self$topics)
               self$msg <- "pass"
@@ -130,8 +129,8 @@ mod_select_item_server <- function(id, data_item, credentials) {
     #fh$observeSubmit()
 
     fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
-    fh$observe_filters(reactive(input$picker), reactive(input$filter_unsolved))
-    fh$observe_submit(reactive(input$submit_btn))
+   # fh$observe_filters(reactive(input$picker), reactive(input$filter_unsolved))
+   # fh$observe_submit(reactive(input$submit_btn))
 
 
     #     observeEvent(
