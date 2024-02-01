@@ -6,30 +6,6 @@
 \description{
 This class handles the filtering of items based on the user's selection.
 }
-\section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{data}}{item data}
-
-\item{\code{filter_data}}{filtered item data}
-
-\item{\code{learning_area}}{selected learning areas (from picker)}
-
-\item{\code{unsolved}}{whether to filter for unsolved items}
-
-\item{\code{msg}}{message to be displayed}
-
-\item{\code{index}}{randomized order of items}
-}
-\if{html}{\out{</div>}}
-}
-\section{Active bindings}{
-\if{html}{\out{<div class="r6-active-bindings">}}
-\describe{
-\item{\code{unsolved}}{whether to filter for unsolved items}
-}
-\if{html}{\out{</div>}}
-}
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
@@ -43,77 +19,28 @@ This class handles the filtering of items based on the user's selection.
 \if{html}{\out{<a id="method-FilterHandler-new"></a>}}
 \if{latex}{\out{\hypertarget{method-FilterHandler-new}{}}}
 \subsection{Method \code{new()}}{
-initialize the class
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{FilterHandler$new(
-  data,
-  filter_data,
-  learning_area,
-  filter_incorrect,
-  msg,
-  index
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{FilterHandler$new(data, filter, topics, unsolved, msg, indices, current_index)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{data}}{item data}
-
-\item{\code{filter_data}}{filtered item data}
-
-\item{\code{learning_area}}{selected learning areas (from picker)}
-
-\item{\code{filter_incorrect}}{whether to filter for unsolved items}
-
-\item{\code{msg}}{message to be displayed}
-
-\item{\code{index}}{randomized order of items}
-}
-\if{html}{\out{</div>}}
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-FilterHandler-observeFilters"></a>}}
 \if{latex}{\out{\hypertarget{method-FilterHandler-observeFilters}{}}}
 \subsection{Method \code{observeFilters()}}{
-observe the filter inputs
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{FilterHandler$observeFilters(picker, filter_incorrect, credentials)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{FilterHandler$observeFilters(picker, filter_unsolved, credentials)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{picker}}{picker input from UI (input$picker)}
-
-\item{\code{filter_incorrect}}{whether to filter for unsolved items from UI (input$filter_incorrect)}
-
-\item{\code{credentials}}{credentials (user auth from shinyauthr)}
-}
-\if{html}{\out{</div>}}
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-FilterHandler-observeSubmit"></a>}}
 \if{latex}{\out{\hypertarget{method-FilterHandler-observeSubmit}{}}}
 \subsection{Method \code{observeSubmit()}}{
-observe the submit button
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{FilterHandler$observeSubmit(submit_btn, credentials, session)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{submit_btn}}{action submit button from UI (input$submit_btn)}
-
-\item{\code{credentials}}{credentials (user auth from shinyauthr)}
-
-\item{\code{session}}{shiny session}
-}
-\if{html}{\out{</div>}}
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-FilterHandler-clone"></a>}}

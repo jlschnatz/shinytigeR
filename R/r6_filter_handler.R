@@ -8,47 +8,30 @@
 FilterHandler <- R6::R6Class(
   classname = "FilterHandler",
   public = list(
-    #' @field data item data
     data = NULL,
-    #' @field filter_data filtered item data
-    filter_data = NULL,
-    #' @field learning_area selected learning areas (from picker)
-    learning_area = NULL,
-    #' @field unsolved whether to filter for unsolved items
-    filter_incorrect = FALSE,
-    #' @field msg message to be displayed
+    filter = NULL,
+    topics = NULL,
+    unsolved = FALSE,
     msg = NULL,
-    #' @field index randomized order of items
-    index = NULL,
-
-    #' @description initialize the class
-    #' @param data item data
-    #' @param filter_data filtered item data
-    #' @param learning_area selected learning areas (from picker)
-    #' @param filter_incorrect whether to filter for unsolved items
-    #' @param msg message to be displayed
-    #' @param index randomized order of items
-    initialize = function(data, filter_data, learning_area, filter_incorrect, msg, index) {
+    indices = NULL,
+    current_index = NULL,
+    initialize = function(data, filter, topics, unsolved, msg, indices, current_index) {
       self$data <- data
-      self$filter_data <- reactive(filter_data)
-      self$learning_area <- reactive(learning_area)
-      self$filter_incorrect <- reactive(filter_incorrect)
+      self$filter <- reactive(filter)
+      self$topics <- reactive(topics)
+      self$unsolved <- reactive(unsolved)
       self$msg <- msg
-      self$index <- reactive(index)
+      self$indices <- reactive(indices)
+      self$current_index <- reactive(current_index)
     },
-
-    #' @description observe the filter inputs
-    #' @param picker picker input from UI (input$picker)
-    #' @param filter_incorrect whether to filter for unsolved items from UI (input$filter_incorrect)
-    #' @param credentials credentials (user auth from shinyauthr)
-    observeFilters = function(picker, filter_incorrect, credentials) {
-      react_comb_input <- reactive(list(picker, filter_incorrect))
+    observeFilters = function(picker, filter_unsolved, credentials) {
+      react_comb_input <- reactive(list(picker(), filter_unsolved()))
       observeEvent(react_comb_input(), {
         req(credentials()$user_auth)
-        self$learning_area <- picker
-        self$filter_incorrect <- filter_incorrect
-        if (!is.null(picker)) {
-          self$filter_data <- dplyr::filter(self$data, learning_area %in% self$learning_area)
+        self$topics <- picker()
+        self$unsolved <- filter_unsolved()
+        if (!is.null(picker())) {
+          self$filter <- dplyr::filter(self$data, learning_area %in% self$topics)
           self$msg <- "pass"
           if (isTRUE(self$unsolved)) {
             user_data <- db_get_userdata(as.character(credentials()$info$user_name)) # path of db must be updated
@@ -57,50 +40,51 @@ FilterHandler <- R6::R6Class(
               dplyr::summarise(unsolved = all(bool_correct == 0)) %>% # check for each item if all answers are wrong
               dplyr::filter(unsolved) %>%
               dplyr::pull(id_item)
-            new_filter <- dplyr::filter(self$filter_data, id_item %in% unsolved_item)
+            new_filter <- dplyr::filter(self$filter, id_item %in% unsolved_item)
             if (nrow(new_filter) == 0) {
               self$msg <- "error_unsolved"
-              self$filter_data <- NULL
+              self$filter <- NULL
             } else {
-              self$filter_data <- new_filter
+              self$filter <- new_filter
               self$msg <- "pass"
             }
           }
         } else {
           self$msg <- "error_topics"
         }
-        print(self$filter_data)
+        print(self$filter)
         print(self$msg)
-        print(self$learning_area)
+        print(self$topics)
       })
     },
-
-    #' @description observe the submit button
-    #' @param submit_btn action submit button from UI (input$submit_btn)
-    #' @param credentials credentials (user auth from shinyauthr)
-    #' @param session shiny session
     observeSubmit = function(submit_btn, credentials, session) {
-      observeEvent(submit_btn, {
+      observeEvent(submit_btn(), {
         req(credentials()$user_auth)
-        if (!is.null(self$learning_area)) {
+        if (!is.null(self$topics)) {
           shinyjs::enable(selector = '.nav-item a[data-value="item"]')
           shiny::updateTabsetPanel(session = session, "navset_train", "item")
         }
         if (self$msg == "pass") {
-          self$index <- sample_vec(self$filter_data$id_item)
-          print(self$index)
+          self$indices <- sample_vec(self$filter$id_item)
+          self$current_index <- self$indices[1]
+          print(self$indices)
+          print(self$current_index)
         } else if (self$msg == "error_topics") {
           shinyalert::shinyalert(
             title = "Achtung!",
             text = "Bitte wählen Sie mindestens eine Kategorie aus.",
             type = "warning"
           )
+          self$indices <- NULL
+          self$current_index <- NULL
         } else if (self$msg == "error_unsolved") {
           shinyalert::shinyalert(
             title = "Achtung!",
             text = "Sie haben alle Fragen zu den ausgewählten Kategorien bereits richtig beantwortet.",
             type = "warning"
           )
+          self$indices <- NULL
+          self$current_index <- NULL
         }
       })
     }
