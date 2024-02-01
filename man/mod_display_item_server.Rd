@@ -9,7 +9,8 @@ mod_display_item_server(
   data_item,
   index_display,
   check_button_value,
-  credentials
+  credentials,
+  r6_filter
 )
 }
 \arguments{

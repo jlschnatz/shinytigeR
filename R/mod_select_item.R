@@ -32,14 +32,18 @@ mod_select_item_ui <- function(id) {
 #'
 #'
 #'
-mod_select_item_server <- function(id, data_item, credentials) {
+mod_select_item_server <- function(id, data_item, credentials, r6_filter) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL,
-                            unsolved = FALSE, msg = NULL, indices = NULL, current_index = NULL)
-    fh$observeFilters(reactive(input$picker), reactive(input$filter_unsolved), credentials)
-    fh$observeSubmit(reactive(input$submit_btn), credentials, session)
+    # fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL,
+    #                         unsolved = FALSE, msg = NULL, indices = NULL, current_index = NULL)
+    #fh$observeFilters(reactive(input$picker), reactive(input$filter_unsolved), credentials)
+    #fh$observeSubmit(reactive(input$submit_btn), credentials, session)
+
+    # Call Methods
+    r6_filter$observeFilters(reactive(input$picker), reactive(input$filter_unsolved), credentials)
+    r6_filter$observeSubmit(reactive(input$submit_btn), credentials, session)
 
     output$select <- renderUI({
       req(credentials()$user_auth) # only show after user authentification
@@ -109,16 +113,16 @@ mod_select_item_server <- function(id, data_item, credentials) {
     observeEvent(list(input$submit_btn), {
       output$test <- renderUI({
         tagList(
-          renderPrint(fh$indices),
-          renderPrint(fh$current_index)
+          renderPrint(r6_filter$indices),
+          renderPrint(r6_filter$current_index)
         )
       })
     })
 
     out <- list(
-      index_display = fh$indices,
+      index_display = r6_filter$indices,
       submit_btn_value = reactive(input$submit_btn),
-      selected_topics = fh$topics
+      selected_topics = r6_filter$topics
     )
     return(out)
   })

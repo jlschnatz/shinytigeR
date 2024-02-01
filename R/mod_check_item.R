@@ -31,7 +31,7 @@ mod_check_item_ui <- function(id) {
 #'
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
-    cur_answer_id, submit_btn_value, credentials) {
+    cur_answer_id, submit_btn_value, credentials, r6_filter) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -54,16 +54,44 @@ mod_check_item_server <- function(
         req(cur_answer_txt)
         req(credentials()$user_auth)
 
-        is_correct <- cur_answer_id() == data_item$answer_correct[data_item$id_item == cur_item_id()]
+        #is_correct <- cur_answer_id() == data_item$answer_correct[data_item$id_item == cur_item_id()]
+        is_correct <- cur_answer_id() == data_item$answer_correct[data_item$id_item == r6_filter$current_index]
+
 
         # Common logic for both correct and incorrect cases
-        if (data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
+        # if (data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
+        #   class_mapping <- ifelse(is_correct, "correct_answer_img", "incorrect_answer_img")
+        # } else if (data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
+        #   class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
+        # }
+
+        if (data_item$type_answer[data_item$id_item == r6_filter$current_index] == "image") {
           class_mapping <- ifelse(is_correct, "correct_answer_img", "incorrect_answer_img")
-        } else if (data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
+        } else if (data_item$type_answer[data_item$id_item == r6_filter$current_index] == "text") {
           class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
         }
 
         shinyjs::addClass(selector = paste0("#label_display_item_1-radio_item", cur_answer_id()), class = class_mapping)
+
+        # feedback_message(
+        #   bslib::card(
+        #     bslib::card_header(
+        #       tags$b(dplyr::if_else(is_correct, "Richtige Antwort!", "Leider falsch!")),
+        #       class = dplyr::if_else(is_correct, "bg-success text-white", "bg-danger text-white")
+        #     ),
+        #     bslib::card_body(
+        #       HTML(
+        #         dplyr::case_when(
+        #           cur_answer_id() == 1 ~ data_item$if_answeroption_01[data_item$id_item == cur_item_id()],
+        #           cur_answer_id() == 2 ~ data_item$if_answeroption_02[data_item$id_item == cur_item_id()],
+        #           cur_answer_id() == 3 ~ data_item$if_answeroption_03[data_item$id_item == cur_item_id()],
+        #           cur_answer_id() == 4 ~ data_item$if_answeroption_04[data_item$id_item == cur_item_id()],
+        #           cur_answer_id() == 5 ~ data_item$if_answeroption_05[data_item$id_item == cur_item_id()]
+        #         )
+        #       )
+        #     )
+        #   )
+        # )
 
         feedback_message(
           bslib::card(
@@ -74,11 +102,11 @@ mod_check_item_server <- function(
             bslib::card_body(
               HTML(
                 dplyr::case_when(
-                  cur_answer_id() == 1 ~ data_item$if_answeroption_01[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 2 ~ data_item$if_answeroption_02[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 3 ~ data_item$if_answeroption_03[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 4 ~ data_item$if_answeroption_04[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 5 ~ data_item$if_answeroption_05[data_item$id_item == cur_item_id()]
+                  cur_answer_id() == 1 ~ data_item$if_answeroption_01[data_item$id_item == r6_filter$current_index],
+                  cur_answer_id() == 2 ~ data_item$if_answeroption_02[data_item$id_item == r6_filter$current_index],
+                  cur_answer_id() == 3 ~ data_item$if_answeroption_03[data_item$id_item == r6_filter$current_index],
+                  cur_answer_id() == 4 ~ data_item$if_answeroption_04[data_item$id_item == r6_filter$current_index],
+                  cur_answer_id() == 5 ~ data_item$if_answeroption_05[data_item$id_item == r6_filter$current_index]
                 )
               )
             )
@@ -89,16 +117,28 @@ mod_check_item_server <- function(
         shinyjs::enable("next_button")
         shinyjs::disable("check_button")
 
+        # response_data_df <- tibble::tibble(
+        #   id_user = as.character(credentials()$info$user_name),
+        #   id_session = as.character(session$token),
+        #   id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
+        #   id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
+        #   id_item = as.integer(cur_item_id()),
+        #   learning_area = as.character(data_item$learning_area[data_item$id_item == cur_item_id()]),
+        #   selected_option = as.integer(cur_answer_id()),
+        #   answer_correct = as.integer(data_item$answer_correct[data_item$id_item == cur_item_id()]),
+        #   bool_correct = as.logical(data_item$answer_correct[data_item$id_item == cur_item_id()] == cur_answer_id())
+        # )
+
         response_data_df <- tibble::tibble(
           id_user = as.character(credentials()$info$user_name),
           id_session = as.character(session$token),
           id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
           id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
-          id_item = as.integer(cur_item_id()),
-          learning_area = as.character(data_item$learning_area[data_item$id_item == cur_item_id()]),
+          id_item = as.integer(r6_filter$current_index),
+          learning_area = as.character(data_item$learning_area[data_item$id_item == r6_filter$current_index]),
           selected_option = as.integer(cur_answer_id()),
-          answer_correct = as.integer(data_item$answer_correct[data_item$id_item == cur_item_id()]),
-          bool_correct = as.logical(data_item$answer_correct[data_item$id_item == cur_item_id()] == cur_answer_id())
+          answer_correct = as.integer(data_item$answer_correct[data_item$id_item == r6_filter$current_index]),
+          bool_correct = as.logical(data_item$answer_correct[data_item$id_item == r6_filter$current_index] == cur_answer_id())
         )
 
         write_userdata_db(
@@ -129,10 +169,37 @@ mod_check_item_server <- function(
 
     output$feedback <- renderUI(feedback_message())
 
+    # observeEvent(input$next_button, {
+    #   # Find next index in random sequence that has not beed completed
+    #   next_index <- if (!(which(index_display() == cur_item_id()) == length(index_display()))) {
+    #     which(index_display() == cur_item_id()) + 1
+    #   } else {
+    #     NA
+    #   }
+    #
+    #   # If there is no next index, it means all items have been answered, show the completion message
+    #   if (is.na(next_index)) {
+    #     shinyalert::shinyalert(
+    #       title = "Geschafft!",
+    #       text = paste0("Du bist alle ausgewählten Fragen einmal durchgegangen. ", icon("thumbs-up", class = "solid")),
+    #       type = "success",
+    #       html = TRUE
+    #     )
+    #   } else {
+    #     # Set the next index as the current index
+    #     cur_item_id(index_display()[next_index])
+    #   }
+    #
+    #   feedback_message(NULL)
+    #   shinyjs::enable("radio_item")
+    #   shinyjs::disable("check_button")
+    #   shinyjs::disable("next_button")
+    # })
+
     observeEvent(input$next_button, {
       # Find next index in random sequence that has not beed completed
-      next_index <- if (!(which(index_display() == cur_item_id()) == length(index_display()))) {
-        which(index_display() == cur_item_id()) + 1
+      next_index <- if (!(which(r6_filter$indices == r6_filter$current_index) == length(r6_filter$indices))) {
+        which(r6_filter$indices == r6_filter$current_index) + 1
       } else {
         NA
       }
@@ -147,7 +214,7 @@ mod_check_item_server <- function(
         )
       } else {
         # Set the next index as the current index
-        cur_item_id(index_display()[next_index])
+        r6_filter$current_index <- r6_filter$indices[next_index]
       }
 
       feedback_message(NULL)

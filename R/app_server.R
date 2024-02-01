@@ -113,8 +113,19 @@ app_server <- function(input, output, session) {
 
 
   # Global RV Item Card Header ----
+  # output$cardheader_train <- renderText({
+  #   paste0("Item ", data_item$id_item[data_item$id_item == mod2_display$cur_item_id()])
+  # })
+
+
+  # R6-Class Intialization
+  r6_filter <- FilterHandler$new(
+    data = data_item, filter = NULL, topics = NULL,
+    unsolved = FALSE, msg = NULL, indices = NULL, current_index = NULL
+  )
+
   output$cardheader_train <- renderText({
-    paste0("Item ", data_item$id_item[data_item$id_item == mod2_display$cur_item_id()])
+    paste0("Item ", data_item$id_item[data_item$id_item == r6_filter$current_index])
   })
 
 
@@ -122,10 +133,13 @@ app_server <- function(input, output, session) {
 
   mod_home_server("home_1", credentials)
 
+
+
   mod1_select <- mod_select_item_server(
     id = "select_item_1",
     data_item = data_item,
-    credentials = credentials
+    credentials = credentials,
+    r6_filter = r6_filter # new
   )
 
   mod2_display <- mod_display_item_server(
@@ -133,18 +147,20 @@ app_server <- function(input, output, session) {
     data_item = data_item,
     index_display = mod1_select$index_display,
     check_button_value = mod3_check$check_button_value,
-    credentials = credentials
+    credentials = credentials,
+    r6_filter = r6_filter # new
   )
 
   mod3_check <- mod_check_item_server(
     id = "check_item_1",
     data_item = data_item,
     index_display = mod1_select$index_display,
-    cur_item_id = mod2_display$cur_item_id,
+  #  cur_item_id = mod2_display$cur_item_id,
     cur_answer_txt = mod2_display$cur_answer_txt,
     cur_answer_id = mod2_display$cur_answer_id,
     submit_btn_value = mod1_select$submit_btn_value,
-    credentials = credentials
+    credentials = credentials,
+    r6_filter = r6_filter
   )
 
   res_response_analysis <- response_analysis(

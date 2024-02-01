@@ -11,7 +11,7 @@
 #' @importFrom shiny NS tagList
 mod_display_item_ui <- function(id) {
   ns <- NS(id)
-  tagList(uiOutput(ns("display")), uiOutput(ns("test")))
+  tagList(uiOutput(ns("display")))
 }
 
 #' display_item Server Functions
@@ -37,7 +37,7 @@ mod_display_item_ui <- function(id) {
 #'
 #'
 #'
-mod_display_item_server <- function(id, data_item, index_display, check_button_value, credentials) {
+mod_display_item_server <- function(id, data_item, index_display, check_button_value, credentials, r6_filter) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -46,37 +46,58 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     #cur_item_id <- reactiveVal(index_display()[1])
 
     # this fixes the error!!
-    cur_item_id <- reactiveVal()
-    observe({
-      cur_item_id(index_display()[1])
-    })
+    # cur_item_id <- reactiveVal()
+    # observe({
+    #   cur_item_id(index_display()[1])
+    # })
 
 
+
+    # output$stimulus <- renderUI({
+    #   req(credentials()$user_auth) # require authentification before eval
+    #   if (!is.null(cur_item_id())) {
+    #     displayStimulus(
+    #       .text = data_item$stimulus_text[data_item$id_item == cur_item_id()],
+    #       .img = data_item$stimulus_image[data_item$id_item == cur_item_id()],
+    #       .type_stimulus = data_item$type_stimulus[data_item$id_item == cur_item_id()]
+    #     )
+    #   }
+    # })
 
     output$stimulus <- renderUI({
       req(credentials()$user_auth) # require authentification before eval
-      if (!is.null(cur_item_id())) {
+      if (!is.null(r6_filter$current_index)) {
         displayStimulus(
-          .text = data_item$stimulus_text[data_item$id_item == cur_item_id()],
-          .img = data_item$stimulus_image[data_item$id_item == cur_item_id()],
-          .type_stimulus = data_item$type_stimulus[data_item$id_item == cur_item_id()]
+          .text = data_item$stimulus_text[data_item$id_item == r6_filter$current_index],
+          .img = data_item$stimulus_image[data_item$id_item == r6_filter$current_index],
+          .type_stimulus = data_item$type_stimulus[data_item$id_item == r6_filter$current_index]
         )
       }
-    }
-    )
+    })
+
+    # output$radio_item <- renderUI({
+    #   req(credentials()$user_auth) # require authentification before eval
+    #   if (!is.null(cur_item_id())) {
+    #     radioButtonsDynamic(
+    #       inputId = ns("radio_item"),
+    #       choices = get_answeroptions(data_item, data_item$id_item == cur_item_id()),
+    #       type_answer = data_item$type_answer[data_item$id_item == cur_item_id()],
+    #       correct_id = data_item$answer_correct[data_item$id_item == cur_item_id()]
+    #     )
+    #   }
+    # })
 
     output$radio_item <- renderUI({
       req(credentials()$user_auth) # require authentification before eval
-      if (!is.null(cur_item_id())) {
+      if (!is.null(r6_filter$current_index)) {
         radioButtonsDynamic(
           inputId = ns("radio_item"),
-          choices = get_answeroptions(data_item, data_item$id_item == cur_item_id()),
-          type_answer = data_item$type_answer[data_item$id_item == cur_item_id()],
-          correct_id = data_item$answer_correct[data_item$id_item == cur_item_id()]
+          choices = get_answeroptions(data_item, data_item$id_item == r6_filter$current_index),
+          type_answer = data_item$type_answer[data_item$id_item == r6_filter$current_index],
+          correct_id = data_item$answer_correct[data_item$id_item == r6_filter$current_index]
         )
       }
-    }
-    )
+    })
 
     observe({
       if (!is.null(check_button_value())) {
@@ -88,17 +109,28 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
 
 
     cur_answer_txt <- reactive(input$radio_item)
-    cur_answer_id <- reactive(which(get_answeroptions(data_item, data_item$id_item == cur_item_id()) == cur_answer_txt()))
+    #cur_answer_id <- reactive(which(get_answeroptions(data_item, data_item$id_item == cur_item_id()) == cur_answer_txt()))
+    cur_answer_id <- reactive(which(get_answeroptions(data_item, data_item$id_item == r6_filter$current_index) == cur_answer_txt()))
 
 
+    # output$display <- renderUI({
+    #   req(credentials()$user_auth)
+    #   tagList(
+    #     bslib::card_header(paste0("Frage", data_item$id_item[data_item$id_item == cur_item_id()])),
+    #     bslib::card_body(
+    #     uiOutput(ns("stimulus")),
+    #     rep_br(1),
+    #     uiOutput(ns("radio_item"))),
+    #   )
+    # })
     output$display <- renderUI({
       req(credentials()$user_auth)
       tagList(
-        bslib::card_header(paste0("Frage", data_item$id_item[data_item$id_item == cur_item_id()])),
+        bslib::card_header(paste0("Frage", data_item$id_item[data_item$id_item == r6_filter$current_index])),
         bslib::card_body(
-        uiOutput(ns("stimulus")),
-        rep_br(1),
-        uiOutput(ns("radio_item"))),
+          uiOutput(ns("stimulus")),
+          rep_br(1),
+          uiOutput(ns("radio_item"))),
       )
     })
 
@@ -111,14 +143,9 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
       )
     })
 
-    output$test <- renderUI({
-      tagList(
-        renderPrint(index_display())
-      )
-    })
 
     out <- list(
-      cur_item_id = cur_item_id,
+     # cur_item_id = cur_item_id,
       cur_answer_txt = cur_answer_txt,
       cur_answer_id = cur_answer_id
       )

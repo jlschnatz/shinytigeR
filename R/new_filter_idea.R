@@ -1,5 +1,6 @@
 
 library(dplyr)
+library(shiny)
 
 sample_vec <- function(x, ...) x[sample(length(x), ...)]
 
@@ -8,18 +9,24 @@ ui <- bslib::page_navbar(
   bslib::nav_panel(
     title = "Home",
     fluidRow(
-      column(4, shinyWidgets::pickerInput(
+      column(2, shinyWidgets::pickerInput(
         inputId = "picker",
         choices = LETTERS[1:3], # here reali_item topic names as input
         selected = NULL,
-        multiple = TRUE
-      )),
-      column(2, shiny::checkboxInput("filter_unsolved", label = "Unsolved", value = FALSE)),
+        multiple = TRUE,
+        inline = TRUE,
+        width = "200px",
+        autocomplete = TRUE
+        )
+        ),
+      column(2, shinyWidgets::materialSwitch(
+        "filter_unsolved", label = "Unsolved",
+        value = FALSE, status = "primary", inline = TRUE, right = TRUE, width = "200px")),
       column(4, actionButton("start", "Start"))
     ),
-
     fluidRow(uiOutput("test"))
-  )
+  ),
+  bslib::nav_panel(title = "Train")
 )
 
 server <- function(input, output, session) {
@@ -59,8 +66,8 @@ server <- function(input, output, session) {
         self$topics <- reactive(topics)
         self$unsolved <- reactive(unsolved)
         self$msg <- msg
-        self$indices <- reactive(index)
-        current_index = reactive(current_index)
+        self$indices <- reactive(indices)
+        self$current_index = reactive(current_index)
       },
 
       # observe Filter
@@ -128,9 +135,9 @@ server <- function(input, output, session) {
 
   observeEvent(input$start, {
 
-    output$text <- renderUI({
+    output$test <- renderUI({
       tagList(
-        renderPrint(fh$index),
+        renderPrint(fh$indices),
         renderPrint(fh$current_index)
       )
     })
