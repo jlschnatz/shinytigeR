@@ -22,15 +22,15 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # user_data <- data.frame("id_user" = as.factor(rep("user1",8)),
-    #                         "id_session" = as.factor(c(rep("sess1",3), rep("sess2",2), rep("sess3",3))),
-    #                         "id_item" = as.factor(c(1, 2, 3, 4, 5, 6, 7, 8)),
-    #                         "learning_area" = factor(as.factor(rep(c("Datenrepräsentationen", "Maße zentraler Tendenz"), each = 4)),
+    # user_data <- data.frame("id_user" = as.factor(rep("user1",12)),
+    #                         "id_session" = as.factor(c(rep("sess1",3), rep("sess2",2), rep("sess3",7))),
+    #                         "id_item" = as.factor(c(1:12)),
+    #                         "learning_area" = factor(as.factor(rep(c("Datenrepräsentationen", "Maße zentraler Tendenz", "Bivariate Daten"), each = 4)),
     #                                                  levels = unique(data_item$learning_area), labels = unique(data_item$learning_area)),
-    #                         "selected_option" = c(3, 3, 4, 4, 3, 1, 4, 2),
-    #                         "answer_correct" = c(1, 4, 4, 4, 3, 1, 4, 2),
-    #                         "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE),
-    #                         "id_date" = rep(Sys.Date(), 8))
+    #                         "selected_option" = c(3, 3, 4, 4, 3, 1, 4, 2, 1, 3, 1, 4),
+    #                         "answer_correct" = c(1, 4, 4, 4, 3, 1, 4, 2, 1, 3, 1, 4),
+    #                         "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+    #                         "id_date" = rep(Sys.Date(), 12))
 
 
     # Fetch user's data from the database
@@ -144,8 +144,8 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       #
       #       all_data <- merge(all_data_tmp, course_data, by = "Lerneinheit", all = TRUE)
 
-      print(all_data)
-      print("all data end")
+      # print(all_data)
+      # print("all data end")
 
       # Return all data
       return(all_data)

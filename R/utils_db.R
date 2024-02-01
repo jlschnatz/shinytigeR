@@ -32,6 +32,7 @@ db_get_userdata <- function(id_user, .drv = RSQLite::SQLite(), .db_name = "db_us
   } else {
     # Fetch data for the specific user
     user_data <- dplyr::collect(dplyr::tbl(con, id_user))
+
   }
 
   pool::poolReturn(con)

@@ -6,6 +6,7 @@ response_analysis <- function(data_item, credentials, check_button) {
     # This line forces the reactive to re-evaluate whenever the button is clicked
     check_button()
     db_get_userdata(as.character(credentials()$info$user_name))
+
   })
 
   # Feedback generation (estimate IRT scores theta)
@@ -15,7 +16,7 @@ response_analysis <- function(data_item, credentials, check_button) {
       user_data(),
       by(
         user_data(), learning_area,
-        function(x) estimate_theta(x$bool_correct, data_item$irt_discr[x$id_item], data_item$irt_diff[x$id_item])
+        function(x) estimate_theta(x$bool_correct, data_item$irt_discr[match(x$id_item,data_item$id_item)], data_item$irt_diff[match(x$id_item,data_item$id_item)])
       )
     )
 
@@ -24,6 +25,7 @@ response_analysis <- function(data_item, credentials, check_button) {
     feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
     rownames(feedback_data) <- 1:length(feedback_data$Lerneinheit)
     feedback_data$theta <- as.numeric(feedback_data$theta)
+
 
     # Return the feedback data
     return(feedback_data)
@@ -48,6 +50,7 @@ response_analysis <- function(data_item, credentials, check_button) {
     sample_data$theta_sample <- as.numeric(sample_data$theta_sample)
 
     all_data <- merge(feedback_data_reactive(), sample_data, by = "Lerneinheit", all = TRUE)
+
 
     #       course_data <- with(all_users_data(),
     #                           by(data_item, learning_area,
