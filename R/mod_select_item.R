@@ -45,22 +45,24 @@ mod_select_item_server <- function(id, data_item, credentials) {
         topics = NULL,
         unsolved = FALSE,
         msg = NULL,
-        index = NULL,
-        initialize = function(data, filter, topics, unsolved, msg, index) {
+        indices = NULL,
+        current_index = NULL,
+        initialize = function(data, filter, topics, unsolved, msg, indices, current_index) {
           self$data <- data
           self$filter <- reactive(filter)
           self$topics <- reactive(topics)
           self$unsolved <- reactive(unsolved)
           self$msg <- msg
-          self$index <- reactive(index)
+          self$indices <- reactive(indices)
+          self$current_index <- reactive(current_index)
         },
-        observeFilters = function() {
-          react_comb_input <- reactive(list(input$picker, input$filter_unsolved))
+        observeFilters = function(picker, filter_unsolved) {
+          react_comb_input <- reactive(list(picker(), filter_unsolved()))
           observeEvent(react_comb_input(), {
             req(credentials()$user_auth)
-            self$topics <- input$picker
-            self$unsolved <- input$filter_unsolved
-            if (!is.null(input$picker)) {
+            self$topics <- picker()
+            self$unsolved <- filter_unsolved()
+            if (!is.null(picker())) {
               self$filter <- dplyr::filter(self$data, learning_area %in% self$topics)
               self$msg <- "pass"
               if (isTRUE(self$unsolved)) {
@@ -95,28 +97,32 @@ mod_select_item_server <- function(id, data_item, credentials) {
               shiny::updateTabsetPanel(session = session, "navset_train", "item")
             }
             if (self$msg == "pass") {
-              self$index <- sample_vec(self$filter$id_item)
-              print(self$index)
+              self$indices <- sample_vec(self$filter$id_item)
+              self$current_index <- self$indices[1]
+              print(self$indices)
             } else if (self$msg == "error_topics") {
               shinyalert::shinyalert(
                 title = "Achtung!",
                 text = "Bitte wählen Sie mindestens eine Kategorie aus.",
                 type = "warning"
               )
+              self$indices <- NULL
             } else if (self$msg == "error_unsolved") {
               shinyalert::shinyalert(
                 title = "Achtung!",
                 text = "Sie haben alle Fragen zu den ausgewählten Kategorien bereits richtig beantwortet.",
                 type = "warning"
               )
+              self$indices <- NULL
             }
           })
         }
       )
     )
 
-    fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL, unsolved = FALSE, msg = NULL, index = NULL)
-    fh$observeFilters()
+    fh <- FilterHandler$new(data = data_item, filter = NULL, topics = NULL,
+                            unsolved = FALSE, msg = NULL, indices = NULL, current_index = NULL)
+    fh$observeFilters(reactive(input$picker), reactive(input$filter_unsolved))
     fh$observeSubmit()
 
     output$select <- renderUI({
@@ -187,14 +193,14 @@ mod_select_item_server <- function(id, data_item, credentials) {
     observeEvent(list(input$submit_btn), {
       output$test <- renderUI({
         tagList(
-          renderPrint(fh$index),
-          renderTable(fh$filter)
+          renderPrint(fh$indices),
+          renderPrint(fh$current_index)
         )
       })
     })
 
     out <- list(
-      index_display = fh$index,
+      index_display = fh$indices,
       submit_btn_value = reactive(input$submit_btn),
       selected_topics = fh$topics
     )

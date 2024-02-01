@@ -17,10 +17,8 @@ ui <- bslib::page_navbar(
       column(2, shiny::checkboxInput("filter_unsolved", label = "Unsolved", value = FALSE)),
       column(4, actionButton("start", "Start"))
     ),
-    fluidRow(
-      tableOutput("table")
-    ),
-    fluidRow(verbatimTextOutput("text"))
+
+    fluidRow(uiOutput("test"))
   )
 )
 
@@ -51,16 +49,18 @@ server <- function(input, output, session) {
       topics = NULL,
       unsolved = FALSE,
       msg = NULL,
-      index = NULL,
+      indices = NULL,
+      current_index = NULL,
 
       # initialize method
-      initialize = function(data, filter, topics, unsolved, msg, index) {
+      initialize = function(data, filter, topics, unsolved, msg, indices, current_index) {
         self$data <- data
         self$filter <- reactive(filter)
         self$topics <- reactive(topics)
         self$unsolved <- reactive(unsolved)
         self$msg <- msg
-        self$index <- reactive(index)
+        self$indices <- reactive(index)
+        current_index = reactive(current_index)
       },
 
       # observe Filter
@@ -99,38 +99,43 @@ server <- function(input, output, session) {
       observeSubmit = function() {
         observeEvent(input$start, {
           if (self$msg == "pass") {
-            self$index <- sample_vec(self$filter$id_item)
-            print(self$index)
+            self$indices <- sample_vec(self$filter$id_item)
+            self$current_index <- self$indices[1]
+            print(self$indices)
           } else if (self$msg == "error_topics") {
             shinyalert::shinyalert(
               title = "Achtung!",
               text = "Bitte wählen Sie mindestens eine Kategorie aus.",
               type = "warning"
             )
+            self$indices <- NULL
           } else if (self$msg == "error_unsolved") {
             shinyalert::shinyalert(
               title = "Achtung!",
               text = "Sie haben alle Fragen zu den ausgewählten Kategorien bereits richtig beantwortet.",
               type = "warning"
             )
+            self$indices <- NULL
           }
         })
       }
     )
   )
 
-  fh <- FilterHandler$new(data_item, NULL, NULL, FALSE, NULL, NULL)
+  fh <- FilterHandler$new(data_item, NULL, NULL, FALSE, NULL, NULL, NULL)
   fh$observeFilters()
   fh$observeSubmit()
 
   observeEvent(input$start, {
-    output$table <- renderTable({
-      fh$filter
+
+    output$text <- renderUI({
+      tagList(
+        renderPrint(fh$index),
+        renderPrint(fh$current_index)
+      )
     })
 
-    output$text <- renderPrint({
-      fh$index
-    })
+
   })
 }
 
