@@ -90,6 +90,7 @@ app_server <- function(input, output, session) {
   shinyjs::disable(selector = '.navbar-nav a[data-value="home_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="progress_panel"')
   shinyjs::disable(selector = '.nav-item a[data-value="item"]') # disable nav-item for training
+  shinyjs::disable(selector = '.nav-item a[data-value="data_panel"]') # disable nav-item for progress
 
   observeEvent(mod1_select$submit_btn_value(), {
     if (!is.null(mod1_select$selected_topics())) {
@@ -103,6 +104,7 @@ app_server <- function(input, output, session) {
       shinyjs::enable(selector = '.navbar-nav a[data-value="home_panel"')
       shinyjs::enable(selector = '.navbar-nav a[data-value="progress_panel"')
       shinyjs::disable(selector = '.navbar-nav a[data-value="login_panel"')
+      shinyjs::enable(selector = '.nav-item a[data-value="data_panel"]') # disable nav-item for progress
       bslib::nav_select("tabs", "home_panel")
     }
   })

@@ -57,7 +57,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
         if (data_item$type_item[data_item$id_item == cur_item_id()] == "coding") {
           tagList(
             rep_br(1),
-            wellPanel("Achtung! Bei dieser Aufgabe handelt es sich um eine R Aufgabe. Um die Frage zu beantworten wird das tigeR Datensetz benötigt.
+            wellPanel(tags$b("Achtung!"), "Bei dieser Aufgabe handelt es sich um eine R Aufgabe. Um die Frage zu beantworten wird das tigeR Datensetz benötigt.
                    Dieses kannst du unter dem Reiter 'Datenset' herunterladen.")
           )
         } else {
