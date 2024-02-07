@@ -157,7 +157,7 @@ app_ui <- function(request) {
           h4("Download"),
           div("Um die R Aufgaben lösen zu können, benötigst du einen von uns bereit gestellten Datensatz. Diesen Datensatz haben wir extra für tigeR simuliert.
                  Das heißt, die Daten sind ausgedacht und nicht echt. Mithilfe dieses Datensatzes kannst du dann die für die Fragen erforderlichen Analysen
-                 durchführen und so deine R-Fähigkeiten üben. Der Datensatz kann als .rda Datei hier heruntergeladen werden"
+                 durchführen und so deine R-Fähigkeiten üben. Der Datensatz kann als .rda Datei hier heruntergeladen werden."
           )
         ),
         col_1()
