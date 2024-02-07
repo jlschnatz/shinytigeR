@@ -5,7 +5,8 @@ response_analysis <- function(data_item, credentials, check_button) {
     req(credentials()$user_auth)
     # This line forces the reactive to re-evaluate whenever the button is clicked
     check_button()
-    db_get_userdata(as.character(credentials()$info$user_name))
+    db_get_userdata(as.character(credentials()$info$user_name)) |>
+      dplyr::filter(item_source == "reali")
 
   })
 
