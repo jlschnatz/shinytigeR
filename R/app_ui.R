@@ -145,7 +145,13 @@ app_ui <- function(request) {
         col_10(mod_progress_dashboard_ui("progress_dashboard_1")),
         col_1()
         )
-      )
+      ),
+
+    bslib::nav_panel(
+      title = "Datenset",
+      value = "data_panel",
+      icon = bsicons::bs_icon("database-fill")
+    )
     )
   )
 }

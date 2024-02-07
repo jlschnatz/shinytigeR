@@ -5,9 +5,14 @@ response_analysis <- function(data_item, credentials, check_button) {
     req(credentials()$user_auth)
     # This line forces the reactive to re-evaluate whenever the button is clicked
     check_button()
-    db_get_userdata(as.character(credentials()$info$user_name)) |>
-      dplyr::filter(item_source == "reali")
 
+    reali_item_vec <- data_item |>
+      dplyr::filter(item_source == "reali") |>
+      dplyr::pull(id_item)
+
+    db_get_userdata(as.character(credentials()$info$user_name)) |>
+      dplyr::filter( id_item %in% reali_item_vec) |>
+      dplyr::mutate(learning_area = forcats::fct_drop(learning_area))
   })
 
   # Feedback generation (estimate IRT scores theta)
@@ -36,9 +41,9 @@ response_analysis <- function(data_item, credentials, check_button) {
   all_data_reactive <- reactive({
 
     sample_data <- with(
-      data_item,
+      subset(data_item, learning_area != "R Aufgaben"),
       by(
-        data_item, learning_area,
+        subset(data_item, learning_area != "R Aufgaben"), learning_area,
         function(x) estimate_theta(x$ia_diff, x$irt_discr, x$irt_diff)
       )
     )
