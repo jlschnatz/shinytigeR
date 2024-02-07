@@ -150,7 +150,12 @@ app_ui <- function(request) {
     bslib::nav_panel(
       title = "Datenset",
       value = "data_panel",
-      icon = bsicons::bs_icon("database-fill")
+      icon = bsicons::bs_icon("database-fill"),
+      fluidRow(
+        col_4(
+          downloadButton("download", label = "Datensatz herunterladen")
+          )
+      )
     )
     )
   )
