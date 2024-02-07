@@ -79,9 +79,8 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
       } else {
         bslib::layout_columns(
           bslib::value_box(
-            title = "Heute bearbeitete Aufgaben", value = textOutput(ns("todays_practice")),
-            shiny::markdown("Super, weiter so!"),
-            # theme = bslib::value_box_theme(bg = "#860047", fg = "#FFFFFF"),
+            title = "Heute bearbeitete Aufgaben", value = textOutput(ns("todays_practice")), shiny::markdown("Super, weiter so!"),
+            theme = bslib::value_box_theme(bg = "#860047", fg = "#FFFFFF"),
             style = "background-color: #860047!important; padding-left: 10px;",
             showcase = bsicons::bs_icon("emoji-smile", style = "font-size: 45px; color: white"),
             # showcase_layout = "left center",
@@ -89,7 +88,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
           ),
           bslib::value_box(
             title = "Insgesamt bearbeitete Aufgaben", value = textOutput(ns("total_practice")),
-            # theme = value_box_theme(bg = "#FFFFFF", fg = "#C96215"),
+            theme = bslib::value_box_theme(bg = "#C96215", fg = "#FFFFFF"),
             style = "background-color: #C96215!important;",
             showcase = bsicons::bs_icon("bar-chart-fill", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
             full_screen = FALSE, fill = TRUE, height = "170px"
@@ -97,7 +96,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
           bslib::value_box(
             title = "Schon", value = textOutput(ns("session_practice")), # tags$span(textOutput(ns("session_practice"))," mal"),
             shiny::markdown("mal warst du auf tigeR aktiv"),
-            #  theme = value_box_theme(bg = "#737C45", fg = "#000000"),
+            theme = bslib::value_box_theme(bg = "#737C45", fg = "#FFFFFF"),
             style = "background-color: #737C45!important; padding-right: 10px;",
             showcase = bsicons::bs_icon("calendar4-week", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
             full_screen = FALSE, fill = TRUE, height = "170px"
@@ -105,7 +104,7 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
           bslib::value_box(
             title = "Noch", value = textOutput(ns("xmas_countdown")),
             shiny::markdown("Tage bis Weihnachten"),
-            # theme = value_box_theme(bg = "#FFFFFF", fg = "#B3062C"),
+            theme = bslib::value_box_theme(bg = "#737C45", fg = "#FFFFFF"),
             style = "background-color: #B3062C!important;",
             showcase = fontawesome::fa_i("candy-cane", style = "font-size: 45px; color: white"), # showcase_layout = "left center",
             full_screen = FALSE, fill = TRUE, height = "170px"

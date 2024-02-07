@@ -152,11 +152,76 @@ app_ui <- function(request) {
       value = "data_panel",
       icon = bsicons::bs_icon("database-fill"),
       fluidRow(
-        col_4(
-          downloadButton("download", label = "Datensatz herunterladen")
+        col_1(),
+        col_12(
+          h4("Download"),
+          div("Um die R Aufgaben lösen zu können, benötigst du einen von uns bereit gestellten Datensatz. Diesen Datensatz haben wir extra für tigeR simuliert.
+                 Das heißt, die Daten sind ausgedacht und nicht echt. Mithilfe dieses Datensatzes kannst du dann die für die Fragen erforderlichen Analysen
+                 durchführen und so deine R-Fähigkeiten üben. Der Datensatz kann als .rda Datei hier heruntergeladen werden"
           )
+        ),
+        col_1()
+      ),
+      fluidRow(
+        col_4(downloadButton("download", label = "Datensatz herunterladen")),
+        rep_br(2),
+        tags$p("Folgende Pakete werden empfohlen:", code("car"), code("WebPower"), "."),
+        div(
+          h4("Codebuch"),
+         "Der vorliegende Datensatz",
+         tags$code("df_tiger"),
+         "befasst sich mit den Schlafgewohnheiten, der akademischen Leistung und den Lebensgewohnheiten von Studierenden.
+         Dazu wurden weitere verschiedene Aspekte erhoben, wie sportliche Aktivitäten und generelles Wohlbefinden.
+         Hier ist eine Übersicht der Variablen."
+         )
+        ),
+      fluidRow(
+        div(
+          tags$table(
+            tags$tr(
+              tags$th("Variable"),
+              tags$th("Beschreibung")
+            ),
+            tags$tr(
+              tags$td(code("alter")),
+              tags$td("Das Alter der Studierenden.")
+            ),
+            tags$tr(
+              tags$td(code("alleineSchlafen")),
+              tags$td("Informationen darüber, ob die Studierenden alleine schlafen, mit einem Partner, mit Kind, oder mit Partner und Kind.")
+            ),
+            tags$tr(
+              tags$td(code("schlafumgebung")),
+              tags$td("Beschreibt die Schlafumgebung als ruhig, laut oder gemischt.")
+            ),
+            tags$tr(
+              tags$td(code("schlafstoerungen")),
+              tags$td("Gibt an, ob die Studierenden unter spezifischen Schlafstörungen (Insomnie oder Schlafapnoe) leiden oder nicht.")
+            ),
+            tags$tr(
+              tags$td(code("schlafqualitaet")),
+              tags$td("Eine ordinal skalierte Bewertung der Schlafqualität von 1 (sehr schlecht) bis 5 (sehr gut).")
+            ),
+            tags$tr(
+              tags$td(code("schlafdauer")),
+              tags$td("Die durchschnittliche Schlafdauer pro Nacht in Stunden.")
+            ),
+            tags$tr(
+              tags$td(code("durchschnittsnote")),
+              tags$td("Die durchschnittliche Note, auf einer Skala von 1.0 (sehr gut) bis 5.0 (ungenügend).")
+            ),
+            tags$tr(
+              tags$td(code("generellesWohlbefinden")),
+              tags$td("Eine mittlere Bewertung des generellen Wohlbefindens von 1 (sehr niedrig) bis 7 (sehr hoch).")
+            ),
+            tags$tr(
+              tags$td(code("sportlicheAktivitaet")),
+              tags$td("Die Anzahl der Minuten pro Woche, die für sportliche Aktivitäten aufgewendet wird.")
+            ), class = "center"
+            )
+          )
+        )
       )
-    )
     )
   )
 }
