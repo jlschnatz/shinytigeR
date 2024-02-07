@@ -51,6 +51,20 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
       cur_item_id(index_display()[1])
     })
 
+    output$header <- renderUI({
+      req(credentials()$user_auth)
+      if (!is.null(cur_item_id())) {
+        if (data_item$type_item[data_item$id_item == cur_item_id()] == "coding") {
+          tagList(
+            rep_br(1),
+            wellPanel("Achtung! Bei dieser Aufgabe handelt es sich um eine R Aufgabe. Um die Frage zu beantworten wird das tigeR Datensetz benötigt.
+                   Dieses kannst du unter dem Reiter 'Datenset' herunterladen.")
+          )
+        } else {
+          NULL
+        }
+      }
+    })
 
     output$stimulus <- renderUI({
       req(credentials()$user_auth) # require authentification before eval
@@ -61,8 +75,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
           .type_stimulus = data_item$type_stimulus[data_item$id_item == cur_item_id()]
         )
       }
-    }
-    )
+    })
 
     output$radio_item <- renderUI({
       req(credentials()$user_auth) # require authentification before eval
@@ -92,6 +105,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
 
     output$display <- renderUI({
       tagList(
+        uiOutput(ns("header")),
         rep_br(1),
         uiOutput(ns("stimulus")),
         rep_br(1),
