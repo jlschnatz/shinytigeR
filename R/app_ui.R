@@ -19,13 +19,15 @@ app_ui <- function(request) {
         primary = "#285f8a",
         success = "#285f8a",
         danger = "#D81B60",
-        "navbar-bg" = "#285f8a",
+        `navbar-bg`= "#285f8a",
       ),
       header = tags$head(shinyjs::inlineCSS(
         list(
           ".default_answer" = "color: black",
           ".correct_answer_txt" = "color: #1E88E5; font-weight: 500;",
           ".incorrect_answer_txt" = "color: #D81B60; font-weight: 500;",
+          ".skip_answer_txt" = "color: #FFA000; font-weight: 500;",
+          ".skip_answer_img" = "outline: 2px solid #FFA000", # Use outline instead of border
           ".correct_answer_img" = "outline: 2px solid #1E88E5", # Use outline instead of border
           ".incorrect_answer_img" = "outline: 2px solid #D81B60", # Use outline instead of border
           ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels

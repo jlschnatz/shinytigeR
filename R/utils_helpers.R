@@ -13,7 +13,7 @@ check_na_feedback <- function(.feedback_col, .answer_correct) {
     grepl("^if_answeroption_[0-9]{2}$", fb_name),
     msg = "Column does not match the naming convention if_answeroption_0<int>"
   )
-  assertthat::assert_that(dplyr::between(.answer_correct, 1, 5))
+  assertthat::assert_that(dplyr::between(.answer_correct, 1, 6))
   fb_number <- substr_nth(fb_name, n = 1, side = "right")
 
   if (is.na(.feedback_col)) {
@@ -48,7 +48,11 @@ substr_nth <- function(x, n = 1, side = "right") {
 }
 
 get_answeroptions <- function(.df, .row) {
-  na.omit(as.character(.df[.row, paste0("answeroption_0", seq_len(5))]))
+  na.omit(as.character(.df[.row, paste0("answeroption_0", seq_len(6))]))
+}
+
+get_feedbackoptions <- function(.df, .row) {
+  na.omit(as.character(.df[.row, paste0("if_answeroption_0", seq_len(6))]))
 }
 
 ## IRT functions

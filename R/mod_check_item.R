@@ -54,13 +54,27 @@ mod_check_item_server <- function(
         req(cur_answer_txt)
         req(credentials()$user_auth)
 
-        is_correct <- cur_answer_id() == data_item$answer_correct[data_item$id_item == cur_item_id()]
+        eval_logic <- dplyr::case_when(
+          cur_answer_id() == data_item[data_item$id_item == cur_item_id(), "answer_correct"] ~ "correct",
+          (cur_answer_id() != data_item[data_item$id_item == cur_item_id(), "answer_correct"])
+           & (cur_answer_id() != length(get_answeroptions(data_item, data_item$id_item == cur_item_id()))) ~ "incorrect",
+          cur_answer_id() == length(get_answeroptions(data_item, data_item$id_item == cur_item_id())) ~ "skip",
+        )
 
-        # Common logic for both correct and incorrect cases
         if (data_item$type_answer[data_item$id_item == cur_item_id()] == "image") {
-          class_mapping <- ifelse(is_correct, "correct_answer_img", "incorrect_answer_img")
+          class_mapping <- dplyr::case_match(
+            eval_logic,
+            "correct" ~ "correct_answer_img",
+            "incorrect" ~ "incorrect_answer_img",
+            "skip" ~ "skip_answer_img"
+          )
         } else if (data_item$type_answer[data_item$id_item == cur_item_id()] == "text") {
-          class_mapping <- ifelse(is_correct, "correct_answer_txt", "incorrect_answer_txt")
+          class_mapping <- dplyr::case_match(
+            eval_logic,
+            "correct" ~ "correct_answer_txt",
+            "incorrect" ~ "incorrect_answer_txt",
+            "skip" ~ "skip_answer_txt"
+          )
         }
 
         shinyjs::addClass(selector = paste0("#label_display_item_1-radio_item", cur_answer_id()), class = class_mapping)
@@ -68,18 +82,22 @@ mod_check_item_server <- function(
         feedback_message(
           bslib::card(
             bslib::card_header(
-              tags$b(dplyr::if_else(is_correct, "Richtige Antwort!", "Leider falsch!")),
-              class = dplyr::if_else(is_correct, "bg-success text-white", "bg-danger text-white")
+              tags$b(dplyr::case_match(
+                eval_logic,
+                "correct" ~ "Richtige Antwort!",
+                "incorrect" ~ "Leider falsch!",
+                "skip" ~ "Überspringen!"
+              )),
+              class = dplyr::case_match(
+                eval_logic,
+                "correct" ~ "bg-success text-white",
+                "incorrect" ~ "bg-danger text-white",
+                "skip" ~ "bg-warning text-white"
+              )
             ),
             bslib::card_body(
               HTML(
-                dplyr::case_when(
-                  cur_answer_id() == 1 ~ data_item$if_answeroption_01[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 2 ~ data_item$if_answeroption_02[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 3 ~ data_item$if_answeroption_03[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 4 ~ data_item$if_answeroption_04[data_item$id_item == cur_item_id()],
-                  cur_answer_id() == 5 ~ data_item$if_answeroption_05[data_item$id_item == cur_item_id()]
-                )
+                as.character(get_feedbackoptions(data_item, data_item$id_item == cur_item_id())[cur_answer_id()])
               )
             )
           )
@@ -92,8 +110,8 @@ mod_check_item_server <- function(
         response_data_df <- tibble::tibble(
           id_user = as.character(credentials()$info$user_name),
           id_session = as.character(session$token),
-          id_date = as.integer(Sys.Date()), # unfortunately class integer -> change later to POSIXct
-          id_datetime = as.integer(Sys.time()), # unfortunately class integer -> change later to POSIXct
+          id_date = as.integer(Sys.Date()),
+          id_datetime = as.integer(Sys.time()),
           id_item = as.integer(cur_item_id()),
           learning_area = as.character(data_item$learning_area[data_item$id_item == cur_item_id()]),
           selected_option = as.integer(cur_answer_id()),
@@ -101,10 +119,13 @@ mod_check_item_server <- function(
           bool_correct = as.logical(data_item$answer_correct[data_item$id_item == cur_item_id()] == cur_answer_id())
         )
 
-        write_userdata_db(
-          id_user = as.character(credentials()$info$user_name),
-          .response_data_df = response_data_df
-        )
+        # Only write to DB if NOT the last answeroption (skip button) was selected
+        if (!cur_answer_id() == length(get_answeroptions(data_item, data_item$id_item == cur_item_id()))) {
+          write_userdata_db(
+            id_user = as.character(credentials()$info$user_name),
+            .response_data_df = response_data_df
+          )
+        }
       }
     })
 
