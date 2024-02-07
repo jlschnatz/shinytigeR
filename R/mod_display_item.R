@@ -95,17 +95,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
         rep_br(1),
         uiOutput(ns("stimulus")),
         rep_br(1),
-        uiOutput(ns("radio_item")),
-        uiOutput(ns("test"))
-      )
-    })
-
-    output$test <- renderUI({
-      tagList(
-        renderPrint(cur_answer_id()),
-        renderPrint(cur_answer_txt()),
-        renderPrint(cur_item_id()),
-        renderText(as.character(get_feedbackoptions(data_item, data_item$id_item == cur_item_id())[cur_answer_id()]))
+        uiOutput(ns("radio_item"))
       )
     })
 
