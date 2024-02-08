@@ -80,10 +80,10 @@ app_server <- function(input, output, session) {
     dplyr::mutate(learning_area = forcats::fct(learning_area)) %>%
     dplyr::filter(!is.na(stimulus_text)) %>%
     dplyr::rowwise() %>%
-    dplyr::mutate(dplyr::across(
-      .cols = dplyr::starts_with("if_answeroption"),
-      .fns = ~ check_na_feedback(.x, answer_correct)
-    )) %>%
+    # dplyr::mutate(dplyr::across(
+    #   .cols = dplyr::starts_with("if_answeroption"),
+    #   .fns = ~ check_na_feedback(.x, answer_correct)
+    # )) %>%
     dplyr::ungroup()
 
 
