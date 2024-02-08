@@ -94,4 +94,20 @@ write_userdata_db <- function(id_user, .response_data_df, .drv = RSQLite::SQLite
   pool::poolClose(pool)
 }
 
+#' Overwrite Item Database
+#' @param .file_data Absolute file path to the .csv file containing the item data
+#' @param .drv Database driver
+#' @param .dbname Relative path to the database
+#' @export
+db_overwrite_itemdata <- function(.file_data, .drv = RSQLite::SQLite(), .dbname = "db_item.sqlite") {
+  data_item <- read.csv2(.file_data)
+  if (ncol(data_item) == 1) cli::cli_abort("The file has only one column. Please ensure that the file is a semicolon separated .csv file!")
+  pool <- pool::dbPool(
+    drv = .drv,
+    dbname = .dbname
+  )
+  DBI::dbWriteTable(pool, "item_db", data_item, overwrite = TRUE)
+  if (any(gert::git_status()$file == .dbname)) cli::cli_alert_success("The item database has been successfully overwritten!")
+}
+
 
