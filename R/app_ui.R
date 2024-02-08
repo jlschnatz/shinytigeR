@@ -157,13 +157,13 @@ app_ui <- function(request) {
           h4("Download"),
           div("Um die R Aufgaben lösen zu können, benötigst du einen von uns bereit gestellten Datensatz. Diesen Datensatz haben wir extra für tigeR simuliert.
                  Das heißt, die Daten sind ausgedacht und nicht echt. Mithilfe dieses Datensatzes kannst du dann die für die Fragen erforderlichen Analysen
-                 durchführen und so deine R-Fähigkeiten üben. Der Datensatz kann als .rda Datei hier heruntergeladen werden."
-          )
+                 durchführen und so deine R-Fähigkeiten üben. Der Datensatz kann mittels folgendem Befehl heruntergeladen werden:",
+              tags$code('load(url("https://pandar.netlify.app/daten/df_tiger.rda"))')),
         ),
         col_1()
       ),
       fluidRow(
-        col_4(downloadButton("download", label = "Datensatz herunterladen")),
+        #col_4(downloadButton("download", label = "Datensatz herunterladen")),
         rep_br(2),
         tags$p("Folgende Pakete werden empfohlen:", code("car"), code("WebPower"), "."),
         div(

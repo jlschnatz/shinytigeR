@@ -120,13 +120,13 @@ app_server <- function(input, output, session) {
 
   mod_home_server("home_1", credentials)
 
-  output$download <- downloadHandler(
-    filename = function() "tigeR_schlafdatensatz.rda",
-    content = function(file) {
-      load("data/df_tiger.rda")
-      save(df_tiger, file = file)
-    }
-  )
+  # output$download <- downloadHandler(
+  #   filename = function() "tigeR_schlafdatensatz.rda",
+  #   content = function(file) {
+  #     load("data/df_tiger.rda")
+  #     save(df_tiger, file = file)
+  #   }
+  # )
 
   mod1_select <- mod_select_item_server(
     id = "select_item_1",
