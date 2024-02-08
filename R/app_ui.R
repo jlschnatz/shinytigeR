@@ -26,9 +26,11 @@ app_ui <- function(request) {
           ".default_answer" = "color: black",
           ".correct_answer_txt" = "color: #1E88E5; font-weight: 500;",
           ".incorrect_answer_txt" = "color: #D81B60; font-weight: 500;",
-          ".correct_answer_img" = "outline: 2px solid #1E88E5", # Use outline instead of border
-          ".incorrect_answer_img" = "outline: 2px solid #D81B60", # Use outline instead of border
-          ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels
+          ".skip_answer_txt" = "color: #FFA000; font-weight: 500;",
+          ".skip_answer_img" = "outline: 2px solid #FFA000;",
+          ".correct_answer_img" = "outline: 2px solid #1E88E5;", # Use outline instead of border
+          ".incorrect_answer_img" = "outline: 2px solid #D81B60;", # Use outline instead of border
+          ".label_img img" = "outline: 2px solid #1E88E5;", # Apply outline to img elements inside labels
           ".center" = "display: flex; justify-content: center;",
           ".value-box-showcase"  = "overflow: hidden;"
         )

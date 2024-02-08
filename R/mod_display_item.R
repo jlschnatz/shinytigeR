@@ -89,18 +89,6 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     cur_answer_txt <- reactive(input$radio_item)
     cur_answer_id <- reactive(which(get_answeroptions(data_item, data_item$id_item == cur_item_id()) == cur_answer_txt()))
 
-
-    output$display <- renderUI({
-      req(credentials()$user_auth)
-      tagList(
-        bslib::card_header(paste0("Frage", data_item$id_item[data_item$id_item == cur_item_id()])),
-        bslib::card_body(
-        uiOutput(ns("stimulus")),
-        rep_br(1),
-        uiOutput(ns("radio_item"))),
-      )
-    })
-
     output$display <- renderUI({
       tagList(
         rep_br(1),
