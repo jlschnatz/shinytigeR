@@ -21,7 +21,7 @@ app_ui <- function(request) {
         danger = "#D81B60",
         `navbar-bg`= "#285f8a",
       ),
-      header = tags$head(shinyjs::inlineCSS(
+      header = shiny::tags$head(shinyjs::inlineCSS(
         list(
           ".default_answer" = "color: black",
           ".correct_answer_txt" = "color: #1E88E5; font-weight: 500;",
@@ -46,6 +46,17 @@ app_ui <- function(request) {
         title = "Login",
         value = "login_panel",
         icon = bsicons::bs_icon("lock-fill", size = 15),
+        shiny::tags$head(
+          # add logo see https://stackoverflow.com/questions/78710175/
+              shiny::tags$script(
+                shiny::HTML('$(document).ready(function() {
+                       $(".navbar .container-fluid")
+                         .append("<img id = \'myImage\' src=\'www/img_logo/tiger_logo_white.png\' align=\'right\' height = \'57.5px\'>"  );
+                      });')),
+              shiny::tags$style(
+                #HTML('@media (max-width:992px) { #myImage { position: fixed; right: 10%; top: 0.5%; }}')
+                shiny::HTML('@media (max-width:992px) { #myImage { position: fixed; right: 1%; top: 0.5%; } div.navbar-header > button {margin-right: 175px}}')
+            )),
         loginUI(
           id = "login",
           title = "Login",
