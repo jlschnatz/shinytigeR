@@ -51,7 +51,7 @@ app_ui <- function(request) {
               shiny::tags$script(
                 shiny::HTML('$(document).ready(function() {
                        $(".navbar .container-fluid")
-                         .append("<img id = \'myImage\' src=\'www/img_logo/tiger_logo_white.png\' align=\'right\' height = \'57.5px\'>"  );
+                         .prepend ("<img id = \'myImage\' src=\'www/img_logo/tiger_logo_white.png\' align=\'right\' height = \'57.5px\'>"  );
                       });')),
               shiny::tags$style(
                 #HTML('@media (max-width:992px) { #myImage { position: fixed; right: 10%; top: 0.5%; }}')
