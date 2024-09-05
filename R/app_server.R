@@ -47,30 +47,6 @@ app_server <- function(input, output, session) {
   )
   })
 
-  # Timer Logic ----
-
-  observeEvent(credentials()$user_auth, {
-    start_time <- Sys.time()
-    current_time <- reactiveVal(NULL)
-
-    observe({
-      invalidateLater(1000, session)
-      current_time(Sys.time())
-    })
-
-    time_parsed <- reactive(parse_clock(parse_difftime(current_time(), start_time)))
-    output$time_spent <- renderUI({
-      req(credentials()$user_auth)
-      fluidRow(
-        span(
-          HTML("Zeit:&nbsp;"),
-          bsicons::bs_icon("clock-history"),
-          time_parsed()
-        )
-      )
-    })
-  })
-
   # Login Functionality ----
 
   user_base <- db_get_credentialdata()

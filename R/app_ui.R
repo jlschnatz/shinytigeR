@@ -19,7 +19,7 @@ app_ui <- function(request) {
         primary = "#285f8a",
         success = "#285f8a",
         danger = "#D81B60",
-        `navbar-bg`= "#285f8a",
+        `navbar-bg`= "#285f8a"
       ),
       header = shiny::tags$head(shinyjs::inlineCSS(
         list(
