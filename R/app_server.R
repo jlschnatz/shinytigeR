@@ -29,6 +29,24 @@ app_server <- function(input, output, session) {
     )
   )
 
+  shiny::observeEvent(input$link_mail, {
+    shinyalert::shinyalert(
+    title = "Mail",
+    text = "Möchtest du eine Mail schreiben, dann klick hier: <a href='mailto:schultze@psych.uni-frankfurt.de'>Martin Schultze</a>",
+    size = "s", 
+    closeOnEsc = TRUE,
+    closeOnClickOutside = FALSE,
+    html = TRUE,
+    type = "info",
+    showConfirmButton = FALSE,
+    showCancelButton = TRUE,
+    cancelButtonText = "Cancel",
+    timer = 0,
+    imageUrl = "",
+    animation = TRUE
+  )
+  })
+
   # Timer Logic ----
 
   observeEvent(credentials()$user_auth, {
@@ -93,9 +111,9 @@ app_server <- function(input, output, session) {
   shinyjs::disable(selector = '.nav-item a[data-value="data_panel"]') # disable nav-item for progress
 
   observeEvent(mod1_select$submit_btn_value(), {
-    if (!is.null(mod1_select$selected_topics())) {
+    #if (!is.null(mod1_select$selected_topics())) {
       shiny::updateTabsetPanel(session = session, "navset_train", "item")
-    }
+    #}
   })
 
   observeEvent(credentials()$user_auth, {

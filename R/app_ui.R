@@ -64,13 +64,11 @@ app_ui <- function(request) {
           pass_title = "Passwort",
           login_title = "Einloggen",
           error_message = "Invalider Benutzername oder Passwort!",
-          additional_ui = tagList(
-            tags$p(
-              HTML(
-                "Bitte melde dich mit deinem im R-Praktikum erhaltenen Benutzernamen und Passwort an.
-                Wenn du deinen Benutzernamen/Passwort vergessen haben solltest, wende dich an
-                <a href='mailto:beitner@psych.uni-frankfurt.de'>Julia Beitner</a>,
-                um einen neuen Zugang zu erhalten. Falls du die App einfach nur probieren möchtest, melde dich mit der unten stehenden Benutzerkennung an."
+          additional_ui = shiny::tagList(
+            shiny::tags$p(
+              shiny::HTML("Bitte melde dich mit deinem im R-Praktikum erhaltenen Benutzernamen und Passwort an. Wenn du deinen Benutzernamen/Passwort vergessen haben solltest, wende dich an"),              
+              shiny::actionLink("link_mail", "Martin Schultze"),
+              shiny::HTML("um einen neuen Zugang zu erhalten. Falls du die App einfach nur probieren möchtest, melde dich mit der unten stehenden Benutzerkennung an.")
               ),
               align = "justify"
             ),
@@ -87,7 +85,6 @@ app_ui <- function(request) {
                 )
               ),
               class = "center"
-            )
           )
         )
       ),
