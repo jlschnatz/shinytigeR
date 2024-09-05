@@ -51,10 +51,9 @@ app_ui <- function(request) {
               shiny::tags$script(
                 shiny::HTML('$(document).ready(function() {
                        $(".navbar .container-fluid")
-                         .prepend ("<img id = \'myImage\' src=\'www/img_logo/tiger_logo_white.png\' align=\'right\' height = \'57.5px\'>"  );
+                         .prepend("<img id = \'myImage\' src=\'www/img_logo/tiger_logo_white.png\' align=\'right\' height = \'57.5px\'>"  );
                       });')),
               shiny::tags$style(
-                #HTML('@media (max-width:992px) { #myImage { position: fixed; right: 10%; top: 0.5%; }}')
                 shiny::HTML('@media (max-width:992px) { #myImage { position: fixed; right: 1%; top: 0.5%; } div.navbar-header > button {margin-right: 175px}}')
             )),
         loginUI(
@@ -65,26 +64,19 @@ app_ui <- function(request) {
           login_title = "Einloggen",
           error_message = "Invalider Benutzername oder Passwort!",
           additional_ui = shiny::tagList(
-            shiny::tags$p(
-              shiny::HTML("Bitte melde dich mit deinem im R-Praktikum erhaltenen Benutzernamen und Passwort an. Wenn du deinen Benutzernamen/Passwort vergessen haben solltest, wende dich an"),              
-              shiny::actionLink("link_mail", "Martin Schultze"),
-              shiny::HTML("um einen neuen Zugang zu erhalten. Falls du die App einfach nur probieren möchtest, melde dich mit der unten stehenden Benutzerkennung an.")
-              ),
-              align = "justify"
+            htmltools::withTags(
+              div(
+                p(
+                  "Du erhälst deine Zugangsdaten im R-Praktikum. Falls du sie vergessen hast, wende dich an", 
+                  shiny::actionLink("link_mail", "Martin Schultze."), 
+                  "Zum Ausprobieren kannst du folgende Zugangsdaten nutzen:"
+                  )
+              )
             ),
-            tags$p(
-              HTML(
-                knitr::kable(
-                  data.frame(
-                    Benutzername = "test",
-                    Passwort = "test123"
-                  ),
-                  format = "html",
-                  col.names = c("Benutzername", "Passwort"),
-                  table.attr = "style='width:100%;'"
-                )
-              ),
-              class = "center"
+            shiny::HTML(knitr::kable(
+              x = data.frame(a = c("<b style='font-weight: 500;'>Benutzername </b>", "<b style='font-weight: 500;'>Passwort</b>"), b = c("test", "test123")), 
+              escape = FALSE, format = "html", col.names = NULL, table.attr = "style='width:50%;'")
+              )
           )
         )
       ),

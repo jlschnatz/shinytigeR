@@ -32,7 +32,7 @@ app_server <- function(input, output, session) {
   shiny::observeEvent(input$link_mail, {
     shinyalert::shinyalert(
     title = "Mail",
-    text = "Möchtest du eine Mail schreiben, dann klick hier: <a href='mailto:schultze@psych.uni-frankfurt.de'>Martin Schultze</a>",
+    text = "Möchtest du eine Mail schreiben? Dann klick <a href='mailto:schultze@psych.uni-frankfurt.de'>hier</a> um direkt weitergeleitet zu werden.",
     size = "s", 
     closeOnEsc = TRUE,
     closeOnClickOutside = FALSE,
