@@ -32,7 +32,6 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
     #                         "bool_correct" = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
     #                         "id_date" = rep(Sys.Date(), 12))
 
-
     # Fetch user's data from the database
     user_data <- reactive({
       # Fetch the user data from the SQLite database for the specific user
@@ -41,52 +40,8 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
       # This line forces the reactive to re-evaluate whenever the button is clicked
       check_button()
 
-      db_get_userdata(as.character(credentials()$info$user_name))
-    })
-
-
-
-    # Fetch all users data from the database
-    # all_users_data <- reactive({
-    #   # Fetch the user data from the SQLite database for the specific user
-    #   print("Fetching all data...")
-    #   req(credentials()$user_auth)
-    #   # This line forces the reactive to re-evaluate whenever the button is clicked
-    #   check_button()
-    #
-    #   db_get_userdata(as.character(credentials()$info$user_name), .fetch_all = TRUE)
-    # })
-
-
-    # Analyze today's practice
-    output$todays_practice <- renderText({
-      sum(user_data()$id_date == Sys.Date())
-    })
-
-
-    # Analyze overall total practice
-    output$total_practice <- renderText({
-      length(user_data()$id_user)
-    })
-
-
-
-    # Analyze number of sessions
-    output$session_practice <- renderText({
-      length(unique(user_data()$id_session))
-    })
-
-
-    # Christmas countdown
-    output$xmas_countdown <- renderText({
-      if (format(Sys.Date(), "%Y") == 2023) {
-        xmas <- as.Date("2023-12-24")
-      } else {
-        xmas <- as.Date("2024-12-24")
-      }
-
-      today <- Sys.Date()
-      length(seq(from = today, to = xmas, by = "day")) - 1
+      db_get_userdata(as.character(credentials()$info$user_name)) |>
+        dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
     })
 
 
@@ -102,7 +57,7 @@ mod_response_analysis_server <- function(id, input, output, session, data_item, 
 
       feedback_data <- as.data.frame(feedback_data)
       colnames(feedback_data) <- "theta"
-      feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
+      feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression"))
       rownames(feedback_data) <- 1:length(feedback_data$Lerneinheit)
       feedback_data$theta <- as.numeric(feedback_data$theta)
 

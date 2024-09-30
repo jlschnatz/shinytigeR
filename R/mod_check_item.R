@@ -11,7 +11,7 @@
 #' @importFrom shiny NS tagList
 mod_check_item_ui <- function(id) {
   ns <- NS(id)
-  tagList(
+  shiny::tagList(
     uiOutput(ns("check"))
   )
 }
@@ -32,24 +32,23 @@ mod_check_item_ui <- function(id) {
 mod_check_item_server <- function(
     id, data_item, index_display, cur_item_id, cur_answer_txt,
     cur_answer_id, submit_btn_value, credentials) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # observe if submit button is clicked, only then show both check and next buttons
-    observeEvent(submit_btn_value(), {
+    shiny::observeEvent(submit_btn_value(), {
       shinyjs::show("check_button")
       shinyjs::show("next_button")
-      shinyjs::enable("check_button")
     })
 
     # initialize empty feedback message
     feedback_message <- reactiveVal(NULL)
 
-    observeEvent(cur_answer_txt(), {
+    shiny::observeEvent(cur_answer_txt(), {
       shinyjs::enable("check_button")
     })
 
-    observeEvent(input$check_button, {
+    shiny::observeEvent(input$check_button, {
       if (!is.null(cur_answer_txt())) {
         req(cur_answer_txt)
         req(credentials()$user_auth)
@@ -129,6 +128,7 @@ mod_check_item_server <- function(
       }
     })
 
+
     output$check <- renderUI({
       req(credentials()$user_auth)
       tagList(
@@ -143,6 +143,11 @@ mod_check_item_server <- function(
           tags$p(bsicons::bs_icon("arrow-right"), HTML("&nbsp"), "Nächste Frage", ),
           class = "btn btn-primary"
         )),
+        shiny::actionButton(
+          ns("back_button"),
+          shiny::tags$p(bsicons::bs_icon("back"), HTML("&nbsp"), "Zurück zur Auswahl"),
+          class = "btn btn-primary"
+        ),
         rep_br(3),
         uiOutput(ns("feedback"))
       )
@@ -173,12 +178,13 @@ mod_check_item_server <- function(
 
       feedback_message(NULL)
       shinyjs::enable("radio_item")
-      shinyjs::enable("check_button")
+      shinyjs::disable("check_button")
       shinyjs::disable("next_button")
     })
 
     out <- list(
-      check_button_value = reactive(input$check_button)
+      check_button_value = reactive(input$check_button),
+      back_button_value = reactive(input$back_button)
     )
     return(out)
   })

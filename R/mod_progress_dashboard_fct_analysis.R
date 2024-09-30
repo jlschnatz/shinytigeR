@@ -12,7 +12,9 @@ response_analysis <- function(data_item, credentials, check_button) {
 
     db_get_userdata(as.character(credentials()$info$user_name)) |>
       dplyr::filter( id_item %in% reali_item_vec) |>
-      dplyr::mutate(learning_area = forcats::fct_drop(learning_area))
+      dplyr::mutate(learning_area = forcats::fct_drop(learning_area)) |>
+      dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
+
   })
 
   # Feedback generation (estimate IRT scores theta)
@@ -28,7 +30,7 @@ response_analysis <- function(data_item, credentials, check_button) {
 
     feedback_data <- as.data.frame(feedback_data)
     colnames(feedback_data) <- "theta"
-    feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
+    feedback_data$Lerneinheit <- factor(rownames(feedback_data), levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression"))
     rownames(feedback_data) <- 1:length(feedback_data$Lerneinheit)
     feedback_data$theta <- as.numeric(feedback_data$theta)
 
@@ -40,22 +42,25 @@ response_analysis <- function(data_item, credentials, check_button) {
   # Combine user data and course data
   all_data_reactive <- reactive({
 
-    sample_data <- with(
-      subset(data_item, learning_area != "R Aufgaben"),
-      by(
-        subset(data_item, learning_area != "R Aufgaben"), learning_area,
-        function(x) estimate_theta(x$ia_diff, x$irt_discr, x$irt_diff)
-      )
-    )
+    #sample_data <- with(
+    #  subset(data_item, learning_area != "R Aufgaben"),
+    #  by(
+    #    subset(data_item, learning_area != "R Aufgaben"), learning_area,
+    #    function(x) estimate_theta(x$ia_diff, x$irt_discr, x$irt_diff)
+    #  )
+    #)
+#
+    #sample_data <- as.data.frame(sample_data)
+    #colnames(sample_data) <- "theta_sample"
+    #sample_data$Lerneinheit <- rownames(sample_data)
+    #sample_data$Lerneinheit <- factor(rownames(sample_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
+    #rownames(sample_data) <- 1:length(sample_data$Lerneinheit)
+    #sample_data$theta_sample <- as.numeric(sample_data$theta_sample)
 
-    sample_data <- as.data.frame(sample_data)
-    colnames(sample_data) <- "theta_sample"
-    sample_data$Lerneinheit <- rownames(sample_data)
-    sample_data$Lerneinheit <- factor(rownames(sample_data), levels = unique(data_item$learning_area), labels = unique(data_item$learning_area))
-    rownames(sample_data) <- 1:length(sample_data$Lerneinheit)
-    sample_data$theta_sample <- as.numeric(sample_data$theta_sample)
+    #all_data <- merge(feedback_data_reactive(), sample_data, by = "Lerneinheit", all = TRUE)
 
-    all_data <- merge(feedback_data_reactive(), sample_data, by = "Lerneinheit", all = TRUE)
+    # stop
+    all_data <- feedback_data_reactive()
 
 
     #       course_data <- with(all_users_data(),

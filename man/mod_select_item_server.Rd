@@ -2,18 +2,15 @@
 % Please edit documentation in R/mod_select_item.R
 \name{mod_select_item_server}
 \alias{mod_select_item_server}
-\title{select_item Server Functions}
+\title{Item Selection Module Server}
 \usage{
 mod_select_item_server(id, data_item, credentials)
 }
 \arguments{
-\item{id}{A character string of the if of the module}
+\item{id}{Module id}
 
-\item{data_item}{A dataframe that contains the item data from the item database}
-}
-\value{
-A named list with the reactive vector index_display which contains the randomized order in which the items of the filtered learning areas should be passed on to the display_item module
+\item{data_item}{Item data dataframe}
 }
 \description{
-The server part of the select_item module that filters the item data by learning area.
+Item Selection Module Server
 }

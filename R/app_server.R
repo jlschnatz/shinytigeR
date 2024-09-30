@@ -15,15 +15,8 @@ app_server <- function(input, output, session) {
       class = "nav navbar-nav navbar-right",
       tags$li(
         div(
-          style = "padding: 10px; padding-top: 17px; padding-bottom: 10px; color: white;",
-          uiOutput("time_spent")
-        )
-      ),
-      # timer
-      tags$li(
-        div(
           style = "padding: 10px; padding-top: 8px; padding-bottom: 0;",
-          shinyauthr::logoutUI("logout", class = "btn-danger", icon = icon("right-from-bracket"))
+          shinyauthr::logoutUI("logout", label = "Ausloggen", class = "btn-danger", icon = icon("right-from-bracket"))
         )
       )
     )
@@ -68,13 +61,15 @@ app_server <- function(input, output, session) {
   )
 
   # Load Itemdata ----
-
-  data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite") %>%
-    dplyr::mutate(dplyr::across(stimulus_image:answeroption_06, ~ stringr::str_replace(.x, "www/", "www/img_item/"))) %>%
-    dplyr::mutate(learning_area = forcats::fct(learning_area)) %>%
-    dplyr::filter(!is.na(stimulus_text)) %>%
-    dplyr::rowwise() %>%
-    dplyr::ungroup()
+  data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite")  |>
+    dplyr::mutate(dplyr::across(stimulus_image:answeroption_06, ~ stringr::str_replace(.x, "www/", "www/img_item/")))  |>
+    dplyr::mutate(learning_area = forcats::fct(learning_area))  |>
+    dplyr::filter(!is.na(stimulus_text))  |>
+    dplyr::rowwise() |>
+    dplyr::ungroup() |>
+    dplyr::mutate(type_item = ifelse(type_item == "content", "Inhaltliche Aufgaben", "R-Aufgaben")) |>
+    dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
+    dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
 
 
   # Tab (Dis)-able Logic ----
@@ -83,44 +78,51 @@ app_server <- function(input, output, session) {
   shinyjs::disable(selector = '.navbar-nav a[data-value="train_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="home_panel"')
   shinyjs::disable(selector = '.navbar-nav a[data-value="progress_panel"')
-  shinyjs::disable(selector = '.nav-item a[data-value="item"]') # disable nav-item for training
-  shinyjs::disable(selector = '.nav-item a[data-value="data_panel"]') # disable nav-item for progress
+  shinyjs::disable(selector = '.nav-item a[data-value="item"]') 
+  shinyjs::disable(selector = '.nav-item a[data-value="data_panel"]') 
 
-  observeEvent(mod1_select$submit_btn_value(), {
-    #if (!is.null(mod1_select$selected_topics())) {
-      shiny::updateTabsetPanel(session = session, "navset_train", "item")
-    #}
-  })
-
+  # update
   observeEvent(credentials()$user_auth, {
     if (credentials()$user_auth) {
-      shinyjs::enable(selector = '.navbar-nav a[data-value="train_panel"')
-      shinyjs::enable(selector = '.navbar-nav a[data-value="home_panel"')
-      shinyjs::enable(selector = '.navbar-nav a[data-value="progress_panel"')
+      panels <- sprintf('.navbar-nav a[data-value="%s"', c("train_panel", "home_panel", "progress_panel", "data_panel"))
+      lapply(X = panels, FUN = function(x) shinyjs::enable(selector = x))
+      lapply(X = panels, function(x) shinyjs::show(selector = x))
       shinyjs::disable(selector = '.navbar-nav a[data-value="login_panel"')
-      shinyjs::enable(selector = '.nav-item a[data-value="data_panel"]') # disable nav-item for progress
+      shinyjs::hide(selector = '.navbar-nav a[data-value="login_panel"')
       bslib::nav_select("tabs", "home_panel")
     }
   })
 
+# Train Panel Accordion Switch between Selection and Training Panel
+  shiny::observeEvent(
+    eventExpr = mod1_select$submit_btn_value(),
+    handlerExpr = {
+      req(credentials()$user_auth)
+      if(length(mod1_select$index_display()) > 0 & mod1_select$n_item() <= mod1_select$max_item() & mod1_select$n_item() != 0) {
+        bslib::accordion_panel_close(id = "accordion_1", values = "acc_panel_1")
+        shinyjs::hide("accordion_1", time = 0.5, anim = TRUE, animType = "slide")
+        shinyjs::show("accordion_2", time = 0.5, anim = TRUE, animType = "fade")
+        bslib::accordion_panel_open(id = "accordion_2", values = "acc_panel_2")    
+      }
+    }
+  )
 
-  # Global RV Item Card Header ----
-  output$cardheader_train <- renderText({
-    paste0("Item ", data_item$id_item[data_item$id_item == mod2_display$cur_item_id()])
-  })
-
+  shiny::observeEvent(
+    eventExpr = mod3_check$back_button_value(),
+    handlerExpr = {
+      req(credentials()$user_auth)
+      if(length(mod1_select$index_display()) > 0) {
+        bslib::accordion_panel_close(id = "accordion_2", values = "acc_panel_2")
+        shinyjs::hide("accordion_2", time = 0.5, anim = TRUE, animType = "slide")
+        shinyjs::show("accordion_1", time = 0.5, anim = TRUE, animType = "fade")
+        bslib::accordion_panel_open(id = "accordion_1", values = "acc_panel_1")    
+      }
+    }
+  )
 
   # Call Modules ----
 
   mod_home_server("home_1", credentials)
-
-  # output$download <- downloadHandler(
-  #   filename = function() "tigeR_schlafdatensatz.rda",
-  #   content = function(file) {
-  #     load("data/df_tiger.rda")
-  #     save(df_tiger, file = file)
-  #   }
-  # )
 
   mod1_select <- mod_select_item_server(
     id = "select_item_1",

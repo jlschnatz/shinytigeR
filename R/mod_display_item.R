@@ -14,6 +14,7 @@ mod_display_item_ui <- function(id) {
   tagList(uiOutput(ns("display")))
 }
 
+
 #' display_item Server Functions
 #'
 #' @description
@@ -54,9 +55,9 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     output$header <- renderUI({
       req(credentials()$user_auth)
       if (!is.null(cur_item_id())) {
-        if (data_item$type_item[data_item$id_item == cur_item_id()] == "coding") {
+        if (data_item$type_item[data_item$id_item == cur_item_id()] == "R-Aufgaben") {
           tagList(
-            rep_br(1),
+            br(),
             wellPanel(tags$b("Achtung!"), "Bei dieser Aufgabe handelt es sich um eine R Aufgabe. Um die Frage beantworten zu können, wird das tigeR Datenset benötigt.
                    Dieses kannst du unter dem Reiter 'Datenset' herunterladen.")
           )
@@ -105,6 +106,8 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
 
     output$display <- renderUI({
       tagList(
+        shiny::tags$b("Aufgabe ", data_item$id_item[data_item$id_item == cur_item_id()]),
+        br(),
         uiOutput(ns("header")),
         rep_br(1),
         uiOutput(ns("stimulus")),
@@ -112,6 +115,7 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
         uiOutput(ns("radio_item"))
       )
     })
+
 
     out <- list(
       cur_item_id = cur_item_id,

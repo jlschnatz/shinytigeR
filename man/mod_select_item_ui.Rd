@@ -2,18 +2,15 @@
 % Please edit documentation in R/mod_select_item.R
 \name{mod_select_item_ui}
 \alias{mod_select_item_ui}
-\title{select_item UI Function}
+\title{Item Selection Module UI}
 \usage{
 mod_select_item_ui(id)
 }
 \arguments{
-\item{id}{A character string of the id of the module}
-
-\item{item_data}{A dataframe that contains the item data from the item database}
-}
-\value{
-A UI definition
+\item{id}{Module ID}
 }
 \description{
-The UI part of the select_item module to filter learning areas from the item data via a picker and submit button
+Module creates checkbox contigency table `checkbox_table` with learning_area 
+and type_item as dimensions. It also allows users to specify the number of items
+to train in the learning session.
 }

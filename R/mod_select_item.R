@@ -1,149 +1,192 @@
-#' select_item UI Function
-#'
+#' @title Item Selection Module UI
+#' @param id Module ID
 #' @description
-#' The UI part of the select_item module to filter learning areas from the item data via a picker and submit button
-#'
-#' @param id A character string of the id of the module
-#' @param item_data A dataframe that contains the item data from the item database
-#'
-#' @returns A UI definition
-#'
-#'
-#'
-#' @importFrom shiny NS tagList
-#' @import ggplot2
-#'
+#' Module creates checkbox contigency table `checkbox_table` with learning_area 
+#' and type_item as dimensions. It also allows users to specify the number of items
+#' to train in the learning session.
 mod_select_item_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    uiOutput(ns("select"))
+  ns <- shiny::NS(id)
+  shiny::tagList(
+        fluidRow(
+          shiny::tags$p("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen. Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen.")
+        ),
+        fluidRow(bslib::layout_columns(
+          tagList(
+            shiny::div(
+              shiny::div(
+                DT::DTOutput(ns("checkbox_table")), 
+                style = "font-size: 100%; width: 100%; display: inline-block; text-align: left;"
+                ),
+                style = "text-align: center;"
+                )
+          ),
+          tagList(
+            uiOutput(ns("choose_number")),
+            column(6, actionButton(
+              ns("submit_btn"),
+                span(
+                  HTML("Weiter zum Übungsbereich"),
+                  bsicons::bs_icon("shuffle")
+                  ),
+              class = "btn-primary"
+              ))
+          ),
+          col_widths = c(8, 3), #height = 800, 
+        ))
   )
 }
 
-#' select_item Server Functions
-#'
-#' @description
-#' The server part of the select_item module that filters the item data by learning area.
-#'
-#' @param id A character string of the if of the module
-#' @param data_item A dataframe that contains the item data from the item database
-#'
-#' @returns
-#' A named list with the reactive vector index_display which contains the randomized order in which the items of the filtered learning areas should be passed on to the display_item module
-#'
-#'
-#'
+#' @title Item Selection Module Server
+#' @param id Module id
+#' @param data_item Item data dataframe
 mod_select_item_server <- function(id, data_item, credentials) {
-  moduleServer(id, function(input, output, session) {
+  shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
-    selected_topics <- reactiveVal(NULL)
-
-    # Filter the data based on selected topics
-    filtered_data <- reactive({
-      if (!is.null(selected_topics())) {
-        dplyr::filter(data_item, learning_area %in% selected_topics())
-      }
-    })
-
-    # Observe the submit button click
-    observeEvent(input$submit_btn, {
-      # Update selected_topics to whats chosen in the pickerInput
-      selected_topics(input$picker)
-
-      # If nothing selected: warning pop-up
-      if (is.null(selected_topics())) {
-        shinyalert::shinyalert(
-          title = "Achtung!",
-          text = "Bitte wählen Sie mindestens eine Kategorie aus.",
-          type = "warning",
-          size = "s",
-          closeOnEsc = TRUE,
-          closeOnClickOutside = TRUE,
-          html = TRUE,
-          showConfirmButton = TRUE,
-          showCancelButton = FALSE,
-          confirmButtonText = "OK",
-          confirmButtonCol = "#25607D"
-        )
-      }
-    })
-
-    output$select <- renderUI({
-      req(credentials()$user_auth) # only show after user authentification
-      tagList(
-        fluidRow(
-        col_1(),
-        col_10(
-          br(),
-          bslib::card(
-            bslib::card_header(tags$h6(tags$b("Auswahl der Übungsinhalte"))),
-            bslib::card_body(
-              fillable = TRUE,
-              tags$p("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen."),
-              tags$p("Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen."),
-              col_10(
-                shinyWidgets::pickerInput(
-                  inputId = ns("picker"),
-                  choices = unique(data_item$learning_area), # here reali_item topic names as input
-                  selected = NULL,
-                  multiple = TRUE,
-                  options = list(
-                    `actions-box` = TRUE,
-                    `deselect-all-text` = "Auswahl löschen",
-                    `select-all-text` = "Alle auswählen",
-                    `none-selected-text` = "Bitte wählen Sie mindestens eine Kategorie aus.",
-                    iconBase = "fas",
-                    `multiple-separator` = " | "
-                  ),
-                  choicesOpt = list(
-                    disabled = rep(FALSE, 9),
-                    subtext = paste0("Themengebiet ", 1:9)
-                    ),
-                  width = "auto"
-                )
-              ),
-              col_4(
-                actionButton(
-                  ns("submit_btn"),
-                  bslib::tooltip(
-                    span(
-                      HTML("Weiter zum Übungsbereich"),
-                      bsicons::bs_icon("shuffle")
-                      ),
-                    HTML("<b>Doppelklick</b>, um direkt auf den Übungsbereich weitergeleitet zu werden"),
-                    placement = "bottom"
-                  ),
-                  class = "btn-primary"
-                  )
-              )
-            ),
-            height = 640,
-            full_screen = FALSE
-          )
+    # datatable options
+    dt_options <- list(
+      columnDefs = list(
+        list(targets = "_all", orderable = FALSE, className = "dt-nowrap", width = "300px", autoWidth = FALSE)
         ),
-        col_1()
-      ))
-    })
-
-    index_display <- reactive(sample(filtered_data()$id_item))
-
-    observeEvent(input$submit_btn, {
-
-      if (!is.null(selected_topics())) {
-        shinyjs::enable(selector = '.nav-item a[data-value="item"]')
-        shiny::updateTabsetPanel(session = session, "navset_train", "item")
-      }
-    })
-
-
-
-    # return a named list with reactive indices of the filtered data
-    out <- list(
-      index_display = index_display,
-      submit_btn_value = reactive(input$submit_btn),
-      selected_topics = selected_topics
+      dom = 't',
+      fixedColumns = FALSE,
+      preDrawCallback = DT::JS('function() { Shiny.unbindAll(this.api().table().node()); }'),
+      drawCallback = DT::JS('function() { Shiny.bindAll(this.api().table().node()); } ')
     )
-    return(out)
+
+    learning_areas <- sort(unique(data_item$learning_area))
+    type_item <- unique(data_item$type_item)
+    bool_data <- as.data.frame(matrix(FALSE, nrow = length(learning_areas), ncol = length(type_item), dimnames = list(learning_areas, type_item)))
+
+    # rowwise checkboxes
+    id_rows <- paste0("row-", seq_along(learning_areas))
+    table_rownames <- mapply(
+        FUN = function(inputId, label) as.character(shiny::checkboxInput(ns(inputId), label, width = "10px")), 
+        inputId = id_rows, label = learning_areas, 
+        SIMPLIFY = FALSE, 
+        USE.NAMES = FALSE
+      ) 
+    
+    # generate html container for table
+    id_cols <- paste0("col-", seq_along(type_item))
+    header_cols <- c("allboxes", paste0("col-", seq_along(type_item)))
+    table_colnames <- c("Alle auswählen", type_item)
+    container <- htmltools::withTags(
+      table(
+        class = "display",
+        thead(
+          tr(
+          mapply(
+            FUN = function(inputId, label, ...) th(shiny::HTML(as.character(shiny::checkboxInput(ns(inputId), label, width = "10%", value = FALSE)))), 
+            inputId = header_cols, label = table_colnames,
+            SIMPLIFY = FALSE))
+          )
+        )
+      )
+    checkbox_data <- apply(
+      FUN = function(inputId) as.character(shiny::checkboxInput(ns(inputId), label = NULL, width = "10%", value = FALSE)), 
+      X = outer(X = seq_along(learning_areas), Y = seq_along(type_item), FUN = function(i, j) paste0("row", i, "_col", j)), 
+      MARGIN = c(1, 2)
+    ) 
+    rownames(checkbox_data) <- table_rownames
+    colnames(checkbox_data) <- id_cols
+    # Outputs
+    output$checkbox_table <- DT::renderDataTable({
+      DT::datatable(
+        data = checkbox_data, 
+        container = container,
+        escape = FALSE,
+        select = "none",
+        options = dt_options,
+        rownames = TRUE,
+        style = "default",
+        width = "100%",
+        height = "100%",
+        fillContainer = FALSE
+      )
+    })
+
+    max_item <- reactive(length(data_handler$data_item$id_item))
+    output$choose_number <- renderUI({
+      tagList(
+        numericInput(ns("n_item"), label = "Bitte wähle die Anzahl an Aufgaben, die du üben möchtest.", value = NULL)
+      )
+    })
+
+    observeEvent(
+      eventExpr = input$submit_btn,
+      handlerExpr = {
+        if(max_item() == 0) {
+          shinyalert::shinyalert(
+            title = "Achtung",
+            text = "Du musst mindestend ein Aufgabenfeld auswählen.",
+            type = "error",
+            closeOnEsc = TRUE,
+            closeOnClickOutside = FALSE
+          )
+        } else if (is.na(input$n_item)) {
+          shinyalert::shinyalert(
+            title = "Achtung",
+            text = HTML(paste0("Du musst eine Anzahl an Aufgabe für deine Übungssession ausgewählt. Du kannst maximal ", tags$b(max_item(), "Aufgaben"), "wählen.")),
+            type = "error",
+            html = TRUE
+          )
+        } else {
+          if(input$n_item > max_item()) {
+            shinyalert::shinyalert(
+              title = "Stop",
+              text = HTML(paste0("Es sind bis jetzt nur ", tags$b(max_item(), "Aufgaben "), "für diesen Auswahl vorhanden.")),
+              type = "warning",
+              html = TRUE
+            )
+            shiny::updateNumericInput(session, "n_item", value = max_item())
+          } else if (input$n_item <= 0) {
+              shinyalert::shinyalert(
+              title = "Stop",
+              text = paste0("Bitte wähle mindestens eine Aufgabe aus. Du kannst maximal ", tags$b(max_item(), "Aufgaben"), "für diese Auswahl wählen."),
+              type = "error",
+              html = TRUE
+            )
+          }
+        }
+      }
+    )
+
+  data_handler <- shiny::reactiveValues(data_bool = bool_data, data_item = data_item)
+  margin_ids <- c(id_rows, id_cols)
+  
+  # update single cells if margins are clicked
+  lapply(margin_ids, function(x) observe_margins(input, x, checkbox_data, session))
+  shiny::observeEvent(
+    eventExpr = input[["allboxes"]],
+    handlerExpr = lapply(margin_ids, function(x) shiny::updateCheckboxInput(session, x, value = input[["allboxes"]]))
+  )
+
+  all_ids <- regmatches(as.vector(checkbox_data), regexpr('(?<=id\\=")(.*?)(?=")', as.vector(checkbox_data), perl = TRUE))
+  all_ids <- sub("([a-zA-Z0-9_]+-)([a-zA-Z0-9_-]+)", "\\2", all_ids)
+  lapply(all_ids, function(x) update_bool_table(input, x, data_handler, data_item))
+  lapply(
+    X = all_ids, 
+    FUN = function(inputId, session, input) {
+      shiny::observeEvent(
+        eventExpr = input[[inputId]],
+        handlerExpr = {
+          shiny::updateNumericInput(session, "n_item", label = paste0("Bitte wähle die Anzahl an Aufgaben, die du üben möchtest. (max. ", max_item(), ")"), value = ceiling(max_item() / 2))
+        }
+      )
+      }, 
+    session = session, 
+    input = input
+    )
+
+  index_display <- shiny::reactive(safe_sample(as.integer(data_handler$data_item$id_item)))    
+    
+  # output
+  out <- list(
+    index_display = index_display,
+    submit_btn_value = reactive(input$submit_btn),
+    max_item = max_item,
+    n_item = reactive(input$n_item)
+  )
+  return(out)
   })
 }

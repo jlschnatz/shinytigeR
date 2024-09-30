@@ -153,33 +153,15 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
                     pass_title = "Password", login_title = "Log in", error_message = "Invalid username or password!",
                     additional_ui = NULL, cookie_expiry = 7) {
   ns <- shiny::NS(id)
-
   shinyjs::hidden(
     shiny::div(
       id = ns("panel"),
       style = "width: 500px; max-width: 100%; margin: 0 auto; padding: 20px;",
       bslib::card(
-        style = "background-color: #f6f6f6;",
-        shinyjs::useShinyjs(),
-        shinyauthr:::jscookie_script(),
-        shinyjs::extendShinyjs(
-          text = shinyauthr:::js_cookie_to_r_code(ns("jscookie"),
-            expire_days = cookie_expiry
-          ),
-          functions = c(
-            "getcookie",
-            "setcookie",
-            "rmcookie"
-          )
+        bslib::card_header(
+          class = "text-center bg-primary text-light",
+          shiny::tags$b(title)
         ),
-        shinyjs::extendShinyjs(
-          text = shinyauthr:::js_return_click(
-            ns("password"),
-            ns("button")
-          ),
-          functions = c()
-        ),
-        bslib::card_title(tags$b(title), class = "text-center"),
         bslib::card_body(
           shiny::textInput(
             ns("user_name"),
@@ -187,17 +169,17 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
               bsicons::bs_icon("person-fill"),
               user_title
             ),
-            width = "90%",
-            placeholder = "Adjektiv-Tier"
+            width = "100%",
+            placeholder = "Benutzername"
           ),
           shiny::passwordInput(
             ns("password"),
             shiny::tagList(
-              bsicons::bs_icon("unlock-fill"),
+              bsicons::bs_icon("lock-fill"),
               pass_title
             ),
             placeholder = "Passwort",
-            width = "90%"
+            width = "100%"
           ),
           shiny::div(
             style = "text-align: center;",
@@ -209,10 +191,30 @@ loginUI <- function(id, title = "Please log in", user_title = "User Name",
             )
           ),
           additional_ui,
+          shinyjs::useShinyjs(),
+          shinyauthr:::jscookie_script(),
+          shinyjs::extendShinyjs(
+            text = shinyauthr:::js_cookie_to_r_code(ns("jscookie"),
+              expire_days = cookie_expiry
+            ),
+            functions = c(
+              "getcookie",
+              "setcookie",
+              "rmcookie"
+            )
+          ),
+          shinyjs::extendShinyjs(
+            text = shinyauthr:::js_return_click(
+              ns("password"),
+              ns("button")
+            ),
+            functions = c()
+          ),
           fillable = TRUE,
           fill = TRUE,
           padding = 25,
-          style="text-align: justify;"
+          style="text-align: justify;",
+          gap = "10pt"
         )
       )
     )
@@ -381,3 +383,5 @@ parse_difftime <- function(.cur_time_reactive, .start_time) {
   diff_time <- difftime(.cur_time_reactive, .start_time, units = "secs")
   return(round(as.numeric(diff_time), 0))
 }
+
+safe_sample <- function(x, ...) x[sample.int(length(x), ...)]

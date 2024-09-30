@@ -10,52 +10,16 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     bslib::page_navbar(
-      title = shiny::tags$b("PsyBSc2 — tigeR"),
+      title = shiny::withTags(b("tigeR", class = "fw-bolder", style = "padding-left: 10px;")),
       id = "tabs", # must add id here to add/remove tabs in server
       collapsible = TRUE,
       fluid = TRUE,
-      theme = bslib::bs_theme(
-        bootswatch = "zephyr",
-        primary = "#285f8a",
-        success = "#285f8a",
-        danger = "#D81B60",
-        `navbar-bg`= "#285f8a"
-      ),
-      header = shiny::tags$head(shinyjs::inlineCSS(
-        list(
-          ".default_answer" = "color: black",
-          ".correct_answer_txt" = "color: #1E88E5; font-weight: 500;",
-          ".incorrect_answer_txt" = "color: #D81B60; font-weight: 500;",
-          ".skip_answer_txt" = "color: #FFA000; font-weight: 500;",
-          ".skip_answer_img" = "outline: 2px solid #FFA000", # Use outline instead of border
-          ".correct_answer_img" = "outline: 2px solid #1E88E5", # Use outline instead of border
-          ".incorrect_answer_img" = "outline: 2px solid #D81B60", # Use outline instead of border
-          ".label_img img" = "outline: 2px solid #1E88E5", # Apply outline to img elements inside labels
-          ".center" = "display: flex; justify-content: center;",
-          ".value-box-showcase"  = "overflow: hidden;"
-        )
-      ), tags$style("
-    ul.nav-pills{
-      display: flex !important;
-      justify-content: center !important;
-    }
-    ")),
-
+      theme = theme_tiger,
       # login tab to be rendered on launch (hiding the other tabs)
       bslib::nav_panel(
         title = "Login",
         value = "login_panel",
         icon = bsicons::bs_icon("lock-fill", size = 15),
-        shiny::tags$head(
-          # add logo see https://stackoverflow.com/questions/78710175/
-              shiny::tags$script(
-                shiny::HTML('$(document).ready(function() {
-                       $(".navbar .container-fluid")
-                         .prepend("<img id = \'myImage\' src=\'www/img_logo/tiger_logo_white.png\' align=\'right\' height = \'57.5px\'>"  );
-                      });')),
-              shiny::tags$style(
-                shiny::HTML('@media (max-width:992px) { #myImage { position: fixed; right: 1%; top: 0.5%; } div.navbar-header > button {margin-right: 175px}}')
-            )),
         loginUI(
           id = "login",
           title = "Login",
@@ -73,9 +37,10 @@ app_ui <- function(request) {
                   )
               )
             ),
-            shiny::HTML(knitr::kable(
-              x = data.frame(a = c("<b style='font-weight: 500;'>Benutzername </b>", "<b style='font-weight: 500;'>Passwort</b>"), b = c("test", "test123")), 
-              escape = FALSE, format = "html", col.names = NULL, table.attr = "style='width:50%;'")
+            shiny::HTML(
+              knitr::kable(
+                x = data.frame(a = c("<b style='font-weight: 500;'>Benutzername </b>", "<b style='font-weight: 500;'>Passwort</b>"), b = c("test", "test123")), 
+                escape = FALSE, format = "html", col.names = NULL, table.attr = "style='width:50%;'")
               )
           )
         )
@@ -96,43 +61,35 @@ app_ui <- function(request) {
         value = "train_panel",
         id = "train",
         icon = bsicons::bs_icon("ui-radios", size = 15),
-        bslib::navset_pill(
-          id = "navset_train",
-          tab(
-            value = "auswahl",
-            title = bslib::tooltip(
-              span(
-                HTML("Auswahlbereich &nbsp;"),
-                bsicons::bs_icon("info-circle")
+        shiny::fluidRow(
+          col_1(),
+          col_10(
+            bslib::accordion(
+              bslib::accordion_panel(
+                title = div("Auswahlbereich", class = "fw-bolder"),
+                mod_select_item_ui("select_item_1"),
+                value = "acc_panel_1",
+                icon = bsicons::bs_icon("funnel")
               ),
-              "Hier wählst du Themengebiete aus, aus denen du üben möchtest.",
-              placement = "bottom",
-            ),
-            fluidRow(mod_select_item_ui("select_item_1"))
+            id = "accordion_1",
+            open = TRUE
           ),
-          tab(
-            value = "item",
-            title = bslib::tooltip(
-              span(
-                HTML("Übungsbereich &nbsp;"),
-                bsicons::bs_icon("info-circle")
+          shinyjs::hidden(bslib::accordion(
+            bslib::accordion_panel(
+              title = "Übungsbereich",
+              shiny::tagList(
+                mod_display_item_ui("display_item_1"),
+                mod_check_item_ui("check_item_1")
               ),
-              "Hier kannst du die Aufgaben beantworten.",
-              placement = "bottom",
+              value = "acc_panel_2",
+              icon = bsicons::bs_icon("ui-radios")
             ),
-            fluidRow(
-              col_1(),
-              col_10(
-                bslib::card(
-                  bslib::card_header(tags$h6(tags$b(textOutput("cardheader_train")))),
-                  mod_display_item_ui("display_item_1"),
-                  mod_check_item_ui("check_item_1")
-                )
-              ),
-              col_1()
-            )
-          )
-        )
+            id = "accordion_2",
+            open = FALSE
+          ))
+        ),
+        col_1()
+      )
       ),
 
       # Progress panel
