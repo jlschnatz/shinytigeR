@@ -120,6 +120,19 @@ app_server <- function(input, output, session) {
     }
   )
 
+  data_sleep <- read.csv("inst/app/www/data_sleep.csv")
+  output$sleep_data <- DT::renderDataTable(
+    DT::datatable(
+      data = data_sleep, 
+      options = list(
+        columnDefs = list(list(targets = "_all", orderable = FALSE, className = "dt-nowrap", width = "300px", autoWidth = FALSE)),
+        dom = 't',
+        fixedColumns = FALSE
+      ), 
+      select = "none", 
+      rownames = FALSE)
+  )
+
   # Call Modules ----
 
   mod_home_server("home_1", credentials)

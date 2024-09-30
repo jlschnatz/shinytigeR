@@ -133,50 +133,7 @@ app_ui <- function(request) {
          )
         ),
       fluidRow(
-        div(
-          tags$table(
-            tags$tr(
-              tags$th("Variable"),
-              tags$th("Beschreibung")
-            ),
-            tags$tr(
-              tags$td(code("alter")),
-              tags$td("Das Alter der Studierenden.")
-            ),
-            tags$tr(
-              tags$td(code("alleineSchlafen")),
-              tags$td("Informationen darüber, ob die Studierenden alleine schlafen, mit einem Partner, mit Kind, oder mit Partner und Kind.")
-            ),
-            tags$tr(
-              tags$td(code("schlafumgebung")),
-              tags$td("Beschreibt die Schlafumgebung als ruhig, laut oder gemischt.")
-            ),
-            tags$tr(
-              tags$td(code("schlafstoerungen")),
-              tags$td("Gibt an, ob die Studierenden unter spezifischen Schlafstörungen (Insomnie oder Schlafapnoe) leiden oder nicht.")
-            ),
-            tags$tr(
-              tags$td(code("schlafqualitaet")),
-              tags$td("Eine ordinal skalierte Bewertung der Schlafqualität von 1 (sehr schlecht) bis 5 (sehr gut).")
-            ),
-            tags$tr(
-              tags$td(code("schlafdauer")),
-              tags$td("Die durchschnittliche Schlafdauer pro Nacht in Stunden.")
-            ),
-            tags$tr(
-              tags$td(code("durchschnittsnote")),
-              tags$td("Die durchschnittliche Note, auf einer Skala von 1.0 (sehr gut) bis 5.0 (ungenügend).")
-            ),
-            tags$tr(
-              tags$td(code("generellesWohlbefinden")),
-              tags$td("Eine mittlere Bewertung des generellen Wohlbefindens von 1 (sehr niedrig) bis 7 (sehr hoch).")
-            ),
-            tags$tr(
-              tags$td(code("sportlicheAktivitaet")),
-              tags$td("Die Anzahl der Minuten pro Woche, die für sportliche Aktivitäten aufgewendet wird.")
-            ), class = "center"
-            )
-          )
+        DT::DTOutput("sleep_data")
         )
       )
     )
