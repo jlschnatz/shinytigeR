@@ -37,7 +37,9 @@ mod_home_server <- function(id, credentials){
                     li("Unter ", b("Datenset"), "findest du alle wichtigen Informationen zum tigeR Datenset. Dieses wird für die Bearbeitung von R-Aufgaben benötigt.")
                   )
                 ),
+
                 tags$p("Möchtest du die Grundlagen von R unabhängig von Statistik nochmal vertiefend üben, dann schau doch mal bei ", HTML("<a href='https://meikesteinhilber.github.io/otter/'><code>otter</code></a>"), "vorbei!"),
+                tags$p("Bist du an Materialien aus der R-bezogenen Statistik Lehre im Psychologie-Studium interessiert, schau bei", HTML("<a href='https://pandar.netlify.app/'><code>pandaR</code></a>"), "vorbei!"),
                 tags$p("Bei Fragen, Problemen oder Anmerkungen kannst du dich jederzeit an Martin Schultze unter", a("schultze@psych.uni-frankfurt.de", href = "mailto:schultze@psych.uni-frankfurt.de"), "wenden."),
                 tags$p("Viel Spaß", bsicons::bs_icon("emoji-smile"))
               )
