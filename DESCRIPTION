@@ -20,6 +20,7 @@ Imports:
     curl,
     DBI,
     dbplyr,
+    devtools,
     dockerfiler,
     dplyr (>= 1.1.3),
     DT (>= 0.33),
@@ -28,6 +29,7 @@ Imports:
     ggplot2,
     glue,
     golem (>= 0.4.1),
+    htmltools,
     jsonlite,
     knitr,
     magrittr,
@@ -45,6 +47,7 @@ Imports:
     shinyWidgets,
     sodium,
     stringr,
+    sysfonts,
     tibble,
     usethis
 Suggests: 
