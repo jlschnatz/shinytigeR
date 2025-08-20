@@ -46,6 +46,7 @@ Imports:
     shinyauthr,
     shinyjs,
     shinyWidgets,
+    showtext,
     sodium,
     stringr,
     sysfonts,
