@@ -1,0 +1,152 @@
+ID						RECLAIMABLE	SIZE		LAST ACCESSED
+lc325yf546h6rcnbkt3ja7x0k*              	true 		599B      	23 hours ago
+928h7nexrxvjgiqvgl11xpbbi               	true 	0B        	23 hours ago
+sj3jbvlonx4r0aedpczuvj545*              	true 	5.125MB   	23 hours ago
+9344i3hayaki1gf4ngi2cgsk0*              	true 	0B        	23 hours ago
+tajtbl8xwfni1dannem88qrfk               	true 	329.7kB   	23 hours ago
+wfojeazumg84gpn4u8nfjemc6               	true 	0B        	23 hours ago
+z133n6v8g2pkotdgz6vzhx9jv               	true 	40.23MB   	23 hours ago
+iy4kikrln8lvtdg5fdnglb0yz               	true 	5.125MB   	23 hours ago
+etk4xb7ubvmnfawylxs8ottwn               	true 	0B        	23 hours ago
+klr7jt72wq5p7qc7594evangt               	true 	0B        	23 hours ago
+56im2sq5k0cy6g7sli9y3h7hc               	true 	0B        	23 hours ago
+m3alsokxsd4qxnc73ezire0f5               	true 	0B        	23 hours ago
+lu3bm1ufjuhmx1p26mb3pssv9               	true 	0B        	23 hours ago
+t2l2jwcf6ekfiqh9b7fculfn5               	true 	0B        	23 hours ago
+l3hwf1w707ueo84kayk7o2bfk               	true 	0B        	23 hours ago
+6ibvnf1i15b4o7bqc7r8apncf               	true 	0B        	23 hours ago
+md7a58op50mnzji0rhb40wh8h               	true 	0B        	23 hours ago
+502djbro2zb18a9srucximld4               	true 	0B        	23 hours ago
+qxxspcmdvfnfhekc1dhfpe6jg               	true 	0B        	23 hours ago
+mmft5mzlshyhhxfitlpi0ebbm               	true 	0B        	23 hours ago
+9ph3ca7g9x14zdqt78o3z58bo               	true 	0B        	23 hours ago
+Total:	50.81MB
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 638B done
+#1 DONE 0.3s
+
+#2 [internal] load metadata for docker.io/library/shinytiger:base
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context:
+#3 transferring context: 2B done
+#3 DONE 0.1s
+
+#4 [1/6] FROM docker.io/library/shinytiger:base
+#4 ...
+
+#5 [internal] load build context
+#5 transferring context: 5.13MB 0.0s done
+#5 DONE 0.5s
+
+#4 [1/6] FROM docker.io/library/shinytiger:base
+#4 DONE 0.9s
+
+#6 [2/6] COPY shinytigeR_*.tar.gz /app.tar.gz
+#6 DONE 0.2s
+
+#7 [3/6] RUN R -e 'remotes::install_local("/app.tar.gz", upgrade = "never")'
+#7 1.632 
+#7 1.632 R version 4.3.0 (2023-04-21) -- "Already Tomorrow"
+#7 1.632 Copyright (C) 2023 The R Foundation for Statistical Computing
+#7 1.632 Platform: x86_64-pc-linux-gnu (64-bit)
+#7 1.632 
+#7 1.632 R is free software and comes with ABSOLUTELY NO WARRANTY.
+#7 1.632 You are welcome to redistribute it under certain conditions.
+#7 1.632 Type 'license()' or 'licence()' for distribution details.
+#7 1.632 
+#7 1.645   Natural language support but running in an English locale
+#7 1.645 
+#7 1.645 R is a collaborative project with many contributors.
+#7 1.645 Type 'contributors()' for more information and
+#7 1.645 'citation()' on how to cite R or R packages in publications.
+#7 1.645 
+#7 1.645 Type 'demo()' for some demos, 'help()' for on-line help, or
+#7 1.645 'help.start()' for an HTML browser interface to help.
+#7 1.645 Type 'q()' to quit R.
+#7 1.645 
+#7 2.190 > remotes::install_local("/app.tar.gz", upgrade = "never")
+#7 5.755 Installing 5 packages: progress, tzdb, hms, vroom, readr
+#7 5.758 Installing packages into ‘/usr/local/lib/R/site-library’
+#7 5.758 (as ‘lib’ is unspecified)
+#7 6.021 also installing the dependency ‘cpp11’
+#7 6.021 
+#7 6.022 trying URL 'https://packagemanager.posit.co/cran/__linux__/noble/latest/src/contrib/cpp11_0.5.2.tar.gz'
+#7 7.423 Content type 'binary/octet-stream' length 290960 bytes (284 KB)
+#7 7.423 ==================================================
+#7 7.427 downloaded 284 KB
+#7 7.427 
+#7 7.431 trying URL 'https://packagemanager.posit.co/cran/__linux__/noble/latest/src/contrib/progress_1.2.3.tar.gz'
+#7 8.334 Content type 'application/x-tar' length 30788 bytes (30 KB)
+#7 8.334 ==================================================
+#7 8.334 downloaded 30 KB
+#7 8.334 
+#7 8.338 trying URL 'https://packagemanager.posit.co/cran/__linux__/noble/latest/src/contrib/tzdb_0.5.0.tar.gz'
+#7 9.237 Content type 'binary/octet-stream' length 603303 bytes (589 KB)
+#7 9.237 ==================================================
+#7 9.244 downloaded 589 KB
+#7 9.244 
+#7 9.248 trying URL 'https://packagemanager.posit.co/cran/__linux__/noble/latest/src/contrib/hms_1.1.3.tar.gz'
+#7 10.15 Content type 'application/x-tar' length 44407 bytes (43 KB)
+#7 10.15 ==================================================
+#7 10.15 downloaded 43 KB
+#7 10.15 
+#7 10.15 trying URL 'https://packagemanager.posit.co/cran/__linux__/noble/latest/src/contrib/vroom_1.6.5.tar.gz'
+#7 11.05 Content type 'application/x-tar' length 746589 bytes (729 KB)
+#7 11.05 ==================================================
+#7 11.06 downloaded 729 KB
+#7 11.06 
+#7 11.06 trying URL 'https://packagemanager.posit.co/cran/__linux__/noble/latest/src/contrib/readr_2.1.5.tar.gz'
+#7 11.96 Content type 'application/x-tar' length 295602 bytes (288 KB)
+#7 11.96 ==================================================
+#7 11.97 downloaded 288 KB
+#7 11.97 
+#7 12.17 begin installing package ‘hms’
+#7 12.17 begin installing package ‘cpp11’
+#7 13.79 * installing *source* package ‘cpp11’ ...
+#7 13.79 ** package ‘cpp11’ successfully unpacked and MD5 sums checked
+#7 13.79 ** using staged installation
+#7 13.79 ** R
+#7 13.79 ** inst
+#7 13.79 ** byte-compile and prepare package for lazy loading
+#7 13.79 ** help
+#7 13.79 *** installing help indices
+#7 13.79 ** building package indices
+#7 13.79 ** installing vignettes
+#7 13.79 ** testing if installed package can be loaded from temporary location
+#7 13.79 ** testing if installed package can be loaded from final location
+#7 13.79 ** testing if installed package keeps a record of temporary installation path
+#7 13.79 * DONE (cpp11)
+#7 13.79 begin installing package ‘tzdb’
+#7 14.63 * installing *source* package ‘hms’ ...
+#7 14.63 ** package ‘hms’ successfully unpacked and MD5 sums checked
+#7 14.63 ** using staged installation
+#7 14.63 ** R
+#7 14.63 ** byte-compile and prepare package for lazy loading
+#7 14.63 ** help
+#7 14.63 *** installing help indices
+#7 14.63 *** copying figures
+#7 14.63 ** building package indices
+#7 14.63 ** testing if installed package can be loaded from temporary location
+#7 14.63 ** testing if installed package can be loaded from final location
+#7 14.63 ** testing if installed package keeps a record of temporary installation path
+#7 14.63 * DONE (hms)
+#7 14.63 begin installing package ‘progress’
+#7 16.99 * installing *source* package ‘progress’ ...
+#7 16.99 ** package ‘progress’ successfully unpacked and MD5 sums checked
+#7 16.99 ** using staged installation
+#7 16.99 ** R
+#7 16.99 ** inst
+#7 16.99 ** byte-compile and prepare package for lazy loading
+#7 16.99 ** help
+#7 16.99 *** installing help indices
+#7 16.99 *** copying figures
+#7 16.99 ** building package indices
+#7 16.99 ** testing if installed package can be loaded from temporary location
+#7 16.99 ** testing if installed package can be loaded from final location
+#7 16.99 ** testing if installed package keeps a record of temporary installation path
+#7 16.99 * DONE (progress)

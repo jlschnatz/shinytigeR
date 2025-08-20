@@ -68,7 +68,7 @@ app_server <- function(input, output, session) {
     dplyr::rowwise() |>
     dplyr::ungroup() |>
     dplyr::mutate(type_item = ifelse(type_item == "content", "Inhaltliche Aufgaben", "R-Aufgaben")) |>
-    dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
+    #dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
     dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
 
 
@@ -120,7 +120,7 @@ app_server <- function(input, output, session) {
     }
   )
 
-  data_sleep <- read.csv("inst/app/www/data_sleep.csv")
+  #data_sleep <- read.csv("inst/app/www/data_sleep.csv")
   output$sleep_data <- DT::renderDataTable(
     DT::datatable(
       data = data_sleep, 

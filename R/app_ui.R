@@ -13,7 +13,7 @@ app_ui <- function(request) {
       title = shiny::withTags(b("tigeR", class = "fw-bolder", style = "padding-left: 10px;")),
       id = "tabs", # must add id here to add/remove tabs in server
       #collapsible = TRUE,
-      navbar_options = bslib::navbar_options(collapsible = TRUE, bg = "black"),
+      navbar_options = bslib::navbar_options(collapsible = TRUE, bg = "#285f8a"),
       fluid = TRUE,
       theme = theme_tiger,
       # login tab to be rendered on launch (hiding the other tabs)
