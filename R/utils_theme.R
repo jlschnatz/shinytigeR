@@ -3,7 +3,7 @@ theme_tiger <- bslib::bs_theme(
   "primary" = "#285f8a",
   "success" = "#285f8a",
   "danger" = "#D81B60",
- # navbar_bg = "green",
+  navbar_bg = "green",
   "base_font" = bslib::font_google("Karla", wght = 300),
   "font-weight-bold" = 2000
 ) |>

@@ -149,20 +149,33 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
         scale_x_discrete(limits = levels(feedback_data$Lerneinheit)) +
         scale_y_continuous(limits = c(-3, +3), n.breaks = 3, labels = c(":(", "Durchschnitt", ":)")) +
         scale_color_goethe() +
-
         theme_minimal() +
         theme(
           panel.grid.minor.y = element_line(),
           panel.grid.major.y = element_line(),
           panel.grid.minor.x = element_blank(),
           panel.grid.major.x = element_blank(),
-          axis.text = element_text(size = 20),
-          axis.text.x = suppressWarnings(element_text(color = bearbeitet, angle = 45, hjust = 1)),
+          axis.text = element_text(size = 18, family = "Karla"),
+          axis.text.x = suppressWarnings(element_text(
+            #color = bearbeitet, 
+            angle = 45,
+             hjust = 1
+             )),
           axis.text.y = element_text(margin = margin(t = 0, r = 5, b = 0, l = 0)),
           axis.ticks.y = element_blank(),
           text = element_text(family = "Karla"),
           legend.position = "none" # No legend for this plot
         ) +
+            theme(
+       axis.line.x      = element_line(colour = "grey80"),
+       axis.line.y      = element_line(colour = "grey80"),
+       axis.text        = element_text(colour = "grey50"),
+       axis.title       = element_text(colour = "grey30"),
+       strip.background = element_rect(colour = "grey70", fill = "grey90"),
+       strip.text       = element_text(colour = "grey30"),
+       legend.title     = element_text(colour = "grey30"),
+       legend.text      = element_text(colour = "grey30")
+     ) +
         ylab("") +
         xlab("")
       suppressWarnings(print(p1))
