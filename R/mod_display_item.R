@@ -70,10 +70,12 @@ mod_display_item_server <- function(id, data_item, index_display, check_button_v
     output$stimulus <- renderUI({
       req(credentials()$user_auth) # require authentification before eval
       if (!is.null(cur_item_id())) {
-        displayStimulus(
-          .text = data_item$stimulus_text[data_item$id_item == cur_item_id()],
-          .img = data_item$stimulus_image[data_item$id_item == cur_item_id()],
-          .type_stimulus = data_item$type_stimulus[data_item$id_item == cur_item_id()]
+        withMathJax(
+            displayStimulus(
+            .text = data_item$stimulus_text[data_item$id_item == cur_item_id()],
+            .img = data_item$stimulus_image[data_item$id_item == cur_item_id()],
+            .type_stimulus = data_item$type_stimulus[data_item$id_item == cur_item_id()]
+          )
         )
       }
     })

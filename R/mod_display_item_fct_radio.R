@@ -16,7 +16,8 @@ displayStimulus <- function(.text = NULL, .img = NULL, .type_stimulus = c("text"
     ))
   } else if (.type_stimulus == "text") {
     assertthat::assert_that(!is_image(.img), msg = "x is an image, but is tagged as normal text!")
-    out <- tags$p(.text, style = "text-align: justify")
+    #out <- tags$p(.text, style = "text-align: justify")
+    out <- shiny::HTML(markdown::markdownToHTML(.text, fragment.only = TRUE))
   }
   return(out)
 }
@@ -75,7 +76,7 @@ radioButtonsDynamic <- function(inputId, choices, type_answer = c("text", "image
               `for` = id,
               id = paste0("label_", id), # Add a unique ID for the label
               class = "default_answer",
-              choices[i]
+              markdown::markdownToHTML(choices[i], fragment.only = TRUE)
             )
           )
         )
