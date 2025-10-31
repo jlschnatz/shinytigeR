@@ -16,8 +16,7 @@ displayStimulus <- function(.text = NULL, .img = NULL, .type_stimulus = c("text"
     ))
   } else if (.type_stimulus == "text") {
     assertthat::assert_that(!is_image(.img), msg = "x is an image, but is tagged as normal text!")
-    #out <- tags$p(.text, style = "text-align: justify")
-    out <- shiny::HTML(markdown::markdownToHTML(.text, fragment.only = TRUE))
+    out <- shiny::HTML(markdown::markdownToHTML(text = .text, fragment.only = TRUE))
   }
   return(out)
 }
@@ -58,25 +57,28 @@ radioButtonsDynamic <- function(inputId, choices, type_answer = c("text", "image
         !is_image(choices[i]),
         msg = "x is an image, but is tagged as normal text!"
       )
+      
       tagList(
         tags$div(
-          style = "display: flex; align-items: center; margin-bottom: 20px;",
+          style = "display: flex; align-items: flex-start; margin-bottom: 20px;",
           tags$div(
-            style = "flex: 0 0 auto; margin-right: 10px;",
+            style = "display: flex; align-items: center; margin-right: 10px; margin-top: 3px;",
             tags$input(
               type = "radio",
               name = inputId,
               id = id,
-              value = as.character(choices[i])
+              value = as.character(choices[i]),
+              style = "width: 18px; height: 18px; cursor: pointer;"
             )
           ),
-          tags$span(
-            style = "flex: 1 1 auto;",
+          tags$div(
+            style = "flex: 1; line-height: 1.4; cursor: pointer;",
             tags$label(
               `for` = id,
-              id = paste0("label_", id), # Add a unique ID for the label
+              id = paste0("label_", id),
               class = "default_answer",
-              markdown::markdownToHTML(choices[i], fragment.only = TRUE)
+              style = "display: inline-block; vertical-align: middle;",
+              shiny::HTML(markdown::markdownToHTML(text = choices[i], fragment.only = TRUE))
             )
           )
         )
