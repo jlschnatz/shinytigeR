@@ -68,11 +68,8 @@ app_server <- function(input, output, session) {
     dplyr::rowwise() |>
     dplyr::ungroup() |>
     dplyr::mutate(type_item = ifelse(type_item == "content", "Inhaltliche Aufgaben", "R-Aufgaben")) |>
-<<<<<<< HEAD
   #  dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
-=======
     #dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
->>>>>>> 371b253fbc389abb290e7e52595532fe8ec80f1c
     dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
 
 
