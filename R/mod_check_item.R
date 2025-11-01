@@ -95,8 +95,8 @@ mod_check_item_server <- function(
               )
             ),
             bslib::card_body(
-              HTML(
-                as.character(get_feedbackoptions(data_item, data_item$id_item == cur_item_id())[cur_answer_id()])
+              shiny::HTML(
+                markdown::markdownToHTML(text = get_feedbackoptions(data_item, data_item$id_item == cur_item_id())[cur_answer_id()], fragment.only = TRUE)
               )
             )
           )
