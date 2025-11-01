@@ -57,7 +57,7 @@ radioButtonsDynamic <- function(inputId, choices, type_answer = c("text", "image
         !is_image(choices[i]),
         msg = "x is an image, but is tagged as normal text!"
       )
-      
+
       tagList(
         tags$div(
           style = "display: flex; align-items: flex-start; margin-bottom: 20px;",
