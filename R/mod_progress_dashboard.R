@@ -117,17 +117,18 @@ mod_progress_dashboard_server <- function(id, feedback_data, bearbeitet, all_dat
           bslib::card(
             height = 700,
             full_screen = TRUE,
-            bslib::card_header(tags$b("Individuelle Fähigkeitsschätzungen in 8 Lernbereichen")),
+            bslib::card_header(tags$b("Individuelle Fähigkeitsschätzungen in 7 Lernbereichen")),
             bslib::card_body(
               plotOutput(ns("plot1"), width = "80%"), class = "align-items-center"
             ),
             bslib::card_body(
               bslib::card_title("Erklärung zur Abbildung"),
-              p(class = "text-muted", "In dieser Abbildung siehst du deine geschätzten Fähigkeitsskills aufgeteilt nach den 8
+              p(class = "text-muted", "In dieser Abbildung siehst du deine geschätzten Fähigkeitsskills aufgeteilt nach den 7
                 verschiedenen Lernbereichen. Die Schätzung basiert auf einem psychometrischen Modell, das anhand einer Stichprobe
                 von mehreren hundert Teilnehmenden erstellt wurde. Der Durchschnitt stellt dabei den Durchschnitt dieser Stichprobe
-                dar. In die Schätzung der Fähigkeit geht dabei auch mit ein, wie schwierig eine Aufgabe ist."),
-            )
+                dar. In die Schätzung der Fähigkeit geht dabei auch mit ein, wie schwierig eine Aufgabe ist und wie gut die Aufgabe zwischen einem hohen und niedrigen Fähigkeitsniveau differenzieren kann."),
+            ),
+            shiny::withTags(p(b("ACHTUNG: "), "Aktuell sind nur 48 der ingesamt 116 Fragen validiert und in fließen die Fähigkeitsschätzung mit ein. Deshalb sollten die Ergebnisse mit Vorsicht interpretiert werden. Voraussichtlich im Laufe des Semester können alle Fragen validiert werden und somit in die Fähigkeitsschätzung einfließen.")),
           ),
           col_widths = c(3, 9)
         )

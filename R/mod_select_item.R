@@ -8,7 +8,8 @@ mod_select_item_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
         fluidRow(
-          shiny::tags$p("Du hast die Möglichkeit, aus dem Fragenpool die Themen auszuwählen, die du filtern und speziell für deine Übungen verwenden möchtest. Hierbei kannst du gezielt jene Themen oder Kategorien selektieren, die deinem individuellen Lernbedarf entsprechen. Zusätzlich dazu, ist es empfehlenswert, die App in regelmäßigen Abständen zu besuchen, da alle zwei Wochen neue Themen und Lerninhalte hinzugefügt werden. Dies bedeutet, dass der Fragenpool kontinuierlich erweitert wird, um dir eine immer breitere und aktuelle Auswahl an Übungsmaterialien zur Verfügung zu stellen.")
+          shiny::tags$p("Der aktuelle Fragenpool umfasst derzeit 116 Fragen aus aus den sieben gelisteten Themenbereichen, die sich an der Vorlesungstruktur orientieren. Zudem untergliedern sich die Fragen in zwei Teilbereiche: Theoretische Fragen, die dein Verständnis der statistischen Konzepte testen, und Aufgaben zur praktischen Anwendung in R. Du kannst die Fragen nach diesen beiden Kategorien filtern, um gezielt die Art von Aufgaben auszuwählen, die deinem individuellen Lernbedarf entsprechen."),
+          shiny::tags$p("Wenn du eine Auswahl getroffen hast, wird dir eine zufällige Auswahl innerhalb der ausgewählten Felder angezeigt, die du dann bearbeiten kannst. Du kannst jederzeit zurückkehren, um deine Auswahl zu ändern und neue Fragen zu üben. Viel Erfolg beim Lernen!"),
         ),
         fluidRow(bslib::layout_columns(
           tagList(

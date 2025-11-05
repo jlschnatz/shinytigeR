@@ -32,7 +32,7 @@ app_ui <- function(request) {
             htmltools::withTags(
               div(
                 p(
-                  "Du erhälst deine Zugangsdaten im R-Praktikum. Falls du sie vergessen hast, wende dich an", 
+                  "Du erhältst deine Zugangsdaten im R-Praktikum. Falls du sie vergessen hast, wende dich an", 
                   shiny::actionLink("link_mail", "Martin Schultze."), 
                   "Zum Ausprobieren kannst du folgende Zugangsdaten nutzen:"
                   )
