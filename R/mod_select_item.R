@@ -6,35 +6,66 @@
 #' to train in the learning session.
 mod_select_item_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::tagList(
-        fluidRow(
-          shiny::tags$p("Der aktuelle Fragenpool umfasst derzeit 116 Fragen aus aus den sieben gelisteten Themenbereichen, die sich an der Vorlesungstruktur orientieren. Zudem untergliedern sich die Fragen in zwei Teilbereiche: Theoretische Fragen, die dein Verständnis der statistischen Konzepte testen, und Aufgaben zur praktischen Anwendung in R. Du kannst die Fragen nach diesen beiden Kategorien filtern, um gezielt die Art von Aufgaben auszuwählen, die deinem individuellen Lernbedarf entsprechen."),
-          shiny::tags$p("Wenn du eine Auswahl getroffen hast, wird dir eine zufällige Auswahl innerhalb der ausgewählten Felder angezeigt, die du dann bearbeiten kannst. Du kannst jederzeit zurückkehren, um deine Auswahl zu ändern und neue Fragen zu üben. Viel Erfolg beim Lernen!"),
+
+shiny::tagList(
+  fluidRow(
+    style = "align-items: flex-start;",
+    
+    # LEFT COLUMN
+    column(
+      4,
+      style = "padding-right: 30px; color: #333; font-size: 16px; line-height: 1.6;",
+      shiny::withTags(
+        div(
+          p("Der aktuelle Fragenpool umfasst derzeit 116 Fragen aus den sieben gelisteten Themenbereichen, die sich an der Vorlesungstruktur orientieren."),
+          p("Zudem untergliedern sich die Fragen in zwei Teilbereiche:"),
+          ol(
+            li("Theoretische Fragen, die dein Verständnis der statistischen Konzepte testen,"),
+            li("Aufgaben zur praktischen Anwendung in R. Du kannst die Fragen nach diesen beiden Kategorien filtern, um gezielt die Art von Aufgaben auszuwählen, die deinem individuellen Lernbedarf entsprechen.")
+          ),
+          p("Wenn du eine Auswahl getroffen hast, wird dir eine zufällige Auswahl innerhalb der ausgewählten Felder angezeigt, die du dann bearbeiten kannst. Du kannst jederzeit zurückkehren, um deine Auswahl zu ändern und neue Fragen zu üben. Viel Erfolg beim Lernen!")
+        )
+      )
+    ),
+    
+    # RIGHT COLUMN
+    column(
+      8,
+      style = "padding-left: 30px;",
+      div(
+        DT::DTOutput(ns("checkbox_table")),
+        style = "
+          font-size: 100%;
+          width: 100%;
+          text-align: left;
+          margin-bottom: 20px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 15px;
+          background-color: #fff;
+        "
+      ),
+      div(
+        uiOutput(ns("choose_number")),
+        style = "margin-bottom: 15px;"
+      ),
+      div(
+        actionButton(
+          ns("submit_btn"),
+          span(
+            HTML("Weiter zum Übungsbereich"),
+            bsicons::bs_icon("shuffle")
+          ),
+          class = "btn-primary",
+          style = "width: 100%; margin-top: 10px; font-size: 16px; padding: 10px;"
         ),
-        fluidRow(bslib::layout_columns(
-          tagList(
-            shiny::div(
-              shiny::div(
-                DT::DTOutput(ns("checkbox_table")), 
-                style = "font-size: 100%; width: 100%; display: inline-block; text-align: left;"
-                ),
-                style = "text-align: center;"
-                )
-          ),
-          tagList(
-            uiOutput(ns("choose_number")),
-            column(6, actionButton(
-              ns("submit_btn"),
-                span(
-                  HTML("Weiter zum Übungsbereich"),
-                  bsicons::bs_icon("shuffle")
-                  ),
-              class = "btn-primary"
-              ))
-          ),
-          col_widths = c(8, 3), #height = 800, 
-        ))
+        style = "text-align: center;"
+      )
+    )
   )
+)
+
+
 }
 
 #' @title Item Selection Module Server
@@ -99,17 +130,20 @@ mod_select_item_server <- function(id, data_item, credentials) {
         select = "none",
         options = dt_options,
         rownames = TRUE,
-        style = "default",
+        style = "auto",
         width = "100%",
         height = "100%",
-        fillContainer = FALSE
-      )
+        fillContainer = FALSE,
+        class = "row-border"
+      ) |> DT::formatStyle(0:2, border = "none") |> DT::formatStyle(1, borderLeft = "1px solid #ddd") 
     })
+
 
     max_item <- reactive(length(data_handler$data_item$id_item))
     output$choose_number <- renderUI({
       tagList(
-        numericInput(ns("n_item"), label = "Bitte wähle die Anzahl an Aufgaben, die du üben möchtest.", value = NULL)
+        #numericInput(ns("n_item"), label = "Bitte wähle die Anzahl an Aufgaben, die du üben möchtest.", value = NULL)
+        shiny::sliderInput(ns("n_item"), label = "Bitte wähle die Anzahl an Aufgaben, die du üben möchtest.", min = 0, max = max_item(), value = ceiling(max_item() / 2), step = 1)
       )
     })
 
