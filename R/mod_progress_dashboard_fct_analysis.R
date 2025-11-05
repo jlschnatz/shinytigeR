@@ -28,7 +28,7 @@ response_analysis <- function(data_item, credentials, check_button) {
 
     db_get_userdata(as.character(credentials()$info$user_name)) |>
       dplyr::filter( !(id_item %in% missing_irt_pars) ) |>
-      dplyr::mutate(learning_area = forcats::fct_drop(learning_area)) |>
+      #dplyr::mutate(learning_area = forcats::fct_drop(learning_area)) |>
       dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppenvergleiche", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
   })
 
