@@ -1,21 +1,49 @@
 response_analysis <- function(data_item, credentials, check_button) {
   # Fetch user data everytime the check button is pressed
+ #user_data <- reactive({
+ #  # Fetch the user data from the SQLite database for the specific user
+ #  req(credentials()$user_auth)
+ #  # This line forces the reactive to re-evaluate whenever the button is clicked
+ #  check_button()
+
+ #  reali_item_vec <- data_item |>
+ #    dplyr::filter(item_source == "reali") |>
+ #    dplyr::pull(id_item)
+
+ #  db_get_userdata(as.character(credentials()$info$user_name)) |>
+ #    dplyr::filter( id_item %in% reali_item_vec) |>
+ #    dplyr::mutate(learning_area = forcats::fct_drop(learning_area)) |>
+ #    dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
+
+ #})
+
   user_data <- reactive({
     # Fetch the user data from the SQLite database for the specific user
     req(credentials()$user_auth)
     # This line forces the reactive to re-evaluate whenever the button is clicked
     check_button()
 
-    reali_item_vec <- data_item |>
-      dplyr::filter(item_source == "reali") |>
-      dplyr::pull(id_item)
+    # Identify items with missing IRT parameters
+    missing_irt_pars <- data_item[with(data_item, is.na(irt_discr) | is.na(irt_diff)), "id_item"]
 
     db_get_userdata(as.character(credentials()$info$user_name)) |>
-      dplyr::filter( id_item %in% reali_item_vec) |>
+      dplyr::filter( !(id_item %in% missing_irt_pars) ) |>
       dplyr::mutate(learning_area = forcats::fct_drop(learning_area)) |>
       dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
-
   })
+
+  ####
+
+#user_data |>
+  # drop duplicates
+  #dplyr::distinct() |>
+  # filter timestamp for first attempt for each item only
+  #dplyr::mutate(first_attempt = id_datetime == min(id_datetime), .by = id_item) |>
+  #dplyr::filter(first_attempt) 
+
+
+
+  ####
 
   # Feedback generation (estimate IRT scores theta)
   feedback_data_reactive <- reactive({
