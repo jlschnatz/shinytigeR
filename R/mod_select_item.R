@@ -23,6 +23,7 @@ shiny::tagList(
             li("Theoretische Fragen, die dein Verständnis der statistischen Konzepte testen,"),
             li("Aufgaben zur praktischen Anwendung in R. Du kannst die Fragen nach diesen beiden Kategorien filtern, um gezielt die Art von Aufgaben auszuwählen, die deinem individuellen Lernbedarf entsprechen.")
           ),
+          p("Bei Bedarf kannst du zusätzlich auch gezielt nach unbeantworteten Fragen filtern, wenn du nur diese üben möchtest."),
           p("Wenn du eine Auswahl getroffen hast, wird dir eine zufällige Auswahl innerhalb der ausgewählten Felder angezeigt, die du dann bearbeiten kannst. Du kannst jederzeit zurückkehren, um deine Auswahl zu ändern und neue Fragen zu üben. Viel Erfolg beim Lernen!")
         )
       )
@@ -46,8 +47,11 @@ shiny::tagList(
         "
       ),
       div(
-        uiOutput(ns("choose_number")),
-        style = "margin-bottom: 15px;"
+        fluidRow(
+        column(6, uiOutput(ns("choose_number"))),
+        column(6, uiOutput(ns("only_non_answered"))),
+        style = "margin-bottom: 5px;"
+        )
       ),
       div(
         actionButton(
@@ -147,6 +151,25 @@ mod_select_item_server <- function(id, data_item, credentials) {
       )
     })
 
+    output$only_non_answered <- renderUI({
+      shinyWidgets::prettySwitch(
+        inputId = ns("checked_only_non_answered"),
+        label = "Ausschließlich unbeantwortete Fragen auswählen",
+        value = FALSE
+      )
+    })
+
+    observeEvent(input$checked_only_non_answered, {
+      if(input$checked_only_non_answered) {
+        # if checked, filter out answered items
+        answered_items <- unique(db_get_userdata(as.character(credentials()$info$user_name))$id_item)
+        data_handler$data_item <- data_handler$data_item[!data_handler$data_item$id_item %in% answered_items, ]
+      } else {
+        # observe unchecking, reset data_item to checkbox selection
+        lapply(all_ids, function(x) update_bool_table(input, x, data_handler, data_item))
+      }
+    })
+
     observeEvent(
       eventExpr = input$submit_btn,
       handlerExpr = {
@@ -212,6 +235,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
     session = session, 
     input = input
     )
+  
 
   index_display <- shiny::reactive(safe_sample(as.integer(data_handler$data_item$id_item)))    
     
