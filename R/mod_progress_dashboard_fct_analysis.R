@@ -24,12 +24,12 @@ response_analysis <- function(data_item, credentials, check_button) {
     check_button()
 
     # Identify items with missing IRT parameters
-    missing_irt_pars <- data_item[with(data_item, is.na(irt_discr) | is.na(irt_diff)), "id_item"]
+    missing_irt_pars <- data_item[with(data_item, is.na(irt_discr) | is.na(irt_diff)), "id_item", drop = TRUE]
 
     db_get_userdata(as.character(credentials()$info$user_name)) |>
       dplyr::filter( !(id_item %in% missing_irt_pars) ) |>
       dplyr::mutate(learning_area = forcats::fct_drop(learning_area)) |>
-      dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
+      dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppenvergleiche", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
   })
 
   ####

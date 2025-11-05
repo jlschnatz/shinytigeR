@@ -33,6 +33,7 @@ Imports:
     jsonlite,
     knitr,
     magrittr,
+    markdown,
     pkgbuild,
     pool,
     processx (>= 3.8.2),

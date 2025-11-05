@@ -62,16 +62,9 @@ app_server <- function(input, output, session) {
 
   # Load Itemdata ----
   data_item <- db_get_itemdata(.drv = RSQLite::SQLite(), .db_name = "db_item.sqlite")  |>
-    dplyr::mutate(dplyr::across(stimulus_image:answeroption_06, ~ stringr::str_replace(.x, "www/", "www/img_item/")))  |>
-    dplyr::mutate(learning_area = forcats::fct(learning_area))  |>
-    dplyr::filter(!is.na(stimulus_text))  |>
-    dplyr::rowwise() |>
-    dplyr::ungroup() |>
+    dplyr::mutate(dplyr::across(stimulus_image:answeroption_06, ~stringr::str_replace(.x, "www/", "www/img_item/")))  |>
     dplyr::mutate(type_item = ifelse(type_item == "content", "Inhaltliche Aufgaben", "R-Aufgaben")) |>
-  #  dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
-    #dplyr::mutate(dplyr::across(ia_diff:irt_diff_se, ~readr::parse_number(.x, locale = readr::locale(decimal_mark = ",")))) |>
-    dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppentests", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
-
+    dplyr::mutate(learning_area = factor(learning_area, levels = c("Deskriptivstatistik", "Wahrscheinlichkeit", "Grundlagen der Inferenzstatistik", "Gruppenvergleiche", "Poweranalyse", "Zusammenhangsmaße", "Regression")))
 
   # Tab (Dis)-able Logic ----
 
