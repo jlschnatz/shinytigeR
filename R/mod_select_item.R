@@ -228,7 +228,7 @@ mod_select_item_server <- function(id, data_item, credentials) {
       shiny::observeEvent(
         eventExpr = input[[inputId]],
         handlerExpr = {
-          shiny::updateNumericInput(session, "n_item", label = paste0("Bitte wähle die Anzahl an Aufgaben, die du üben möchtest. (max. ", max_item(), ")"), value = ceiling(max_item() / 2))
+          shiny::updateNumericInput(session, "n_item", label = paste0("Bitte wähle die Anzahl an Aufgaben, die du üben möchtest."), value = ceiling(max_item() / 2))
         }
       )
       }, 
