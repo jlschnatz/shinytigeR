@@ -6,3 +6,4 @@
 .quarto
 db_user.sqlite
 .Renviron
+.vscode/

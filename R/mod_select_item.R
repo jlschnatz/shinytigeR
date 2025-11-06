@@ -14,7 +14,7 @@ shiny::tagList(
     # LEFT COLUMN
     column(
       4,
-      style = "padding-right: 30px; color: #333; font-size: 16px; line-height: 1.6;",
+      style = "padding-right: 30px; color: #333; font-size: 14px; line-height: 1.6;",
       shiny::withTags(
         div(
           p("Der aktuelle Fragenpool umfasst derzeit 116 Fragen aus den sieben gelisteten Themenbereichen, die sich an der Vorlesungstruktur orientieren."),
@@ -61,7 +61,7 @@ shiny::tagList(
             bsicons::bs_icon("shuffle")
           ),
           class = "btn-primary",
-          style = "width: 100%; margin-top: 10px; font-size: 16px; padding: 10px;"
+          style = "width: 100%; margin-top: 10px; font-size: 14px; padding: 10px;"
         ),
         style = "text-align: center;"
       )

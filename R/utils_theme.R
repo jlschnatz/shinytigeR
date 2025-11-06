@@ -1,5 +1,5 @@
 theme_tiger <- bslib::bs_theme(
-  preset = "cosmo",
+  preset = "united",
   "primary" = "#285f8a",
   "success" = "#285f8a",
   "danger" = "#D81B60",
