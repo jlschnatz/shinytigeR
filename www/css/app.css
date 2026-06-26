@@ -1,0 +1,210 @@
+/* ── CSS variables ─────────────────────────────────────────────────────────── */
+:root {
+  --tiger-primary:   #285f8a;
+  --tiger-correct:   #00618f;
+  --tiger-incorrect: #D81B60;
+  --tiger-skip:      #FFA000;
+  --anim-dur:        0.35s;
+}
+
+/* ── Shared animation ──────────────────────────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* Applied to any Shiny output that re-renders — gives every section a subtle
+   fade-in when content changes (answer options, feedback, dashboard).        */
+.shiny-html-output {
+  animation: fadeSlideIn var(--anim-dur) ease;
+}
+
+/* ── Navbar brand alignment ────────────────────────────────────────────────── */
+.navbar-brand {
+  display: flex !important;
+  align-items: center;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.navbar-brand img {
+  display: block;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.main-content {
+  width: 100%;
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
+}
+
+/* Dashboard fills full tab width — charts benefit from more horizontal space */
+.dashboard-wrap {
+  width: 100%;
+  padding: 0 2rem 2rem;
+  box-sizing: border-box;
+}
+
+/* ── Login page ────────────────────────────────────────────────────────────── */
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 3rem;
+  min-height: 80vh;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+}
+
+/* ── Chip-style checkbox group ─────────────────────────────────────────────── */
+.chip-group .form-check {
+  background-color: #f0f5fa;
+  border: 1.5px solid var(--tiger-primary);
+  border-radius: 20px;
+  padding: 4px 14px 4px 14px !important;
+  margin-right: 4px !important;
+  margin-bottom: 6px;
+  transition: background-color 0.15s, color 0.15s;
+  cursor: pointer;
+}
+
+.chip-group .form-check:has(input:checked) {
+  background-color: var(--tiger-primary);
+  color: white;
+}
+
+.chip-group .form-check input[type="checkbox"] {
+  display: none;
+}
+
+.chip-group .form-check label {
+  cursor: pointer;
+  margin-left: 0 !important;
+  margin-bottom: 0;
+  padding-left: 0 !important;
+  font-size: 0.9rem;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btn {
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s !important;
+}
+
+.btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* ── Answer options — interactive ──────────────────────────────────────────── */
+.answer-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+
+.answer-option:hover {
+  background-color: #f0f5fa;
+}
+
+.answer-option:has(input:disabled) {
+  cursor: default;
+}
+
+.answer-option:has(input:disabled):hover {
+  background-color: transparent;
+}
+
+.answer-label {
+  line-height: 1.4;
+}
+
+/* ── Checked radio color overrides (post-check) ────────────────────────────── */
+.form-check-input.radio-result-correct:checked {
+  background-color: var(--tiger-correct)   !important;
+  border-color:     var(--tiger-correct)   !important;
+}
+.form-check-input.radio-result-incorrect:checked {
+  background-color: var(--tiger-incorrect) !important;
+  border-color:     var(--tiger-incorrect) !important;
+}
+.form-check-input.radio-result-skip:checked {
+  background-color: var(--tiger-skip)      !important;
+  border-color:     var(--tiger-skip)      !important;
+}
+
+/* Text answers */
+.correct_answer_txt   { background-color: #e6f2f7; color: var(--tiger-correct);   font-weight: 600; }
+.incorrect_answer_txt { background-color: #fce4ec; color: var(--tiger-incorrect); font-weight: 600; }
+.skip_answer_txt      { background-color: #fff8e1; color: var(--tiger-skip);      font-weight: 600; }
+
+/* Image answers */
+.correct_answer_img   { outline: 3px solid var(--tiger-correct);   border-radius: 6px; }
+.incorrect_answer_img { outline: 3px solid var(--tiger-incorrect); border-radius: 6px; }
+.skip_answer_img      { outline: 3px solid var(--tiger-skip);      border-radius: 6px; }
+
+/* ── Feedback card ─────────────────────────────────────────────────────────── */
+.feedback-card {
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 12px 16px;
+  /* inherits fadeSlideIn from .shiny-html-output but also runs independently
+     in case it's added inside an already-rendered output               */
+  animation: fadeSlideIn var(--anim-dur) ease;
+}
+
+.feedback-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.feedback-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.feedback-body p:last-child { margin-bottom: 0; }
+
+/* ── Stimulus ──────────────────────────────────────────────────────────────── */
+.stimulus-text p { text-align: justify; line-height: 1.6; }
+
+.stimulus-img {
+  max-width: 100%;
+  max-height: 360px;
+  width: auto;
+  height: auto;
+  border-radius: 4px;
+}
+
+.answer-img {
+  max-width: 100%;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+.progress-bar {
+  background-color: var(--tiger-primary);
+  transition: width 0.4s ease;
+}
+
+/* ── Selector / practice panels ─────────────────────────────────────────────  */
+.selector-wrap,
+.practice-wrap  { padding-bottom: 2rem; }
+
+/* ── Dataset table ─────────────────────────────────────────────────────────── */
+.shiny-html-output table { font-size: 0.88rem; }

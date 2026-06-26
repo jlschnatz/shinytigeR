@@ -1,0 +1,10 @@
+Variable,Beschreibung
+alter,Das Alter der Studierenden.
+alleineSchlafen,"Informationen darüber, ob die Studierenden alleine schlafen, mit einem Partner, mit Kind, oder mit Partner und Kind."
+schlafumgebung,"Beschreibt die Schlafumgebung als ruhig, laut oder gemischt."
+schlafstoerungen,"Gibt an, ob die Studierenden unter spezifischen Schlafstörungen (Insomnie oder Schlafapnoe) leiden oder nicht."
+schlafqualitaet,Eine ordinal skalierte Bewertung der Schlafqualität von 1 (sehr schlecht) bis 5 (sehr gut).
+schlafdauer,Die durchschnittliche Schlafdauer pro Nacht in Stunden.
+durchschnittsnote,"Die durchschnittliche Note, auf einer Skala von 1.0 (sehr gut) bis 5.0 (ungenügend)."
+generellesWohlbefinden,Eine mittlere Bewertung des generellen Wohlbefindens von 1 (sehr niedrig) bis 7 (sehr hoch).
+sportlicheAktivitaet,"Die Anzahl der Minuten pro Woche, die für sportliche Aktivitäten aufgewendet wird."
