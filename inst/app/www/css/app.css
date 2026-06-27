@@ -23,8 +23,7 @@
 /* ── Hide protected nav tabs until authenticated ────────────────────────────── */
 .navbar-nav a[data-value="home_panel"],
 .navbar-nav a[data-value="train_panel"],
-.navbar-nav a[data-value="progress_panel"],
-.navbar-nav a[data-value="data_panel"] {
+.navbar-nav a[data-value="progress_panel"] {
   display: none;
 }
 

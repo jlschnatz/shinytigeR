@@ -21,17 +21,6 @@ app_server <- function(input, output, session) {
     active = reactive(credentials()$user_auth)
   )
 
-  # ── Dataset preview (no auth required) ────────────────────────────────────
-  data_sleep <- tryCatch(
-    read.csv(system.file("app/www/data_sleep.csv", package = "shinytigeR")),
-    error = function(e) data.frame()
-  )
-
-  output$sleep_preview <- renderTable({
-    if (nrow(data_sleep) == 0L) return(data.frame(Hinweis = "Datei nicht gefunden."))
-    head(data_sleep, 10L)
-  }, striped = TRUE, hover = TRUE, spacing = "s", width = "100%")
-
   # ── Static item data (loaded once) ────────────────────────────────────────
   data_item <- db_get_items()
 
@@ -40,7 +29,7 @@ app_server <- function(input, output, session) {
     if (!isTRUE(credentials()$user_auth)) return()
 
     # Reveal authenticated tabs; hide login; show logout button
-    protected <- c("home_panel", "train_panel", "progress_panel", "data_panel")
+    protected <- c("home_panel", "train_panel", "progress_panel")
     lapply(protected, function(p) {
       shinyjs::show(selector = sprintf('.navbar-nav a[data-value="%s"]', p))
     })

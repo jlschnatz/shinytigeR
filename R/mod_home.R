@@ -51,12 +51,31 @@ mod_home_ui <- function(id) {
         ),
         tags$hr(class = "my-4"),
         # ── Pool info + contact ────────────────────────────────────────────────
-        uiOutput(ns("pool_info")),
-        tags$p(
-          class = "text-muted small mb-0 mt-3",
-          bsicons::bs_icon("envelope"),
-          " Fragen oder Probleme? ",
-          tags$a(href = paste0("mailto:", CONTACT_EMAIL), CONTACT_EMAIL)
+        div(class = "d-flex flex-column gap-1 mt-3",
+          uiOutput(ns("pool_info")),
+          tags$p(
+            class = "text-muted mb-0",
+            bsicons::bs_icon("book"),
+            " Dokumentation der R-Datensätze: ",
+            tags$a(
+              href = "https://pandar.netlify.app/daten/datensaetze/",
+              target = "_blank",
+              "https://pandar.netlify.app/daten/datensaetze/"
+            )
+          ),
+          tags$p(
+            class = "text-muted mb-0",
+            bsicons::bs_icon("terminal"),
+            " R-Grundlagen üben: ",
+            tags$a(href = "https://meikesteinhilber.github.io/otter/",
+                   target = "_blank", "otter")
+          ),
+          tags$p(
+            class = "text-muted mb-0",
+            bsicons::bs_icon("envelope"),
+            " Fragen oder Probleme? ",
+            tags$a(href = paste0("mailto:", CONTACT_EMAIL), CONTACT_EMAIL)
+          )
         )
       )
     ),
@@ -89,7 +108,7 @@ mod_home_server <- function(id, data_item, credentials, go_train) {
       n_total <- nrow(data_item)
       n_areas <- length(unique(data_item$learning_area))
       tags$p(
-        class = "text-muted small mb-0",
+        class = "text-muted mb-0",
         bsicons::bs_icon("collection"),
         sprintf(
           " Der aktuelle Aufgabenpool umfasst %d Aufgaben aus %d Themenbereichen.",

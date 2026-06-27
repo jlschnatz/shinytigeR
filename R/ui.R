@@ -86,25 +86,6 @@ app_ui <- function() {
       mod_dashboard_ui("dashboard_1")
     ),
 
-    # ── Datenset ──────────────────────────────────────────────────────────────
-    bslib::nav_panel(
-      title = div(bsicons::bs_icon("database"), "Datenset"),
-      value = "data_panel",
-      div(class = "main-content",
-        tags$h5(class = "fw-bold", "tigeR-Datensatz"),
-        tags$p(
-          "Lade den Datensatz für R-Aufgaben mit:",
-          tags$br(),
-          tags$code('load(url("https://pandar.netlify.app/daten/df_tiger.rda"))')
-        ),
-        tags$p("Empfohlene Pakete: ",
-               tags$code("car"), " ", tags$code("WebPower")),
-        tags$hr(),
-        tags$h6(class = "fw-bold", "Codebuch (Vorschau)"),
-        tableOutput("sleep_preview")
-      )
-    ),
-
     # ── Spacer + Logout ───────────────────────────────────────────────────────
     bslib::nav_spacer(),
     bslib::nav_item(
