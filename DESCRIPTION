@@ -1,0 +1,29 @@
+Package: shinytigeR
+Title: Training mit individuell generierten Erfolgsrückmeldungen in R
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Jan Luca", "Schnatz", email = "janlucaschnatz@gmail.com",
+           role = c("aut", "cre")),
+    person("Julia", "Beitner", email = "Julia.Beitner@zi-mannheim.de", role = "aut"))
+Description: A Shiny web application for Goethe University psychology students
+    to practice statistics and R, with IRT-based skill estimation and
+    individualised feedback.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Suggests:
+    testthat (>= 3.0.0),
+    withr
+Imports:
+    shiny,
+    bslib,
+    bsicons,
+    shinyjs,
+    DBI,
+    RSQLite,
+    shinyauthr,
+    sodium,
+    ggplot2,
+    markdown,
+    scales

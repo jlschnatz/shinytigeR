@@ -1,0 +1,21 @@
+[project]
+name = "tigerv3"
+r_version = "4.5"
+
+repositories = [
+    { alias = "PPM", url = "https://packagemanager.posit.co/cran/latest" },
+    { alias = "CRAN", url = "https://cran.r-project.org" },
+]
+
+dependencies = [
+    "shiny",
+    "bslib",
+    "bsicons",
+    "shinyjs",
+    "DBI",
+    "RSQLite",
+    "shinyauthr",
+    "sodium",
+    "ggplot2",
+    "markdown",
+]

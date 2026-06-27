@@ -1,3 +1,6 @@
+#' App server
+#' @param input,output,session Shiny session objects.
+#' @export
 app_server <- function(input, output, session) {
 
   # ── Auth ────────────────────────────────────────────────────────────────────
@@ -20,7 +23,7 @@ app_server <- function(input, output, session) {
 
   # ── Dataset preview (no auth required) ────────────────────────────────────
   data_sleep <- tryCatch(
-    read.csv("www/data_sleep.csv"),
+    read.csv(system.file("app/www/data_sleep.csv", package = "shinytigeR")),
     error = function(e) data.frame()
   )
 

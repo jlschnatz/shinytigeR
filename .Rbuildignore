@@ -1,0 +1,6 @@
+^rv$
+^rproject\.toml$
+^deploy$
+^\.vscode$
+^dev$
+^db_.*\.sqlite$

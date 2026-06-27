@@ -1,3 +1,6 @@
+#' App UI
+#' @return A [bslib::page_navbar()] UI definition.
+#' @export
 app_ui <- function() {
   bslib::page_navbar(
     title = div(
@@ -31,25 +34,29 @@ app_ui <- function() {
       value = "login_panel",
       div(class = "login-page",
         div(class = "login-card",
-          div(class = "text-center mb-4",
-            tags$img(src = "img/tigeR_hex.png", height = "120px", class = "mb-3 d-block mx-auto"),
-            tags$h4(class = "fw-bold", "tigeR"),
-            tags$p(class = "text-muted", "Statistik & R üben mit individuellem Feedback")
+          # Header with hex logo + title on colored background
+          div(class = "login-card-header",
+            tags$img(src = "img/tigeR_hex.png", height = "90px",
+                     class = "d-block mx-auto mb-3"),
+            tags$h3(class = "fw-bold mb-1", "tigeR"),
+            tags$p(class = "mb-0 login-subtitle",
+                   "Statistik & R üben mit individuellem Feedback")
           ),
-          shinyauthr::loginUI(
-            id            = "login",
-            title         = NULL,
-            user_title    = "Benutzername",
-            pass_title    = "Passwort",
-            login_title   = "Einloggen",
-            error_message = "Ungültiger Benutzername oder Passwort.",
-            additional_ui = tagList(
-              tags$p(class = "text-muted small mt-2",
-                "Zugangsdaten erhältst du im Praktikum.",
-                tags$br(),
-                "Zum Ausprobieren: ",
-                tags$code("test"), " / ", tags$code("test123")
-              )
+          # Form area
+          div(class = "login-card-body",
+            shinyauthr::loginUI(
+              id            = "login",
+              title         = NULL,
+              user_title    = "Benutzername",
+              pass_title    = "Passwort",
+              login_title   = "Einloggen",
+              error_message = "Ungültiger Benutzername oder Passwort.",
+              additional_ui = NULL
+            ),
+            tags$p(class = "login-hint mt-3 mb-0",
+              bsicons::bs_icon("info-circle"),
+              " Zugangsdaten erhältst du im Praktikum. Zum Ausprobieren: ",
+              tags$code("test"), " / ", tags$code("test123")
             )
           )
         )

@@ -51,18 +51,86 @@
 .login-page {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding-top: 3rem;
-  min-height: 80vh;
+  align-items: center;
+  min-height: calc(100vh - 56px);
+  background: #fff;
+  padding: 2rem 1rem;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
   background: #fff;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #d8e3ec;
+  box-shadow: 0 2px 16px rgba(40, 95, 138, 0.08);
+}
+
+/* Colored top section with logo + title */
+.login-card-header {
+  background: linear-gradient(160deg, #1a4a6e 0%, #285f8a 100%);
+  color: #fff;
+  text-align: center;
+  padding: 2rem 2rem 1.75rem;
+}
+
+.login-subtitle {
+  font-size: 0.875rem;
+  opacity: 0.85;
+  color: #fff;
+}
+
+/* White form area */
+.login-card-body {
+  padding: 1.75rem 2rem 2rem;
+}
+
+/* Flatten shinyauthr's built-in well/card so it blends in */
+.login-card-body .well,
+.login-card-body .card,
+.login-card-body .card-body {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Make the login button full-width and use the brand color */
+.login-card-body .btn-primary {
+  width: 100%;
+  background-color: var(--tiger-primary) !important;
+  border-color: var(--tiger-primary) !important;
+  padding: 0.55rem;
+  font-weight: 600;
+  border-radius: 8px;
+  margin-top: 0.25rem;
+}
+
+.login-card-body .btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+/* Form inputs */
+.login-card-body .form-control {
+  border-radius: 8px;
+}
+
+.login-card-body .form-group { margin-bottom: 1rem; }
+
+/* Hint text at the bottom */
+.login-hint {
+  font-size: 0.8rem;
+  color: #6c757d;
+  line-height: 1.5;
+}
+
+.login-hint code {
+  background: #eef2f6;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.85em;
 }
 
 /* ── Chip-style checkbox group ─────────────────────────────────────────────── */
@@ -101,6 +169,23 @@
 
 .btn:not(:disabled):active {
   transform: scale(0.97);
+}
+
+/* Override Bootstrap green with a teal that sits between Goethe blue and the pink */
+.btn-success,
+.btn-success:focus {
+  background-color: #1a7a78 !important;
+  border-color:     #1a7a78 !important;
+  color: #fff !important;
+}
+.btn-success:hover {
+  background-color: #155f5d !important;
+  border-color:     #155f5d !important;
+}
+.btn-success:active,
+.btn-success.active {
+  background-color: #114d4b !important;
+  border-color:     #114d4b !important;
 }
 
 /* ── Answer options — interactive ──────────────────────────────────────────── */
@@ -148,9 +233,13 @@
 .skip_answer_txt      { background-color: #fff8e1; color: var(--tiger-skip);      font-weight: 600; }
 
 /* Image answers */
-.correct_answer_img   { outline: 3px solid var(--tiger-correct);   border-radius: 6px; }
-.incorrect_answer_img { outline: 3px solid var(--tiger-incorrect); border-radius: 6px; }
-.skip_answer_img      { outline: 3px solid var(--tiger-skip);      border-radius: 6px; }
+.correct_answer_img,
+.incorrect_answer_img,
+.skip_answer_img      { border-radius: 8px; padding: 6px 8px; }
+
+.correct_answer_img   { outline: 3px solid var(--tiger-correct);   }
+.incorrect_answer_img { outline: 3px solid var(--tiger-incorrect); }
+.skip_answer_img      { outline: 3px solid var(--tiger-skip);      }
 
 /* ── Feedback card ─────────────────────────────────────────────────────────── */
 .feedback-card {
@@ -208,3 +297,53 @@
 
 /* ── Dataset table ─────────────────────────────────────────────────────────── */
 .shiny-html-output table { font-size: 0.88rem; }
+
+/* ── Dashboard — competency table ───────────────────────────────────────────── */
+.dashboard-comp-table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6c757d;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dashboard-comp-table td { vertical-align: middle; font-size: 0.9rem; }
+
+/* ── Dashboard — recommendations ────────────────────────────────────────────── */
+.rec-item { align-items: flex-start; }
+
+.rec-num {
+  width: 1.6rem;
+  height: 1.6rem;
+  min-width: 1.6rem;
+  border-radius: 50%;
+  background: var(--tiger-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* ── Dashboard — practice-behaviour stats ───────────────────────────────────── */
+.practice-stat {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+
+.practice-stat-val {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--tiger-primary);
+  line-height: 1;
+}
+
+.practice-stat-lbl {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 2px;
+}

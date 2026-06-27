@@ -20,7 +20,7 @@ LEARNING_AREA_LABELS <- c(
 
 ITEM_TYPE_LABELS <- c(
   "Inhaltlich" = "content",
-  "R-Code"     = "r"
+  "R-Code"     = "coding"
 )
 
 PRIMARY_COLOR <- "#285f8a"
@@ -31,8 +31,13 @@ ANSWER_COLORS <- list(
   skip      = "#FFA000"
 )
 
-DB_ITEMS <- "db_item.sqlite"
-DB_USERS <- "db_user.sqlite"
-DB_CREDS <- "db_credentials.sqlite"
+.db_dir <- function() {
+  d <- Sys.getenv("TIGER_DB_DIR", unset = ".")
+  normalizePath(d, mustWork = FALSE)
+}
+
+DB_ITEMS <- function() file.path(.db_dir(), "db_item.sqlite")
+DB_USERS <- function() file.path(.db_dir(), "db_user.sqlite")
+DB_CREDS <- function() file.path(.db_dir(), "db_credentials.sqlite")
 
 CONTACT_EMAIL <- "schultze@psych.uni-frankfurt.de"

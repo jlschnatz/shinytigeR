@@ -1,0 +1,6 @@
+.rv/
+rv/
+db_credentials.sqlite
+db_user.sqlite
+db_item.sqlite
+.Rprofile
