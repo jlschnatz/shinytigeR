@@ -1,3 +1,4 @@
+
 /* ── CSS variables ─────────────────────────────────────────────────────────── */
 :root {
   --tiger-primary:   #285f8a;
@@ -34,9 +35,9 @@
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 .main-content {
   width: 100%;
-  max-width: 1000px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
+  max-width: 1400px;
+  margin: 1.5rem auto;
+  padding: 0 2rem;
   box-sizing: border-box;
 }
 
@@ -294,6 +295,85 @@
 /* ── Selector / practice panels ─────────────────────────────────────────────  */
 .selector-wrap,
 .practice-wrap  { padding-bottom: 2rem; }
+
+.selector-wrap .card-header { font-size: 1.05rem; }
+
+/* ── Checkbox matrix ────────────────────────────────────────────────────────── */
+.sel-matrix-wrap {
+  overflow-x: auto;
+}
+
+.sel-matrix {
+  border-collapse: collapse;
+  font-size: 1.05rem;
+  table-layout: auto;
+  width: 100%;
+}
+
+.sel-matrix th,
+.sel-matrix td {
+  border: 1px solid #dee2e6;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.8rem 1rem;
+}
+
+.sel-matrix .sel-corner     { background-color: #f8f9fa; }
+.sel-matrix .sel-row-header { background-color: #f8f9fa; text-align: left; white-space: nowrap; }
+.sel-matrix .sel-col-header { background-color: #f8f9fa; }
+.sel-matrix .sel-cell       { background-color: #fff; }
+
+.sel-col-label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  cursor: pointer;
+}
+
+.sel-row-label {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-left: 0.6rem;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* Options row sizing */
+.sel-options-row .form-group { margin-bottom: 0; }
+
+.sel-options-row input[type="number"] {
+  font-size: 1.05rem;
+  padding: 0.45rem 0.6rem;
+  height: auto;
+}
+
+.sel-options-row .form-check-label {
+  font-size: 1.05rem;
+}
+
+.sel-options-row .form-check-input {
+  width: 2.2em;
+  height: 1.15em;
+  margin-top: 0.15em;
+}
+
+/* Keep avail_info inline within the flex options row */
+.sel-avail-info,
+.sel-avail-info .shiny-html-output {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+  font-size: 1.05rem;
+}
+
+.sel-cb {
+  cursor: pointer;
+  width: 1.3rem;
+  height: 1.3rem;
+  vertical-align: middle;
+  accent-color: var(--tiger-primary);
+}
 
 /* ── Dataset table ─────────────────────────────────────────────────────────── */
 .shiny-html-output table { font-size: 0.88rem; }
