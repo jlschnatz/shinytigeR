@@ -4,3 +4,4 @@
 ^\.vscode$
 ^dev$
 ^db_.*\.sqlite$
+^LICENSE\.md$
