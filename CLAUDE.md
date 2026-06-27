@@ -40,7 +40,7 @@ Dependencies are managed with [`rv`](https://github.com/A2-ai/rv), a Rust-based 
 rv sync        # install/update packages to match rv.lock
 rv add <pkg>   # add a package and update rv.lock
 rv remove <pkg>
-rv run Rscript inst/app/app.R   # run with the rv-managed library on PATH
+rv run dev/run.R                # run with the rv-managed library on PATH
 ```
 
 Do **not** edit `rv.lock` by hand. The `rv/` directory is the local package library (arm64/macOS dev); it is gitignored and not part of the built package.
@@ -66,12 +66,13 @@ app_v3/
 │   ├── utils.R            # markdown/math rendering + answer helpers
 │   ├── ui.R               # app_ui() — top-level page_navbar layout
 │   ├── server.R           # app_server() — wires auth + all modules
+│   ├── mod_home.R         # module: home/landing panel (post-login)
 │   ├── mod_selector.R     # module: item filter/selection UI
 │   ├── mod_practice.R     # module: item display + answer checking
 │   └── mod_dashboard.R    # module: progress dashboard
 │
 ├── inst/app/
-│   ├── app.R              # loaded by runApp(); calls library(shinytigeR) + addResourcePath
+│   ├── app.R              # loaded by runApp(); skips library() if already loaded via load_all(); registers addResourcePath
 │   └── www/
 │       ├── css/app.css    # all custom CSS
 │       ├── img/           # logo files (tigeR_hex.png, tiger_logo_white.png, favicon.png)
@@ -95,13 +96,27 @@ app_v3/
 
 ### Module flow
 
-The app has three Shiny modules wired together in `server.R`:
+The app has four Shiny modules wired together in `server.R`:
 
-```
-mod_selector  ──(practice_ids)──►  mod_practice  ──(write_trigger)──►  mod_dashboard
-   filter/pick items                 display + check                    show progress
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#e8f0f7', 'primaryBorderColor': '#285f8a', 'primaryTextColor': '#1a1a1a', 'lineColor': '#285f8a', 'edgeLabelBackground': '#ffffff', 'clusterBkg': '#f8f9fa', 'clusterBorder': '#dee2e6'}}}%%
+flowchart LR
+    auth([Login]) --> home
+
+    subgraph server.R
+        home[mod_home\nlanding]
+        sel[mod_selector\nfilter / pick]
+        prac[mod_practice\ndisplay + check]
+        dash[mod_dashboard\nprogress]
+    end
+
+    home -->|go_train| sel
+    sel  -->|practice_ids| prac
+    prac -->|write_trigger| dash
+    prac -->|practice_ids = NULL| sel
 ```
 
+- **`go_train`** is a plain callback function passed to `mod_home`. When the "Jetzt üben" button is clicked it calls `bslib::nav_select()` using the app-level session (captured in `server.R` via closure) to navigate to the train panel.
 - **`practice_ids`** (`reactiveVal(NULL)`) is the only piece of shared cross-module state. `NULL` means show the selector; an integer vector of item IDs means show the practice module. It lives in `server.R` and is passed by reference to both `mod_selector` and `mod_practice`.
 - **`write_trigger`** (`reactiveVal(0L)`) is incremented by `mod_practice` after every confirmed DB write. `mod_dashboard` uses it to invalidate its user-data cache without being directly coupled to the practice module.
 
@@ -191,6 +206,14 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `build_response_row(item, answer_idx, user_id, session_token)` | Constructs the `data.frame` row written to `db_user.sqlite` |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
+
+### `R/mod_home.R`
+
+Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation, pool stats, and links to pandar dataset documentation, otter (R practice), and the contact email. The "Jetzt üben" button calls the `go_train` callback passed from `server.R`, which uses `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
+
+### `R/mod_selector.R`
+
+Renders a **checkbox matrix** (rows = item types, columns = learning areas) built from plain `tags$input`/`tags$label` HTML — not `checkboxInput()` — so the layout is fully controlled via CSS (`.sel-matrix`, `.sel-cb`, `.sel-col-label`, `.sel-row-label`). Row headers and column headers act as select-all toggles for their row/column; a corner checkbox selects all. The reactivity is flat: cell checkboxes → `selected_combos()` → `filtered_items()` → `avail_info` output + submit handler. No `reactiveValues` bool matrix; each cell is read directly via `input[[paste0("cell_", i, "_", j)]]`.
 
 ### `R/mod_practice.R`
 
@@ -301,13 +324,16 @@ Key CSS classes to be aware of when changing layout:
 
 | Class | Purpose |
 |---|---|
-| `.main-content` | Centers practice/selector content, `max-width: 1000px` |
+| `.main-content` | Centers practice/selector/home content, `max-width: 1400px` |
 | `.dashboard-wrap` | Full-width dashboard container, `padding: 0 2rem 2rem` |
 | `.login-page` / `.login-card` / `.login-card-header` / `.login-card-body` | Login page layout |
-| `.chip-group` | Chip-style checkbox group (`:has(input:checked)` for toggle appearance) |
+| `.home-steps` / `.home-step` / `.home-step-num` | Home panel numbered steps layout |
+| `.sel-matrix` / `.sel-cb` / `.sel-col-label` / `.sel-row-label` | Checkbox matrix in selector |
+| `.sel-options-row` | Flex row containing number input, avail info, and toggle |
+| `.practice-answers-section` | Gray tinted answers area below stimulus in practice card |
 | `.answer-option` | Per-answer radio row; hover suppressed post-check via `:has(input:disabled)` |
 | `.radio-result-correct/incorrect/skip` | Post-check radio fill color (requires `!important`) |
-| `.feedback-card` | Per-answer feedback block with colored left border |
+| `.feedback-card` | Per-answer feedback block with colored left border and shadow |
 | `.practice-stat` / `.practice-stat-val` / `.practice-stat-lbl` | Dashboard practice behaviour grid cells |
 | `.dashboard-comp-table` | Competency map table in dashboard |
 | `.rec-num` | Circular number badge in recommendations card |
