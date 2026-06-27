@@ -20,6 +20,14 @@
   animation: fadeSlideIn var(--anim-dur) ease;
 }
 
+/* ── Hide protected nav tabs until authenticated ────────────────────────────── */
+.navbar-nav a[data-value="home_panel"],
+.navbar-nav a[data-value="train_panel"],
+.navbar-nav a[data-value="progress_panel"],
+.navbar-nav a[data-value="data_panel"] {
+  display: none;
+}
+
 /* ── Navbar brand alignment ────────────────────────────────────────────────── */
 .navbar-brand {
   display: flex !important;
@@ -289,6 +297,33 @@
 .progress-bar {
   background-color: var(--tiger-primary);
   transition: width 0.4s ease;
+}
+
+/* ── Home panel ─────────────────────────────────────────────────────────────  */
+.home-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.home-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.home-step-num {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--tiger-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ── Selector / practice panels ─────────────────────────────────────────────  */

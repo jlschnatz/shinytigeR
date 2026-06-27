@@ -40,13 +40,13 @@ app_server <- function(input, output, session) {
     if (!isTRUE(credentials()$user_auth)) return()
 
     # Reveal authenticated tabs; hide login; show logout button
-    protected <- c("train_panel", "progress_panel", "data_panel")
+    protected <- c("home_panel", "train_panel", "progress_panel", "data_panel")
     lapply(protected, function(p) {
       shinyjs::show(selector = sprintf('.navbar-nav a[data-value="%s"]', p))
     })
     shinyjs::hide(selector = '.navbar-nav a[data-value="login_panel"]')
     shinyjs::show("logout_wrap")
-    bslib::nav_select("main_tabs", "train_panel")
+    bslib::nav_select("main_tabs", "home_panel")
 
     # ── Shared state ─────────────────────────────────────────────────────────
     # practice_ids: NULL = show selector; integer vector = show practice
@@ -65,6 +65,14 @@ app_server <- function(input, output, session) {
     })
 
     # ── Module wiring ─────────────────────────────────────────────────────────
+    app_session <- session
+    mod_home_server(
+      "home_1",
+      data_item   = data_item,
+      credentials = credentials,
+      go_train    = function() bslib::nav_select("main_tabs", "train_panel", session = app_session)
+    )
+
     mod_selector_server(
       "selector_1",
       data_item    = data_item,

@@ -40,4 +40,4 @@ DB_ITEMS <- function() file.path(.db_dir(), "db_item.sqlite")
 DB_USERS <- function() file.path(.db_dir(), "db_user.sqlite")
 DB_CREDS <- function() file.path(.db_dir(), "db_credentials.sqlite")
 
-CONTACT_EMAIL <- "schultze@psych.uni-frankfurt.de"
+CONTACT_EMAIL <- "tiger@psych.uni-frankfurt.de"

@@ -63,6 +63,13 @@ app_ui <- function() {
       )
     ),
 
+    # ── Start ─────────────────────────────────────────────────────────────────
+    bslib::nav_panel(
+      title = div(bsicons::bs_icon("house-fill"), "Start"),
+      value = "home_panel",
+      mod_home_ui("home_1")
+    ),
+
     # ── Üben ──────────────────────────────────────────────────────────────────
     bslib::nav_panel(
       title = div(bsicons::bs_icon("ui-radios"), "Üben"),
