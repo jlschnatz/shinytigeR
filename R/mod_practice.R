@@ -10,7 +10,8 @@ mod_practice_ui <- function(id) {
         # Stimulus — only re-renders when item changes, NOT on check
         shiny::withMathJax(uiOutput(ns("item_stimulus"))),
         # Answers + feedback — re-renders on check; MathJax re-typesets only here
-        div(class = "practice-answers-section",
+        div(
+          class = "practice-answers-section",
           shiny::withMathJax(uiOutput(ns("item_answers")))
         )
       )

@@ -1,6 +1,8 @@
 db_with <- function(path, fn, wal = FALSE) {
   con <- DBI::dbConnect(RSQLite::SQLite(), path)
-  if (wal) DBI::dbExecute(con, "PRAGMA journal_mode=WAL;")
+  if (wal) {
+    DBI::dbExecute(con, "PRAGMA journal_mode=WAL;")
+  }
   on.exit(DBI::dbDisconnect(con), add = TRUE)
   fn(con)
 }
@@ -20,25 +22,39 @@ db_get_items <- function(path = DB_ITEMS()) {
 }
 
 db_get_userdata <- function(user_id, path = DB_USERS()) {
-  db_with(path, function(con) {
-    if (!DBI::dbExistsTable(con, user_id)) return(data.frame())
-    DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', user_id))
-  }, wal = TRUE)
+  db_with(
+    path,
+    function(con) {
+      if (!DBI::dbExistsTable(con, user_id)) {
+        return(data.frame())
+      }
+      DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', user_id))
+    },
+    wal = TRUE
+  )
 }
 
 db_user_exists <- function(user_id, path = DB_USERS()) {
-  db_with(path, function(con) {
-    DBI::dbExistsTable(con, user_id)
-  }, wal = TRUE)
+  db_with(
+    path,
+    function(con) {
+      DBI::dbExistsTable(con, user_id)
+    },
+    wal = TRUE
+  )
 }
 
 db_write_response <- function(user_id, df, path = DB_USERS()) {
-  db_with(path, function(con) {
-    if (!DBI::dbExistsTable(con, user_id)) {
-      DBI::dbCreateTable(con, user_id, df)
-    }
-    DBI::dbAppendTable(con, user_id, df)
-  }, wal = TRUE)
+  db_with(
+    path,
+    function(con) {
+      if (!DBI::dbExistsTable(con, user_id)) {
+        DBI::dbCreateTable(con, user_id, df)
+      }
+      DBI::dbAppendTable(con, user_id, df)
+    },
+    wal = TRUE
+  )
 }
 
 db_get_credentials <- function(path = DB_CREDS()) {

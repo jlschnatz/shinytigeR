@@ -12,16 +12,16 @@ test_that("competency_label returns 'Keine Daten' when theta is NA", {
 })
 
 test_that("competency_label maps theta correctly to all four levels", {
-  expect_equal(competency_label(1.5,  5L)$label, "Stark")
-  expect_equal(competency_label(0.5,  5L)$label, "Gut entwickelt")
+  expect_equal(competency_label(1.5, 5L)$label, "Stark")
+  expect_equal(competency_label(0.5, 5L)$label, "Gut entwickelt")
   expect_equal(competency_label(-0.3, 5L)$label, "Entwickelt sich")
   expect_equal(competency_label(-1.0, 5L)$label, "Übungsbedarf")
 })
 
 test_that("competency_label levels are strictly ordered", {
   lvl <- function(theta) competency_label(theta, n_unique = 5L)$level
-  expect_gt(lvl(1.5),  lvl(0.5))
-  expect_gt(lvl(0.5),  lvl(-0.3))
+  expect_gt(lvl(1.5), lvl(0.5))
+  expect_gt(lvl(0.5), lvl(-0.3))
   expect_gt(lvl(-0.3), lvl(-1.0))
 })
 
@@ -37,20 +37,20 @@ test_that("competency_label thresholds are exact (boundary values)", {
 # ── evidence_label ────────────────────────────────────────────────────────────
 
 test_that("evidence_label maps n_unique to correct tiers", {
-  expect_equal(evidence_label(0L)$label,  "–")
-  expect_equal(evidence_label(1L)$label,  "Niedrig")
-  expect_equal(evidence_label(2L)$label,  "Niedrig")
-  expect_equal(evidence_label(3L)$label,  "Mittel")
-  expect_equal(evidence_label(7L)$label,  "Mittel")
-  expect_equal(evidence_label(8L)$label,  "Hoch")
-  expect_equal(evidence_label(100L)$label,"Hoch")
+  expect_equal(evidence_label(0L)$label, "–")
+  expect_equal(evidence_label(1L)$label, "Niedrig")
+  expect_equal(evidence_label(2L)$label, "Niedrig")
+  expect_equal(evidence_label(3L)$label, "Mittel")
+  expect_equal(evidence_label(7L)$label, "Mittel")
+  expect_equal(evidence_label(8L)$label, "Hoch")
+  expect_equal(evidence_label(100L)$label, "Hoch")
 })
 
 test_that("evidence_label dot count matches tier", {
-  expect_equal(evidence_label(0L)$dots,  0L)
-  expect_equal(evidence_label(1L)$dots,  1L)
-  expect_equal(evidence_label(3L)$dots,  2L)
-  expect_equal(evidence_label(8L)$dots,  3L)
+  expect_equal(evidence_label(0L)$dots, 0L)
+  expect_equal(evidence_label(1L)$dots, 1L)
+  expect_equal(evidence_label(3L)$dots, 2L)
+  expect_equal(evidence_label(8L)$dots, 3L)
 })
 
 # ── rolling_mean_k ────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ test_that("rolling_mean_k uses expanding window at the start", {
 })
 
 test_that("rolling_mean_k converges to mean over full window once k items seen", {
-  x      <- c(1, 0, 1, 0, 1, 0)  # alternating, mean = 0.5
+  x <- c(1, 0, 1, 0, 1, 0) # alternating, mean = 0.5
   result <- rolling_mean_k(x, k = 4L)
   # From position 4 onward the window is full
   expect_equal(result[4], mean(x[1:4]))
@@ -91,22 +91,28 @@ test_that("rolling_mean_k handles length-1 input", {
 make_comp <- function(thetas = rep(NA_real_, length(LEARNING_AREA_LEVELS))) {
   data.frame(
     learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
-    theta         = thetas,
-    n_items       = rep(0L, length(LEARNING_AREA_LEVELS)),
+    theta = thetas,
+    n_items = rep(0L, length(LEARNING_AREA_LEVELS)),
     stringsAsFactors = FALSE
   )
 }
 
 test_that("recommend_next returns empty list when all areas are well-covered", {
   comp <- make_comp(thetas = rep(1.0, length(LEARNING_AREA_LEVELS)))
-  n_unique <- setNames(rep(10L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+  n_unique <- setNames(
+    rep(10L, length(LEARNING_AREA_LEVELS)),
+    LEARNING_AREA_LEVELS
+  )
   recs <- recommend_next(comp, n_unique)
   expect_length(recs, 0L)
 })
 
 test_that("recommend_next puts no-data areas first", {
-  comp     <- make_comp()
-  n_unique <- setNames(rep(0L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+  comp <- make_comp()
+  n_unique <- setNames(
+    rep(0L, length(LEARNING_AREA_LEVELS)),
+    LEARNING_AREA_LEVELS
+  )
   # Give one area enough data and a good theta so it doesn't appear
   n_unique[["Regression"]] <- 10L
   comp$theta[comp$learning_area == "Regression"] <- 1.5
@@ -120,8 +126,11 @@ test_that("recommend_next puts no-data areas first", {
 })
 
 test_that("recommend_next puts low-evidence areas before low-theta areas", {
-  comp     <- make_comp(thetas = rep(0.0, length(LEARNING_AREA_LEVELS)))
-  n_unique <- setNames(rep(10L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+  comp <- make_comp(thetas = rep(0.0, length(LEARNING_AREA_LEVELS)))
+  n_unique <- setNames(
+    rep(10L, length(LEARNING_AREA_LEVELS)),
+    LEARNING_AREA_LEVELS
+  )
 
   # One area has very low theta → should recommend
   comp$theta[comp$learning_area == "Regression"] <- -2.0
@@ -131,7 +140,7 @@ test_that("recommend_next puts low-evidence areas before low-theta areas", {
   recs <- recommend_next(comp, n_unique)
   areas <- vapply(recs, `[[`, character(1), "area")
 
-  power_pos     <- which(areas == "Poweranalyse")
+  power_pos <- which(areas == "Poweranalyse")
   regression_pos <- which(areas == "Regression")
 
   # Low evidence (priority 20) should rank above low theta (priority ~50)
@@ -139,10 +148,13 @@ test_that("recommend_next puts low-evidence areas before low-theta areas", {
 })
 
 test_that("recommend_next preserves ordering by priority", {
-  comp     <- make_comp()
-  n_unique <- setNames(rep(0L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+  comp <- make_comp()
+  n_unique <- setNames(
+    rep(0L, length(LEARNING_AREA_LEVELS)),
+    LEARNING_AREA_LEVELS
+  )
 
-  recs       <- recommend_next(comp, n_unique)
+  recs <- recommend_next(comp, n_unique)
   priorities <- vapply(recs, `[[`, integer(1), "priority")
   expect_equal(priorities, sort(priorities))
 })

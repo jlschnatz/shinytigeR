@@ -39,7 +39,7 @@ test_that("protect_math_delimiters leaves inline code spans untouched", {
 })
 
 test_that("protect_math_delimiters handles text with no math unchanged (no $ signs)", {
-  input  <- "Just plain text with no math."
+  input <- "Just plain text with no math."
   result <- protect_math_delimiters(input)
   expect_equal(result, input)
 })
@@ -69,7 +69,11 @@ make_item <- function(n_options = 4, correct = 1L, type = "text") {
     key <- paste0("answeroption_0", i)
     item[[key]] <- if (i <= n_options) paste0("Option ", i) else NA_character_
     key2 <- paste0("if_answeroption_0", i)
-    item[[key2]] <- if (i <= n_options) paste0("Feedback ", i) else NA_character_
+    item[[key2]] <- if (i <= n_options) {
+      paste0("Feedback ", i)
+    } else {
+      NA_character_
+    }
   }
   item
 }
@@ -107,11 +111,15 @@ test_that("evaluate_answer returns 'incorrect' for wrong non-skip options", {
 
 test_that("build_response_row produces correct columns and types", {
   item <- make_item(n_options = 4, correct = 1L)
-  item$id_item      <- 42L
+  item$id_item <- 42L
   item$learning_area <- "Regression"
 
-  row <- build_response_row(item, answer_idx = 1L, user_id = "user1",
-                            session_token = "tok")
+  row <- build_response_row(
+    item,
+    answer_idx = 1L,
+    user_id = "user1",
+    session_token = "tok"
+  )
 
   expect_s3_class(row, "data.frame")
   expect_equal(nrow(row), 1L)
@@ -123,20 +131,30 @@ test_that("build_response_row produces correct columns and types", {
 
 test_that("build_response_row marks skipped correctly", {
   item <- make_item(n_options = 4, correct = 1L)
-  item$id_item       <- 1L
+  item$id_item <- 1L
   item$learning_area <- "Regression"
 
-  row <- build_response_row(item, answer_idx = 4L, user_id = "u", session_token = "s")
+  row <- build_response_row(
+    item,
+    answer_idx = 4L,
+    user_id = "u",
+    session_token = "s"
+  )
   expect_true(row$skipped)
   expect_true(is.na(row$bool_correct))
 })
 
 test_that("build_response_row marks incorrect correctly", {
   item <- make_item(n_options = 4, correct = 1L)
-  item$id_item       <- 1L
+  item$id_item <- 1L
   item$learning_area <- "Regression"
 
-  row <- build_response_row(item, answer_idx = 2L, user_id = "u", session_token = "s")
+  row <- build_response_row(
+    item,
+    answer_idx = 2L,
+    user_id = "u",
+    session_token = "s"
+  )
   expect_false(row$skipped)
   expect_false(isTRUE(row$bool_correct))
 })

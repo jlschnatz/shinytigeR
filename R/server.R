@@ -2,22 +2,21 @@
 #' @param input,output,session Shiny session objects.
 #' @export
 app_server <- function(input, output, session) {
-
   # ── Auth ────────────────────────────────────────────────────────────────────
   user_base <- db_get_credentials()
 
   credentials <- shinyauthr::loginServer(
-    id               = "login",
-    data             = user_base,
-    user_col         = "user_name",
-    pwd_col          = "password_hashed",
-    sodium_hashed    = TRUE,
+    id = "login",
+    data = user_base,
+    user_col = "user_name",
+    pwd_col = "password_hashed",
+    sodium_hashed = TRUE,
     reload_on_logout = TRUE,
-    log_out          = reactive(logout_init())
+    log_out = reactive(logout_init())
   )
 
   logout_init <- shinyauthr::logoutServer(
-    id     = "logout",
+    id = "logout",
     active = reactive(credentials()$user_auth)
   )
 
@@ -26,7 +25,9 @@ app_server <- function(input, output, session) {
 
   # ── Post-login setup — runs exactly once per authenticated session ─────────
   observeEvent(credentials()$user_auth, {
-    if (!isTRUE(credentials()$user_auth)) return()
+    if (!isTRUE(credentials()$user_auth)) {
+      return()
+    }
 
     # Reveal authenticated tabs; hide login; show logout button
     protected <- c("home_panel", "train_panel", "progress_panel")
@@ -57,30 +58,32 @@ app_server <- function(input, output, session) {
     app_session <- session
     mod_home_server(
       "home_1",
-      data_item   = data_item,
+      data_item = data_item,
       credentials = credentials,
-      go_train    = function() bslib::nav_select("main_tabs", "train_panel", session = app_session)
+      go_train = function() {
+        bslib::nav_select("main_tabs", "train_panel", session = app_session)
+      }
     )
 
     mod_selector_server(
       "selector_1",
-      data_item    = data_item,
+      data_item = data_item,
       practice_ids = practice_ids,
-      credentials  = credentials
+      credentials = credentials
     )
 
     mod_practice_server(
       "practice_1",
-      data_item     = data_item,
-      practice_ids  = practice_ids,
-      credentials   = credentials,
+      data_item = data_item,
+      practice_ids = practice_ids,
+      credentials = credentials,
       write_trigger = write_trigger
     )
 
     mod_dashboard_server(
       "dashboard_1",
-      data_item     = data_item,
-      credentials   = credentials,
+      data_item = data_item,
+      credentials = credentials,
       write_trigger = write_trigger
     )
   })

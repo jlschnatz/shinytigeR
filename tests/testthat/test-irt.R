@@ -9,16 +9,16 @@ test_that("prob_2pl is 0.5 when theta equals difficulty", {
 })
 
 test_that("prob_2pl increases with theta (higher ability → higher probability)", {
-  p_low  <- prob_2pl(theta = -2, a = 1, b = 0)
-  p_mid  <- prob_2pl(theta =  0, a = 1, b = 0)
-  p_high <- prob_2pl(theta =  2, a = 1, b = 0)
+  p_low <- prob_2pl(theta = -2, a = 1, b = 0)
+  p_mid <- prob_2pl(theta = 0, a = 1, b = 0)
+  p_high <- prob_2pl(theta = 2, a = 1, b = 0)
   expect_lt(p_low, p_mid)
   expect_lt(p_mid, p_high)
 })
 
 test_that("prob_2pl is more discriminating with higher a", {
   # Higher discrimination → steeper curve → larger difference around b
-  diff_flat  <- prob_2pl(1, a = 0.5, b = 0) - prob_2pl(-1, a = 0.5, b = 0)
+  diff_flat <- prob_2pl(1, a = 0.5, b = 0) - prob_2pl(-1, a = 0.5, b = 0)
   diff_steep <- prob_2pl(1, a = 2.0, b = 0) - prob_2pl(-1, a = 2.0, b = 0)
   expect_gt(diff_steep, diff_flat)
 })
@@ -38,7 +38,7 @@ test_that("estimate_theta recovers ability from unambiguous response patterns", 
   # Mixed, harder items wrong → near zero
   theta_mid <- estimate_theta(c(1, 1, 1, 0, 0), a, b)
   expect_gt(theta_mid, -1)
-  expect_lt(theta_mid,  1)
+  expect_lt(theta_mid, 1)
 })
 
 test_that("estimate_theta is bounded to [-3, 3]", {
@@ -62,15 +62,15 @@ test_that("estimate_competency returns one row per learning area", {
   n_areas <- length(LEARNING_AREA_LEVELS)
 
   responses <- data.frame(
-    id_item      = 1:3,
+    id_item = 1:3,
     learning_area = LEARNING_AREA_LEVELS[c(1, 1, 2)],
-    bool_correct  = c(TRUE, FALSE, TRUE),
+    bool_correct = c(TRUE, FALSE, TRUE),
     stringsAsFactors = FALSE
   )
   items <- data.frame(
-    id_item    = 1:3,
-    irt_discr  = c(1, 1, 1),
-    irt_diff   = c(0, 0, 0),
+    id_item = 1:3,
+    irt_discr = c(1, 1, 1),
+    irt_diff = c(0, 0, 0),
     stringsAsFactors = FALSE
   )
 
@@ -82,15 +82,15 @@ test_that("estimate_competency returns one row per learning area", {
 
 test_that("estimate_competency returns NA theta for areas with no responses", {
   responses <- data.frame(
-    id_item       = 1L,
+    id_item = 1L,
     learning_area = LEARNING_AREA_LEVELS[1],
-    bool_correct  = TRUE,
+    bool_correct = TRUE,
     stringsAsFactors = FALSE
   )
   items <- data.frame(
-    id_item   = 1L,
+    id_item = 1L,
     irt_discr = 1,
-    irt_diff  = 0,
+    irt_diff = 0,
     stringsAsFactors = FALSE
   )
 
@@ -104,15 +104,15 @@ test_that("estimate_competency returns NA theta for areas with no responses", {
 
 test_that("estimate_competency excludes items with missing IRT parameters", {
   responses <- data.frame(
-    id_item       = 1L,
+    id_item = 1L,
     learning_area = LEARNING_AREA_LEVELS[1],
-    bool_correct  = TRUE,
+    bool_correct = TRUE,
     stringsAsFactors = FALSE
   )
   items <- data.frame(
-    id_item   = 1L,
+    id_item = 1L,
     irt_discr = NA_real_,
-    irt_diff  = 0,
+    irt_diff = 0,
     stringsAsFactors = FALSE
   )
 

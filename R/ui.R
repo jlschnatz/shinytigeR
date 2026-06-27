@@ -8,17 +8,17 @@ app_ui <- function() {
       tags$img(src = "img/tiger_logo_white.png", height = "26px"),
       tags$b("tigeR", class = "fw-bolder")
     ),
-    id             = "main_tabs",
+    id = "main_tabs",
     navbar_options = bslib::navbar_options(
       collapsible = TRUE,
-      bg          = PRIMARY_COLOR,
-      underline   = FALSE
+      bg = PRIMARY_COLOR,
+      underline = FALSE
     ),
     theme = bslib::bs_theme(
-      version     = 5,
-      primary     = PRIMARY_COLOR,
-      font_scale  = 1.0,
-      base_font   = bslib::font_google("Source Sans 3")
+      version = 5,
+      primary = PRIMARY_COLOR,
+      font_scale = 1.0,
+      base_font = bslib::font_google("Source Sans 3")
     ),
     header = tagList(
       shinyjs::useShinyjs(),
@@ -32,31 +32,43 @@ app_ui <- function() {
     bslib::nav_panel(
       title = div(bsicons::bs_icon("lock-fill"), "Login"),
       value = "login_panel",
-      div(class = "login-page",
-        div(class = "login-card",
+      div(
+        class = "login-page",
+        div(
+          class = "login-card",
           # Header with hex logo + title on colored background
-          div(class = "login-card-header",
-            tags$img(src = "img/tigeR_hex.png", height = "90px",
-                     class = "d-block mx-auto mb-3"),
+          div(
+            class = "login-card-header",
+            tags$img(
+              src = "img/tigeR_hex.png",
+              height = "90px",
+              class = "d-block mx-auto mb-3"
+            ),
             tags$h3(class = "fw-bold mb-1", "tigeR"),
-            tags$p(class = "mb-0 login-subtitle",
-                   "Statistik & R üben mit individuellem Feedback")
+            tags$p(
+              class = "mb-0 login-subtitle",
+              "Statistik & R üben mit individuellem Feedback"
+            )
           ),
           # Form area
-          div(class = "login-card-body",
+          div(
+            class = "login-card-body",
             shinyauthr::loginUI(
-              id            = "login",
-              title         = NULL,
-              user_title    = "Benutzername",
-              pass_title    = "Passwort",
-              login_title   = "Einloggen",
+              id = "login",
+              title = NULL,
+              user_title = "Benutzername",
+              pass_title = "Passwort",
+              login_title = "Einloggen",
               error_message = "Ungültiger Benutzername oder Passwort.",
               additional_ui = NULL
             ),
-            tags$p(class = "login-hint mt-3 mb-0",
+            tags$p(
+              class = "login-hint mt-3 mb-0",
               bsicons::bs_icon("info-circle"),
               " Zugangsdaten erhältst du im Praktikum. Zum Ausprobieren: ",
-              tags$code("test"), " / ", tags$code("test123")
+              tags$code("test"),
+              " / ",
+              tags$code("test123")
             )
           )
         )
@@ -74,9 +86,7 @@ app_ui <- function() {
     bslib::nav_panel(
       title = div(bsicons::bs_icon("ui-radios"), "Üben"),
       value = "train_panel",
-      div(class = "main-content",
-        uiOutput("train_view")
-      )
+      div(class = "main-content", uiOutput("train_view"))
     ),
 
     # ── Fortschritt ───────────────────────────────────────────────────────────
@@ -90,10 +100,15 @@ app_ui <- function() {
     bslib::nav_spacer(),
     bslib::nav_item(
       shinyjs::hidden(
-        div(id = "logout_wrap", style = "padding: 6px 0;",
-          shinyauthr::logoutUI("logout", label = "Ausloggen",
-                               class = "btn-sm btn-outline-light",
-                               icon  = shiny::icon("right-from-bracket"))
+        div(
+          id = "logout_wrap",
+          style = "padding: 6px 0;",
+          shinyauthr::logoutUI(
+            "logout",
+            label = "Ausloggen",
+            class = "btn-sm btn-outline-light",
+            icon = shiny::icon("right-from-bracket")
+          )
         )
       )
     )

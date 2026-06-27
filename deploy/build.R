@@ -9,34 +9,44 @@
 #
 # After this, run:  docker build --platform linux/amd64 -t shinytiger deploy/
 
-if (!requireNamespace("dockerfiler", quietly = TRUE))
+if (!requireNamespace("dockerfiler", quietly = TRUE)) {
   install.packages("dockerfiler", repos = "https://cloud.r-project.org")
-if (!requireNamespace("jsonlite", quietly = TRUE))
+}
+if (!requireNamespace("jsonlite", quietly = TRUE)) {
   install.packages("jsonlite", repos = "https://cloud.r-project.org")
+}
 
 pkg_root <- normalizePath(".", mustWork = TRUE)
-deploy   <- file.path(pkg_root, "deploy")
+deploy <- file.path(pkg_root, "deploy")
 
 # ── 1. Read package names from rv.lock ────────────────────────────────────────
 lock_path <- file.path(pkg_root, "rv.lock")
 lock_text <- readLines(lock_path)
-pkgs      <- sub('^name = "([^"]+)".*', "\\1",
-                 grep('^name = "', lock_text, value = TRUE))
-pkgs      <- unique(pkgs)
+pkgs <- sub(
+  '^name = "([^"]+)".*',
+  "\\1",
+  grep('^name = "', lock_text, value = TRUE)
+)
+pkgs <- unique(pkgs)
 message(sprintf("Found %d packages in rv.lock", length(pkgs)))
 
 # ── 2. Query Posit PPM sysreqs API ────────────────────────────────────────────
-ppm_root    <- "https://packagemanager.posit.co"
+ppm_root <- "https://packagemanager.posit.co"
 ppm_repo_id <- 1
-distro      <- "ubuntu"
-release     <- "22.04"
+distro <- "ubuntu"
+release <- "22.04"
 
 query_url <- paste0(
-  ppm_root, "/__api__/repos/", ppm_repo_id,
+  ppm_root,
+  "/__api__/repos/",
+  ppm_repo_id,
   "/sysreqs?all=false",
-  "&distribution=", distro,
-  "&release=", release,
-  "&pkgname=", paste(pkgs, collapse = "&pkgname=")
+  "&distribution=",
+  distro,
+  "&release=",
+  release,
+  "&pkgname=",
+  paste(pkgs, collapse = "&pkgname=")
 )
 
 message("Querying Posit PPM sysreqs API...")
@@ -52,10 +62,15 @@ all_apt <- unique(sort(unlist(lapply(
   resp$requirements,
   function(r) r$requirements$packages
 ))))
-message("System deps: ", if (length(all_apt)) paste(all_apt, collapse = ", ") else "(none)")
+message(
+  "System deps: ",
+  if (length(all_apt)) paste(all_apt, collapse = ", ") else "(none)"
+)
 
 fmt_apt <- function(pkgs) {
-  if (length(pkgs) == 0L) return("echo 'No system deps needed'")
+  if (length(pkgs) == 0L) {
+    return("echo 'No system deps needed'")
+  }
   paste0(
     "apt-get update -qq && \\\n",
     "  apt-get install -y --no-install-recommends \\\n",
@@ -125,21 +140,39 @@ writeLines(
 message("Dockerfile written to ", dockerfile_path)
 
 # ── 4. Document + build tarball ───────────────────────────────────────────────
-old_tarballs <- list.files(deploy, pattern = "shinytigeR_.*\\.tar\\.gz", full.names = TRUE)
+old_tarballs <- list.files(
+  deploy,
+  pattern = "shinytigeR_.*\\.tar\\.gz",
+  full.names = TRUE
+)
 if (length(old_tarballs)) {
   file.remove(old_tarballs)
   message("Removed: ", paste(basename(old_tarballs), collapse = ", "))
 }
 message("Documenting and building tarball...")
-system2("Rscript", c(
-  "-e", shQuote(paste0(
-    "roxygen2::roxygenise('", pkg_root, "'); ",
-    "setwd('", pkg_root, "'); ",
-    "system('R CMD build --no-build-vignettes .')"
-  ))
-))
-tarballs <- list.files(pkg_root, pattern = "shinytigeR_.*\\.tar\\.gz", full.names = TRUE)
-if (length(tarballs) == 0L) stop("R CMD build did not produce a tarball")
+system2(
+  "Rscript",
+  c(
+    "-e",
+    shQuote(paste0(
+      "roxygen2::roxygenise('",
+      pkg_root,
+      "'); ",
+      "setwd('",
+      pkg_root,
+      "'); ",
+      "system('R CMD build --no-build-vignettes .')"
+    ))
+  )
+)
+tarballs <- list.files(
+  pkg_root,
+  pattern = "shinytigeR_.*\\.tar\\.gz",
+  full.names = TRUE
+)
+if (length(tarballs) == 0L) {
+  stop("R CMD build did not produce a tarball")
+}
 tarball <- tarballs[order(file.info(tarballs)$mtime, decreasing = TRUE)[1]]
 file.rename(tarball, file.path(deploy, basename(tarball)))
 message("Built: ", basename(tarball))

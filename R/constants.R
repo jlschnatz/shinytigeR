@@ -9,26 +9,26 @@ LEARNING_AREA_LEVELS <- c(
 )
 
 LEARNING_AREA_LABELS <- c(
-  "Deskriptiv"   = "Deskriptivstatistik",
+  "Deskriptiv" = "Deskriptivstatistik",
   "Wahrscheinl." = "Wahrscheinlichkeit",
-  "Inferenz"     = "Grundlagen der Inferenzstatistik",
-  "Gruppen"      = "Gruppenvergleiche",
-  "Power"        = "Poweranalyse",
+  "Inferenz" = "Grundlagen der Inferenzstatistik",
+  "Gruppen" = "Gruppenvergleiche",
+  "Power" = "Poweranalyse",
   "Zusammenhang" = "Zusammenhangsmaße",
-  "Regression"   = "Regression"
+  "Regression" = "Regression"
 )
 
 ITEM_TYPE_LABELS <- c(
   "Inhaltlich" = "content",
-  "R-Code"     = "coding"
+  "R-Code" = "coding"
 )
 
 PRIMARY_COLOR <- "#285f8a"
 
 ANSWER_COLORS <- list(
-  correct   = "#00618f",
+  correct = "#00618f",
   incorrect = "#D81B60",
-  skip      = "#FFA000"
+  skip = "#FFA000"
 )
 
 .db_dir <- function() {

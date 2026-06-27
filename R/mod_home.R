@@ -51,7 +51,8 @@ mod_home_ui <- function(id) {
         ),
         tags$hr(class = "my-4"),
         # ── Pool info + contact ────────────────────────────────────────────────
-        div(class = "d-flex flex-column gap-1 mt-3",
+        div(
+          class = "d-flex flex-column gap-1 mt-3",
           uiOutput(ns("pool_info")),
           tags$p(
             class = "text-muted mb-0",
@@ -67,8 +68,11 @@ mod_home_ui <- function(id) {
             class = "text-muted mb-0",
             bsicons::bs_icon("terminal"),
             " R-Grundlagen üben: ",
-            tags$a(href = "https://meikesteinhilber.github.io/otter/",
-                   target = "_blank", "otter")
+            tags$a(
+              href = "https://meikesteinhilber.github.io/otter/",
+              target = "_blank",
+              "otter"
+            )
           ),
           tags$p(
             class = "text-muted mb-0",
