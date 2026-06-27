@@ -1,6 +1,6 @@
 [project]
 name = "tigerv3"
-r_version = "4.5"
+r_version = "4.6"
 
 repositories = [
     { alias = "PPM", url = "https://packagemanager.posit.co/cran/latest" },

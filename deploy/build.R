@@ -78,8 +78,8 @@ rv_install_cmd <- paste0(
   "  rm /tmp/rv.tar.gz"
 )
 
-df <- dockerfiler::Dockerfile$new(FROM = "rocker/r-ver:4.5")
-df$custom("FROM --platform=linux/amd64 rocker/r-ver:4.5", cmd = "")
+df <- dockerfiler::Dockerfile$new(FROM = "rocker/r-ver:4.6")
+df$custom("FROM --platform=linux/amd64 rocker/r-ver:4.6", cmd = "")
 df$RUN(fmt_apt(c("curl", all_apt)))
 df$RUN(rv_install_cmd)
 # WORKDIR must be set before rv sync so rv knows the project root

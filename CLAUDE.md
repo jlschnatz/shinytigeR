@@ -380,12 +380,12 @@ The `--platform linux/amd64` flag is required when building on Apple Silicon; wi
 
 ### Dockerfile structure (multi-stage)
 
-**Stage 1 — builder (`rocker/r-ver:4.5`)**
+**Stage 1 — builder (`rocker/r-ver:4.6`)**
 - Installs apt dev headers (libsodium-dev, etc.) and build tools
 - Downloads the latest `rv` binary from GitHub releases (x86_64 Linux)
 - Runs `rv sync --locked` to install all R packages into the system library
 
-**Stage 2 — runtime (`rocker/r-ver:4.5`)**
+**Stage 2 — runtime (`rocker/r-ver:4.6`)**
 - Copies the installed R library from the builder stage (no dev headers in the final image)
 - Installs the `shinytigeR` tarball with `R -e 'install.packages(...)'`
 - Creates user `beitner` (uid 1002, gid 1003) for ShinyProxy
