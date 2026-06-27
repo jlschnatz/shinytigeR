@@ -9,9 +9,10 @@ mod_practice_ui <- function(id) {
       bslib::card_body(
         # Stimulus — only re-renders when item changes, NOT on check
         shiny::withMathJax(uiOutput(ns("item_stimulus"))),
-        tags$hr(class = "my-3"),
         # Answers + feedback — re-renders on check; MathJax re-typesets only here
-        shiny::withMathJax(uiOutput(ns("item_answers")))
+        div(class = "practice-answers-section",
+          shiny::withMathJax(uiOutput(ns("item_answers")))
+        )
       )
     ),
     # ── Action buttons ────────────────────────────────────────────────────────
@@ -244,7 +245,7 @@ mod_practice_server <- function(
                   tags$img(
                     src = choices[i],
                     class = "img-fluid answer-img",
-                    style = if (!is_sel) "opacity:0.5;" else NULL
+                    style = if (!is_sel) "opacity:0.65;" else NULL
                   )
                 )
               )
@@ -266,7 +267,7 @@ mod_practice_server <- function(
                 tags$label(
                   `for` = id_i,
                   class = "ms-2 answer-label",
-                  style = if (!is_sel) "opacity:0.5;" else NULL,
+                  style = if (!is_sel) "opacity:0.65;" else NULL,
                   shiny::HTML(render_md(choices[i]))
                 )
               )

@@ -244,11 +244,10 @@
 
 /* ── Feedback card ─────────────────────────────────────────────────────────── */
 .feedback-card {
-  background: #fafafa;
+  background: #fff;
   border-radius: 6px;
   padding: 12px 16px;
-  /* inherits fadeSlideIn from .shiny-html-output but also runs independently
-     in case it's added inside an already-rendered output               */
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
   animation: fadeSlideIn var(--anim-dur) ease;
 }
 
@@ -297,6 +296,13 @@
 .practice-wrap  { padding-bottom: 2rem; }
 
 .selector-wrap .card-header { font-size: 1.05rem; }
+
+.practice-answers-section {
+  background-color: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+  margin: 0.5rem -1rem -1rem -1rem;
+  padding: 1rem 1rem 1rem;
+}
 
 /* ── Checkbox matrix ────────────────────────────────────────────────────────── */
 .sel-matrix-wrap {
