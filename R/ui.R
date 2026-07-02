@@ -24,7 +24,12 @@ app_ui <- function() {
       shinyjs::useShinyjs(),
       tags$head(
         tags$link(rel = "stylesheet", href = "css/app.css"),
-        tags$link(rel = "icon", type = "image/png", href = "img/favicon.png")
+        tags$link(rel = "icon", type = "image/png", href = "img/favicon.png"),
+        tags$script(shiny::HTML(
+          "Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {",
+          "  if (window.MathJax) MathJax.Hub.Queue(['Typeset', MathJax.Hub]);",
+          "});"
+        ))
       )
     ),
 

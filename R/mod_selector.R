@@ -1,23 +1,32 @@
-mod_selector_ui <- function(id) {
+mod_selector_ui <- function(id, data_item) {
   ns <- NS(id)
 
-  area_keys <- names(LEARNING_AREA_LABELS) # short display labels
-  area_vals <- unname(LEARNING_AREA_LABELS) # DB values
-  type_keys <- names(ITEM_TYPE_LABELS) # "Inhaltlich", "R-Code"
+  area_keys <- names(LEARNING_AREA_LABELS)
+  area_vals <- unname(LEARNING_AREA_LABELS)
+  type_keys <- names(ITEM_TYPE_LABELS)
+  type_vals <- unname(ITEM_TYPE_LABELS)
   n_areas <- length(area_keys)
   n_types <- length(type_keys)
 
-  # Raw checkbox helper — Shiny binds any <input type="checkbox"> by id
-  cb <- function(input_id, checked = TRUE) {
+  # Total item counts per cell — static, used only to disable permanently empty cells
+  total_counts <- outer(
+    seq_len(n_types),
+    seq_len(n_areas),
+    Vectorize(function(i, j) {
+      sum(data_item$type_item == type_vals[i] & data_item$learning_area == area_vals[j])
+    })
+  )
+
+  cb <- function(input_id, checked = TRUE, disabled = FALSE) {
     tags$input(
       type = "checkbox",
       id = input_id,
       class = "sel-cb",
-      checked = if (checked) NA else NULL
+      checked = if (checked && !disabled) NA else NULL,
+      disabled = if (disabled) NA else NULL
     )
   }
 
-  # Header row: "select-all" corner + one col header per learning area
   header_cells <- tagList(
     tags$th(class = "sel-corner", cb(ns("all"))),
     lapply(seq_len(n_areas), function(j) {
@@ -33,7 +42,6 @@ mod_selector_ui <- function(id) {
     })
   )
 
-  # Data rows: one per item type
   data_rows <- lapply(seq_len(n_types), function(i) {
     tags$tr(
       tags$th(
@@ -46,7 +54,12 @@ mod_selector_ui <- function(id) {
         )
       ),
       lapply(seq_len(n_areas), function(j) {
-        tags$td(class = "sel-cell", cb(ns(paste0("cell_", i, "_", j))))
+        empty <- total_counts[i, j] == 0L
+        tags$td(
+          class = paste("sel-cell", if (empty) "sel-cell-empty" else ""),
+          cb(ns(paste0("cell_", i, "_", j)), checked = !empty, disabled = empty),
+          uiOutput(ns(paste0("count_", i, "_", j)), class = "sel-count-wrap")
+        )
       })
     )
   })
@@ -120,7 +133,7 @@ mod_selector_ui <- function(id) {
   )
 }
 
-mod_selector_server <- function(id, data_item, practice_ids, credentials) {
+mod_selector_server <- function(id, data_item, practice_ids, credentials, write_trigger) {
   moduleServer(id, function(input, output, session) {
     area_vals <- unname(LEARNING_AREA_LABELS)
     type_vals <- unname(ITEM_TYPE_LABELS)
@@ -180,7 +193,7 @@ mod_selector_server <- function(id, data_item, practice_ids, credentials) {
     # ── Derived state ─────────────────────────────────────────────────────────
 
     answered_ids <- reactive({
-      credentials()$user_auth
+      write_trigger()
       uid <- credentials()$info$user_name
       ud <- db_get_userdata(uid)
       if (nrow(ud) == 0L) {
@@ -188,6 +201,35 @@ mod_selector_server <- function(id, data_item, practice_ids, credentials) {
       }
       unique(as.integer(ud$id_item))
     })
+
+    # ── Per-cell counts — reactive to only_new toggle ─────────────────────────
+    pool_new <- reactive({
+      ids <- answered_ids()
+      if (isTRUE(input$only_new)) {
+        data_item[!data_item$id_item %in% ids, , drop = FALSE]
+      } else {
+        data_item
+      }
+    })
+
+    for (i in seq_len(n_types)) {
+      for (j in seq_len(n_areas)) {
+        local({
+          ii <- i
+          jj <- j
+          tv <- type_vals[ii]
+          av <- area_vals[jj]
+          output[[paste0("count_", ii, "_", jj)]] <- renderUI({
+            pool <- pool_new()
+            n <- sum(pool$type_item == tv & pool$learning_area == av)
+            tags$span(
+              class = paste("sel-count", if (n == 0L) "sel-count-empty" else ""),
+              n
+            )
+          })
+        })
+      }
+    }
 
     # Collect selected (area, type) combinations from the cell checkboxes
     selected_combos <- reactive({
@@ -254,6 +296,15 @@ mod_selector_server <- function(id, data_item, practice_ids, credentials) {
       if (nrow(fi) == 0L || is.na(n_want) || n_want < 1L) {
         showNotification("Keine Aufgaben für diese Auswahl.", type = "warning")
         return()
+      }
+      n_avail <- nrow(fi)
+      if (n_want > n_avail) {
+        showNotification(
+          sprintf("Nur %d Aufgaben verfügbar — %d werden geladen.", n_avail, n_avail),
+          type = "message",
+          duration = 4
+        )
+        n_want <- n_avail
       }
       practice_ids(safe_sample(as.integer(fi$id_item), size = n_want))
     })

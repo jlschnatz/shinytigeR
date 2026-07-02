@@ -48,7 +48,7 @@ app_server <- function(input, output, session) {
     # ── Train view — switches between selector and practice ───────────────────
     output$train_view <- renderUI({
       if (is.null(practice_ids())) {
-        mod_selector_ui("selector_1")
+        mod_selector_ui("selector_1", data_item)
       } else {
         mod_practice_ui("practice_1")
       }
@@ -69,7 +69,8 @@ app_server <- function(input, output, session) {
       "selector_1",
       data_item = data_item,
       practice_ids = practice_ids,
-      credentials = credentials
+      credentials = credentials,
+      write_trigger = write_trigger
     )
 
     mod_practice_server(

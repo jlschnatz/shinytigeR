@@ -9,11 +9,11 @@ competency_label <- function(theta, n_unique) {
       level = 0L
     ))
   }
-  if (theta > 1.0) {
+  if (theta > IRT_THETA_HIGH) {
     list(label = "Stark", bg = "#d1ecf1", fg = "#00618f", level = 4L)
-  } else if (theta > 0.0) {
+  } else if (theta > IRT_THETA_MED) {
     list(label = "Gut entwickelt", bg = "#d4edda", fg = "#1a6b3c", level = 3L)
-  } else if (theta > -0.5) {
+  } else if (theta > IRT_THETA_LOW) {
     list(label = "Entwickelt sich", bg = "#fff3cd", fg = "#856404", level = 2L)
   } else {
     list(label = "Übungsbedarf", bg = "#fce4ec", fg = "#D81B60", level = 1L)
@@ -21,9 +21,9 @@ competency_label <- function(theta, n_unique) {
 }
 
 evidence_label <- function(n_unique) {
-  if (n_unique >= 8L) {
+  if (n_unique >= EVIDENCE_HIGH) {
     list(label = "Hoch", dots = 3L, color = "#198754")
-  } else if (n_unique >= 3L) {
+  } else if (n_unique >= EVIDENCE_MED) {
     list(label = "Mittel", dots = 2L, color = "#fd7e14")
   } else if (n_unique >= 1L) {
     list(label = "Niedrig", dots = 1L, color = "#dc3545")
@@ -81,7 +81,7 @@ recommend_next <- function(comp, n_unique_vec) {
         priority = 10L,
         reason = "Noch keine Aufgaben bearbeitet"
       )
-    } else if (n < 3L) {
+    } else if (n < EVIDENCE_MED) {
       list(
         area = area,
         priority = 20L,
@@ -91,7 +91,7 @@ recommend_next <- function(comp, n_unique_vec) {
           if (n == 1L) "" else "n"
         )
       )
-    } else if (!is.na(theta) && theta < -0.5) {
+    } else if (!is.na(theta) && theta < IRT_THETA_LOW) {
       list(
         area = area,
         priority = as.integer(30L + round(theta * -10L)),

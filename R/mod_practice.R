@@ -110,30 +110,26 @@ mod_practice_server <- function(
       item <- current_item()
       req(nrow(item) == 1L)
       item <- as.list(item[1, ])
-      tagList(
-        div(
-          class = "stimulus mb-2",
-          if (
-            !is.na(item$stimulus_text) && nzchar(trimws(item$stimulus_text))
-          ) {
-            div(
-              class = "stimulus-text",
-              shiny::HTML(render_md(item$stimulus_text))
+      session$sendCustomMessage("mathjax_typeset", TRUE)
+      div(
+        class = "stimulus mb-2",
+        if (
+          !is.na(item$stimulus_text) && nzchar(trimws(item$stimulus_text))
+        ) {
+          div(
+            class = "stimulus-text",
+            shiny::HTML(render_md(item$stimulus_text))
+          )
+        },
+        if (!is.na(item$stimulus_image) && nzchar(item$stimulus_image)) {
+          div(
+            class = "text-center my-3",
+            tags$img(
+              src = item$stimulus_image,
+              class = "img-fluid stimulus-img"
             )
-          },
-          if (!is.na(item$stimulus_image) && nzchar(item$stimulus_image)) {
-            div(
-              class = "text-center my-3",
-              tags$img(
-                src = item$stimulus_image,
-                class = "img-fluid stimulus-img"
-              )
-            )
-          }
-        ),
-        tags$script(shiny::HTML(
-          "if (window.MathJax) MathJax.Hub.Queue(['Typeset', MathJax.Hub]);"
-        ))
+          )
+        }
       )
     })
 
@@ -290,12 +286,8 @@ mod_practice_server <- function(
         )
       }
 
-      tagList(
-        div(class = "answer-options", answers_ui),
-        tags$script(shiny::HTML(
-          "if (window.MathJax) MathJax.Hub.Queue(['Typeset', MathJax.Hub]);"
-        ))
-      )
+      session$sendCustomMessage("mathjax_typeset", TRUE)
+      div(class = "answer-options", answers_ui)
     })
 
     # ── Answer selection — enable check button ─────────────────────────────────
@@ -309,7 +301,7 @@ mod_practice_server <- function(
 
     # ── Reset button state when moving to a new item ──────────────────────────
     observeEvent(
-      list(state$pos, practice_ids()),
+      state$pos,
       {
         state$checked <- FALSE
         state$answer_id <- NULL
@@ -317,6 +309,19 @@ mod_practice_server <- function(
         shinyjs::hide("next_item")
         shinyjs::show("check")
       },
+      ignoreInit = TRUE
+    )
+
+    observeEvent(
+      practice_ids(),
+      {
+        state$checked <- FALSE
+        state$answer_id <- NULL
+        shinyjs::disable("check")
+        shinyjs::hide("next_item")
+        shinyjs::show("check")
+      },
+      ignoreNULL = TRUE,
       ignoreInit = TRUE
     )
 

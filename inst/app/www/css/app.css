@@ -14,9 +14,8 @@
   to   { opacity: 1; transform: translateY(0);   }
 }
 
-/* Applied to any Shiny output that re-renders — gives every section a subtle
-   fade-in when content changes (answer options, feedback, dashboard).        */
-.shiny-html-output {
+/* Fade-in for practice item content on each render */
+.practice-wrap .shiny-html-output {
   animation: fadeSlideIn var(--anim-dur) ease;
 }
 
@@ -42,7 +41,7 @@
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 .main-content {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1100px;
   margin: 1.5rem auto;
   padding: 0 2rem;
   box-sizing: border-box;
@@ -331,11 +330,16 @@
 
 .selector-wrap .card-header { font-size: 1.05rem; }
 
+.practice-wrap .card-body {
+  min-height: 300px;
+}
+
 .practice-answers-section {
   background-color: #f8f9fa;
   border-radius: 0 0 8px 8px;
   margin: 0.5rem -1rem -1rem -1rem;
   padding: 1rem 1rem 1rem;
+  min-height: 120px;
 }
 
 /* ── Checkbox matrix ────────────────────────────────────────────────────────── */
@@ -413,6 +417,33 @@
   height: 1.3rem;
   vertical-align: middle;
   accent-color: var(--tiger-primary);
+}
+
+.sel-count-wrap,
+.sel-count-wrap .shiny-html-output {
+  display: block;
+  line-height: 1;
+  margin-top: 3px;
+}
+
+.sel-count {
+  display: block;
+  font-size: 0.7rem;
+  color: #6c757d;
+  line-height: 1;
+}
+
+.sel-count-empty {
+  color: #ced4da;
+}
+
+.sel-cell-empty {
+  background-color: #f8f9fa !important;
+}
+
+.sel-cell-empty .sel-cb {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 /* ── Dataset table ─────────────────────────────────────────────────────────── */

@@ -41,3 +41,12 @@ DB_USERS <- function() file.path(.db_dir(), "db_user.sqlite")
 DB_CREDS <- function() file.path(.db_dir(), "db_credentials.sqlite")
 
 CONTACT_EMAIL <- "tiger@psych.uni-frankfurt.de"
+
+# IRT competency thresholds (theta)
+IRT_THETA_HIGH    <-  1.0
+IRT_THETA_MED     <-  0.0
+IRT_THETA_LOW     <- -0.5
+
+# Evidence strength thresholds (unique items per area)
+EVIDENCE_HIGH     <-  8L
+EVIDENCE_MED      <-  3L
