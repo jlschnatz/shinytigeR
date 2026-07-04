@@ -140,6 +140,21 @@
   font-size: 0.85em;
 }
 
+/* ── Registration form ─────────────────────────────────────────────────────── */
+.reg-error {
+  color: var(--tiger-incorrect);
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  line-height: 1.4;
+}
+
+.reg-success {
+  color: #1a7a78;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  line-height: 1.4;
+}
+
 /* ── Chip-style checkbox group ─────────────────────────────────────────────── */
 .chip-group .form-check {
   background-color: #f0f5fa;

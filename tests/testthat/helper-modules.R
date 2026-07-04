@@ -40,6 +40,26 @@ fake_credentials <- function(user = "testuser") {
   ))
 }
 
+# Build a named list of cell_i_j inputs for mod_selector_server.
+# Pass area_vals / type_vals to select specific subsets; NULL means all.
+selector_cell_inputs <- function(
+  area_vals  = unname(LEARNING_AREA_LABELS),
+  type_vals  = unname(ITEM_TYPE_LABELS),
+  n_items    = 10L,
+  only_new   = FALSE
+) {
+  all_areas <- unname(LEARNING_AREA_LABELS)
+  all_types <- unname(ITEM_TYPE_LABELS)
+  inputs <- list(n_items = n_items, only_new = only_new)
+  for (i in seq_along(all_types)) {
+    for (j in seq_along(all_areas)) {
+      key <- paste0("cell_", i, "_", j)
+      inputs[[key]] <- all_types[i] %in% type_vals && all_areas[j] %in% area_vals
+    }
+  }
+  inputs
+}
+
 # Build a temp SQLite user DB pre-populated with response rows
 make_user_db <- function(
   user = "testuser",

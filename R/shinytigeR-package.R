@@ -9,10 +9,10 @@ utils::globalVariables(c("item_num", "roll_acc", "area_short"))
 #' @import bsicons
 #' @import shinyjs
 #' @import ggplot2
-#' @importFrom DBI dbConnect dbDisconnect dbReadTable dbWriteTable dbExistsTable dbListTables
+#' @importFrom DBI dbConnect dbDisconnect dbReadTable dbWriteTable dbExistsTable dbListTables dbGetQuery dbExecute dbAppendTable dbCreateTable
 #' @importFrom RSQLite SQLite
 #' @importFrom shinyauthr loginUI loginServer logoutUI logoutServer
-#' @importFrom sodium password_verify
+#' @importFrom sodium password_verify password_store
 #' @importFrom markdown markdownToHTML
 #' @importFrom scales label_percent
 #' @importFrom stats optim setNames

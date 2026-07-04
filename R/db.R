@@ -1,9 +1,12 @@
 db_with <- function(path, fn, wal = FALSE) {
   con <- DBI::dbConnect(RSQLite::SQLite(), path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
   if (wal) {
     DBI::dbExecute(con, "PRAGMA journal_mode=WAL;")
+    # Wait up to 5 s before returning SQLITE_BUSY, instead of failing instantly.
+    # Matters when two sessions write concurrently (e.g. simultaneous registrations).
+    DBI::dbExecute(con, "PRAGMA busy_timeout=5000;")
   }
-  on.exit(DBI::dbDisconnect(con), add = TRUE)
   fn(con)
 }
 
@@ -60,5 +63,39 @@ db_write_response <- function(user_id, df, path = DB_USERS()) {
 db_get_credentials <- function(path = DB_CREDS()) {
   db_with(path, function(con) {
     DBI::dbGetQuery(con, "SELECT * FROM credentials_db")
+  })
+}
+
+db_username_exists <- function(username, path = DB_CREDS()) {
+  db_with(path, function(con) {
+    res <- DBI::dbGetQuery(
+      con,
+      "SELECT COUNT(*) AS n FROM credentials_db WHERE user_name = ?",
+      params = list(username)
+    )
+    res$n > 0L
+  })
+}
+
+db_register_user <- function(username, password_plain, path = DB_CREDS()) {
+  db_with(path, wal = TRUE, function(con) {
+    DBI::dbExecute(con, "BEGIN IMMEDIATE")
+    exists <- DBI::dbGetQuery(
+      con,
+      "SELECT COUNT(*) AS n FROM credentials_db WHERE user_name = ?",
+      params = list(username)
+    )$n > 0L
+    if (exists) {
+      DBI::dbExecute(con, "ROLLBACK")
+      stop("username_taken")
+    }
+    hashed <- sodium::password_store(password_plain)
+    DBI::dbExecute(
+      con,
+      "INSERT INTO credentials_db (user_name, password_hashed) VALUES (?, ?)",
+      params = list(username, hashed)
+    )
+    DBI::dbExecute(con, "COMMIT")
+    invisible(TRUE)
   })
 }

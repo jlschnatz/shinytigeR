@@ -50,3 +50,9 @@ IRT_THETA_LOW     <- -0.5
 # Evidence strength thresholds (unique items per area)
 EVIDENCE_HIGH     <-  8L
 EVIDENCE_MED      <-  3L
+
+# Self-registration validation
+REG_USERNAME_PATTERN <- "^[a-zA-Z0-9_.-]{3,30}$"
+REG_PW_MIN_LENGTH    <- 8L
+REG_MAX_ATTEMPTS     <- 3L
+REG_ATTEMPT_DELAY_S  <- 1.0

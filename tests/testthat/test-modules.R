@@ -5,6 +5,7 @@ library(shiny)
 test_that("selector: filtered_items respects area filter", {
   data_item <- make_data_item()
   practice_ids <- reactiveVal(NULL)
+  write_trigger <- reactiveVal(0L)
 
   withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
     testServer(
@@ -12,16 +13,12 @@ test_that("selector: filtered_items respects area filter", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
-        credentials = fake_credentials()
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
       ),
       {
         # Select only Regression area, both types
-        session$setInputs(
-          areas = "Regression",
-          types = c("content", "coding"),
-          n_items = 10L,
-          only_new = FALSE
-        )
+        do.call(session$setInputs, selector_cell_inputs(area_vals = "Regression"))
         # 3 items belong to Regression
         expect_equal(nrow(filtered_items()), 3L)
       }
@@ -32,6 +29,7 @@ test_that("selector: filtered_items respects area filter", {
 test_that("selector: filtered_items respects type filter", {
   data_item <- make_data_item()
   practice_ids <- reactiveVal(NULL)
+  write_trigger <- reactiveVal(0L)
 
   withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
     testServer(
@@ -39,15 +37,12 @@ test_that("selector: filtered_items respects type filter", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
-        credentials = fake_credentials()
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
       ),
       {
-        session$setInputs(
-          areas = LEARNING_AREA_LEVELS,
-          types = "content", # only content, not coding
-          n_items = 10L,
-          only_new = FALSE
-        )
+        # Only content type across all areas
+        do.call(session$setInputs, selector_cell_inputs(type_vals = "content"))
         # 4 of 6 items are type "content"
         expect_equal(nrow(filtered_items()), 4L)
         expect_true(all(filtered_items()$type_item == "content"))
@@ -59,6 +54,7 @@ test_that("selector: filtered_items respects type filter", {
 test_that("selector: submit sets practice_ids to a sampled integer vector", {
   data_item <- make_data_item()
   practice_ids <- reactiveVal(NULL)
+  write_trigger <- reactiveVal(0L)
 
   withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
     testServer(
@@ -66,15 +62,11 @@ test_that("selector: submit sets practice_ids to a sampled integer vector", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
-        credentials = fake_credentials()
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
       ),
       {
-        session$setInputs(
-          areas = LEARNING_AREA_LEVELS,
-          types = c("content", "coding"),
-          n_items = 3L,
-          only_new = FALSE
-        )
+        do.call(session$setInputs, selector_cell_inputs(n_items = 3L))
         session$setInputs(submit = 1L)
 
         ids <- practice_ids()
@@ -90,6 +82,7 @@ test_that("selector: submit sets practice_ids to a sampled integer vector", {
 test_that("selector: submit respects n_items cap when fewer items available", {
   data_item <- make_data_item()
   practice_ids <- reactiveVal(NULL)
+  write_trigger <- reactiveVal(0L)
 
   withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
     testServer(
@@ -97,15 +90,14 @@ test_that("selector: submit respects n_items cap when fewer items available", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
-        credentials = fake_credentials()
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
       ),
       {
-        # Request more items than exist in the filtered set
-        session$setInputs(
-          areas = "Regression", # only 3 items
-          types = c("content", "coding"),
-          n_items = 50L,
-          only_new = FALSE
+        # Request more items than exist in the filtered set (only 3 in Regression)
+        do.call(
+          session$setInputs,
+          selector_cell_inputs(area_vals = "Regression", n_items = 50L)
         )
         session$setInputs(submit = 1L)
         expect_length(practice_ids(), 3L)
@@ -117,12 +109,12 @@ test_that("selector: submit respects n_items cap when fewer items available", {
 test_that("selector: only_new excludes already-answered items", {
   data_item <- make_data_item()
   practice_ids <- reactiveVal(NULL)
+  write_trigger <- reactiveVal(0L)
 
   # Pre-populate DB: items 1 and 2 already answered by testuser
   db_path <- make_user_db("testuser", item_ids = 1:2)
 
   withr::with_envvar(list(TIGER_DB_DIR = dirname(db_path)), {
-    # Rename file to match expected DB_USERS() name
     file.rename(db_path, DB_USERS())
 
     testServer(
@@ -130,16 +122,16 @@ test_that("selector: only_new excludes already-answered items", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
-        credentials = fake_credentials()
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
       ),
       {
-        session$setInputs(
-          areas = "Regression", # items 1, 2, 3
-          types = c("content", "coding"),
-          n_items = 10L,
-          only_new = TRUE
+        # Regression area (items 1, 2, 3); items 1 & 2 already answered
+        do.call(
+          session$setInputs,
+          selector_cell_inputs(area_vals = "Regression", only_new = TRUE)
         )
-        # Items 1 and 2 already answered → only item 3 remains
+        # Only item 3 remains
         expect_equal(nrow(filtered_items()), 1L)
         expect_equal(filtered_items()$id_item, 3L)
       }

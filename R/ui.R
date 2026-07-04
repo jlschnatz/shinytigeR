@@ -58,23 +58,36 @@ app_ui <- function() {
           # Form area
           div(
             class = "login-card-body",
-            shinyauthr::loginUI(
-              id = "login",
-              title = NULL,
-              user_title = "Benutzername",
-              pass_title = "Passwort",
-              login_title = "Einloggen",
-              error_message = "Ungültiger Benutzername oder Passwort.",
-              additional_ui = NULL
+            # ── Login form (default view) ─────────────────────────────────────
+            div(
+              id = "login-form-wrap",
+              shinyauthr::loginUI(
+                id = "login",
+                title = NULL,
+                user_title = "Benutzername",
+                pass_title = "Passwort",
+                login_title = "Einloggen",
+                error_message = "Ungültiger Benutzername oder Passwort.",
+                additional_ui = NULL
+              ),
+              tags$p(
+                class = "login-hint mt-3 mb-0",
+                bsicons::bs_icon("info-circle"),
+                " Noch kein Konto? Registriere dich mit dem Semester-Code aus dem Praktikum.",
+                " Zum Ausprobieren: ",
+                tags$code("test"),
+                " / ",
+                tags$code("test123")
+              ),
+              tags$p(
+                class = "text-center mt-3 mb-0",
+                style = "font-size: 0.85rem; color: #6c757d;",
+                "Noch kein Konto? ",
+                actionLink("show_register", "Jetzt registrieren")
+              )
             ),
-            tags$p(
-              class = "login-hint mt-3 mb-0",
-              bsicons::bs_icon("info-circle"),
-              " Zugangsdaten erhältst du im Praktikum. Zum Ausprobieren: ",
-              tags$code("test"),
-              " / ",
-              tags$code("test123")
-            )
+            # ── Registration form (hidden, toggled in) ────────────────────────
+            mod_register_ui("register_1")
           )
         )
       )

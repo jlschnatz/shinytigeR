@@ -20,6 +20,15 @@ app_server <- function(input, output, session) {
     active = reactive(credentials()$user_auth)
   )
 
+  # ── Registration — wired before auth gate so it works pre-login ───────────
+  toggle_login_register <- function() {
+    shinyjs::runjs("$('#login-form-wrap').toggle(); $('#register-form-wrap').toggle();")
+  }
+
+  observeEvent(input$show_register, toggle_login_register())
+
+  mod_register_server("register_1", on_show_login = toggle_login_register)
+
   # ── Static item data (loaded once) ────────────────────────────────────────
   data_item <- db_get_items()
 
