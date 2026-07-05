@@ -26,7 +26,7 @@ dependencies = []
 
 [[packages]]
 name = "RSQLite"
-version = "3.53.2"
+version = "3.53.3"
 source = { repository = "https://packagemanager.posit.co/cran/latest" }
 force_source = false
 dependencies = [

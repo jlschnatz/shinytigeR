@@ -100,7 +100,7 @@ mod_register_server <- function(id, on_show_login) {
       expected <- Sys.getenv("TIGER_REG_CODE")
       if (!nzchar(expected)) {
         output$reg_feedback <- renderUI(reg_msg(
-          "Registrierung ist derzeit nicht verfügbar.",
+          paste0("Registrierung ist derzeit nicht verfügbar. Bitte wende dich an ", CONTACT_EMAIL, "."),
           type = "error"
         ))
         return()

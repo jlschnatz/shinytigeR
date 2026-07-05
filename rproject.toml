@@ -1,5 +1,5 @@
 [project]
-name = "tigerv3"
+name = "shinytiger"
 r_version = "4.6"
 
 repositories = [

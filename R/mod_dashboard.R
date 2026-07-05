@@ -651,7 +651,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger) {
             linewidth = 0.4
           ) +
           ggplot2::scale_y_continuous(
-            labels = scales::label_percent(),
+            labels = \(x) paste(x * 100, "%", sep = ""),
             limits = c(0, 1),
             expand = c(0.02, 0)
           ) +
