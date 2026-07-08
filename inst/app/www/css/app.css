@@ -231,6 +231,14 @@
   background-color: transparent;
 }
 
+.answer-option.is-static {
+  cursor: default;
+}
+
+.answer-option.is-static:hover {
+  background-color: transparent;
+}
+
 .answer-label {
   line-height: 1.4;
 }

@@ -154,7 +154,7 @@ mod_selector_ui <- function(id, data_item) {
             ),
             actionButton(
               ns("direct_submit"),
-              div(bsicons::bs_icon("arrow-right-circle"), "Aufgabe öffnen"),
+              div(bsicons::bs_icon("eye"), "Aufgabe ansehen"),
               class = "btn btn-outline-primary"
             )
           )
@@ -164,7 +164,14 @@ mod_selector_ui <- function(id, data_item) {
   )
 }
 
-mod_selector_server <- function(id, data_item, practice_ids, credentials, write_trigger) {
+mod_selector_server <- function(
+  id,
+  data_item,
+  practice_ids,
+  inspect_id,
+  credentials,
+  write_trigger
+) {
   moduleServer(id, function(input, output, session) {
     area_vals <- unname(LEARNING_AREA_LABELS)
     type_vals <- unname(ITEM_TYPE_LABELS)
@@ -350,7 +357,7 @@ mod_selector_server <- function(id, data_item, practice_ids, credentials, write_
         )
         return()
       }
-      practice_ids(target_id)
+      inspect_id(target_id)
     })
   })
 }

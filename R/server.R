@@ -50,13 +50,19 @@ app_server <- function(input, output, session) {
     # ── Shared state ─────────────────────────────────────────────────────────
     # practice_ids: NULL = show selector; integer vector = show practice
     practice_ids <- reactiveVal(NULL)
+    # inspect_id: single item ID looked up directly by ID; shows a read-only
+    # overview instead of entering the practice queue. Takes priority over
+    # practice_ids when both would otherwise apply.
+    inspect_id <- reactiveVal(NULL)
     # write_trigger: incremented after each confirmed DB write so dashboard
     # knows to re-fetch user data without being tightly coupled to practice
     write_trigger <- reactiveVal(0L)
 
-    # ── Train view — switches between selector and practice ───────────────────
+    # ── Train view — switches between selector, practice, and inspect ─────────
     output$train_view <- renderUI({
-      if (is.null(practice_ids())) {
+      if (!is.null(inspect_id())) {
+        mod_inspect_ui("inspect_1")
+      } else if (is.null(practice_ids())) {
         mod_selector_ui("selector_1", data_item)
       } else {
         mod_practice_ui("practice_1")
@@ -78,6 +84,7 @@ app_server <- function(input, output, session) {
       "selector_1",
       data_item = data_item,
       practice_ids = practice_ids,
+      inspect_id = inspect_id,
       credentials = credentials,
       write_trigger = write_trigger
     )
@@ -88,6 +95,12 @@ app_server <- function(input, output, session) {
       practice_ids = practice_ids,
       credentials = credentials,
       write_trigger = write_trigger
+    )
+
+    mod_inspect_server(
+      "inspect_1",
+      data_item = data_item,
+      inspect_id = inspect_id
     )
 
     mod_dashboard_server(
