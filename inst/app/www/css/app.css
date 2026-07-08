@@ -417,6 +417,21 @@
   margin-top: 0.15em;
 }
 
+/* Direct item lookup — small collapsible card, low visual weight */
+.sel-direct-details {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.sel-direct-summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  list-style: none;
+}
+
+.sel-direct-summary::-webkit-details-marker {
+  display: none;
+}
+
 /* Keep avail_info inline within the flex options row */
 .sel-avail-info,
 .sel-avail-info .shiny-html-output {

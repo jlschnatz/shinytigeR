@@ -129,6 +129,37 @@ mod_selector_ui <- function(id, data_item) {
           )
         )
       )
+    ),
+    # ── Direct item lookup ──────────────────────────────────────────────────────
+    bslib::card(
+      class = "mt-3",
+      bslib::card_body(
+        class = "py-2 px-3",
+        tags$details(
+          class = "sel-direct-details",
+          tags$summary(
+            class = "sel-direct-summary",
+            bsicons::bs_icon("hash"),
+            " Direkt zu einer Aufgabe (z. B. um sie deiner Lehrperson zu zeigen)"
+          ),
+          div(
+            class = "input-group sel-direct-row mt-2",
+            tags$input(
+              id = ns("direct_id"),
+              type = "number",
+              class = "shiny-input-number form-control",
+              min = 1L,
+              step = 1L,
+              style = "flex: 0 0 120px;"
+            ),
+            actionButton(
+              ns("direct_submit"),
+              div(bsicons::bs_icon("arrow-right-circle"), "Aufgabe öffnen"),
+              class = "btn btn-outline-primary"
+            )
+          )
+        )
+      )
     )
   )
 }
@@ -307,6 +338,19 @@ mod_selector_server <- function(id, data_item, practice_ids, credentials, write_
         n_want <- n_avail
       }
       practice_ids(safe_sample(as.integer(fi$id_item), size = n_want))
+    })
+
+    # ── Direct item lookup by ID ──────────────────────────────────────────────
+    observeEvent(input$direct_submit, {
+      target_id <- as.integer(input$direct_id)
+      if (is.na(target_id) || !target_id %in% data_item$id_item) {
+        showNotification(
+          "Keine Aufgabe mit dieser ID gefunden.",
+          type = "warning"
+        )
+        return()
+      }
+      practice_ids(target_id)
     })
   })
 }
