@@ -1,0 +1,18 @@
+# Dev environment. Run from the project root:
+#   docker compose -f docker/docker-compose.yml up
+# App will be at http://localhost:7331
+#
+# The project root is bind-mounted into the container, so code edits and
+# the rv/ package library (installed on first run) persist on the host.
+# The db_*.sqlite files must already be present in the project root.
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "7331:7331"
+    volumes:
+      - ..:/srv
+    working_dir: /srv
+    command: ["sh", "-c", "rv sync && rv run docker/run_dev.R"]

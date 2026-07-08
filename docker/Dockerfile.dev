@@ -1,0 +1,32 @@
+# Dev-only image: installs R + rv + system deps, but NOT the project source
+# or R packages. Both are mounted at runtime (see docker-compose.yml) so
+# code edits and `rv sync` results persist on the host without rebuilding.
+#
+# This is separate from deploy/Dockerfile, which builds a production image
+# from a built tarball for ShinyProxy. Do not use this file for deployment.
+FROM rocker/r-ver:4.6
+
+RUN apt-get update -qq && \
+  apt-get install -y --no-install-recommends \
+    curl \
+    cmake \
+    libsodium-dev \
+    libuv1-dev \
+    make \
+    zlib1g-dev \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN RV_ARCH=$(case "$(uname -m)" in \
+      x86_64) echo x86_64 ;; \
+      aarch64|arm64) echo aarch64 ;; \
+      *) echo "unsupported arch: $(uname -m)" >&2; exit 1 ;; \
+    esac) && \
+  RV_VERSION=$(curl -s https://api.github.com/repos/A2-ai/rv/releases/latest | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') && \
+  curl -L -o /tmp/rv.tar.gz "https://github.com/A2-ai/rv/releases/download/v${RV_VERSION}/rv-v${RV_VERSION}-${RV_ARCH}-unknown-linux-gnu.tar.gz" && \
+  tar -xzf /tmp/rv.tar.gz -C /usr/local/bin && \
+  chmod +x /usr/local/bin/rv && \
+  rm /tmp/rv.tar.gz
+
+WORKDIR /srv
+EXPOSE 7331
