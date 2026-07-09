@@ -14,6 +14,8 @@ The app is structured as an **R package** (`shinytigeR`) with the Shiny app livi
 
 ## Commands
 
+**For full local setup (installing R/`rv`/`libsodium`, or the Docker-based alternative), see `SETUP.md` — it's the authoritative onboarding doc.** The commands below assume that setup is already done.
+
 ```bash
 # Run locally (from project root) — uses the rv-managed library, loads the
 # package via pkgload::load_all(), starts at http://localhost:7331
@@ -39,7 +41,7 @@ Rscript deploy/build.R
 docker build --platform linux/amd64 -t shinytiger deploy/
 ```
 
-For full local setup instructions (native macOS/Linux via `rv`, or a Docker-based dev environment), see `SETUP.md`. Note `docker/Dockerfile.dev` is dev-only (live source + package library, no production tarball) — distinct from `deploy/Dockerfile`, which builds the ShinyProxy production image.
+Note `docker/Dockerfile.dev` (used by `SETUP.md`'s Docker option) is dev-only (live source + package library, no production tarball) — distinct from `deploy/Dockerfile`, which builds the ShinyProxy production image described under Deployment below.
 
 ### Dependency management (rv)
 
