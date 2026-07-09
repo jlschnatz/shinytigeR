@@ -5,7 +5,7 @@ app_ui <- function() {
   bslib::page_navbar(
     title = div(
       class = "d-flex align-items-center gap-2",
-      tags$img(src = "img/tiger_logo_white.png", height = "26px"),
+      tags$img(src = "img_app/tiger_logo_white.png", height = "26px"),
       tags$b("tigeR", class = "fw-bolder")
     ),
     id = "main_tabs",
@@ -24,7 +24,7 @@ app_ui <- function() {
       shinyjs::useShinyjs(),
       tags$head(
         tags$link(rel = "stylesheet", href = "css/app.css"),
-        tags$link(rel = "icon", type = "image/png", href = "img/favicon.png"),
+        tags$link(rel = "icon", type = "image/png", href = "img_app/favicon.png"),
         tags$script(shiny::HTML(
           "Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {",
           "  if (window.MathJax) MathJax.Hub.Queue(['Typeset', MathJax.Hub]);",
@@ -45,7 +45,7 @@ app_ui <- function() {
           div(
             class = "login-card-header",
             tags$img(
-              src = "img/tigeR_hex.png",
+              src = "img_app/tigeR_hex.png",
               height = "90px",
               class = "d-block mx-auto mb-3"
             ),

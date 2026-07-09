@@ -76,7 +76,7 @@
 
 /* Colored top section with logo + title */
 .login-card-header {
-  background: linear-gradient(160deg, #1a4a6e 0%, #285f8a 100%);
+  background: var(--tiger-primary);
   color: #fff;
   text-align: center;
   padding: 2rem 2rem 1.75rem;
@@ -116,7 +116,7 @@
 }
 
 .login-card-body .btn-primary:hover {
-  filter: brightness(1.1);
+  filter: brightness(0.9);
 }
 
 /* Form inputs */
@@ -432,6 +432,10 @@
   height: 1.3rem;
   vertical-align: middle;
   accent-color: var(--tiger-primary);
+}
+
+.sel-cb:not(:disabled):hover {
+  filter: brightness(0.9);
 }
 
 .sel-count-wrap,

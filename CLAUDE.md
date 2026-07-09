@@ -100,8 +100,8 @@ app_v3/
 │   ├── app.R              # loaded by runApp(); skips library() if already loaded via load_all()
 │   └── www/
 │       ├── css/app.css    # all custom CSS
-│       ├── img/           # logo files (tigeR_hex.png, tiger_logo_white.png, favicon.png)
-│       └── img_item/      # item images referenced in the SQLite DB
+│       ├── img_app/       # app branding: logo files (tigeR_hex.png, tiger_logo_white.png, favicon.png)
+│       └── img_item/      # item content images — path baked into db_item.sqlite; do not rename without migrating
 │
 ├── deploy/
 │   ├── build.R            # generates Dockerfile + builds tarball (run this, not the Dockerfile directly)
@@ -399,7 +399,7 @@ Static files are served via Shiny's **built-in `www/` auto-serving convention** 
 
 | Prefix | Filesystem location | Content |
 |---|---|---|
-| `img` | `inst/app/www/img/` | App logos and favicon |
+| `img_app` | `inst/app/www/img_app/` | App logos and favicon |
 | `img_item` | `inst/app/www/img_item/` | Item stimulus and answer images |
 | `css` | `inst/app/www/css/` | `app.css` |
 
