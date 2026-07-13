@@ -306,6 +306,8 @@ The stimulus and all answer options render immediately, but the correct answer a
 
 ### `R/mod_dashboard.R`
 
+> **Status: mockup.** The 2PL IRT competency estimate and its thresholds/labels below are a placeholder to demonstrate the dashboard concept, not an empirically validated model. Replacing it with an AI-assisted, empirically derived competency dashboard is the scope of the follow-up **"kiwi"** project — don't treat the current θ cutoffs or recommendation logic as settled design worth preserving during that work.
+
 Reactive dependency chain:
 ```
 write_trigger → user_data → first_attempts → competency
@@ -454,16 +456,13 @@ docker build --platform linux/amd64 -t shinytiger deploy/
 
 The `--platform linux/amd64` flag is required when building on Apple Silicon; without it Docker selects `arm64` and the `x86_64` rv binary fails under Rosetta.
 
-### Dockerfile structure (multi-stage)
+### Dockerfile structure (single-stage)
 
-**Stage 1 — builder (`rocker/r-ver:4.6`)**
-- Installs apt dev headers (libsodium-dev, etc.) and build tools
-- Downloads the latest `rv` binary from GitHub releases (x86_64 Linux)
-- Runs `rv sync --locked` to install all R packages into the system library
+Based on `rocker/r-ver:4.6`. Deliberately single-stage — installs R packages as pre-compiled binaries from PPM, which avoids rv library-path complexity across stages and is faster than compiling from source, so there's no separate builder/runtime split to keep dev headers out of the final image:
 
-**Stage 2 — runtime (`rocker/r-ver:4.6`)**
-- Copies the installed R library from the builder stage (no dev headers in the final image)
-- Installs the `shinytigeR` tarball with `R -e 'install.packages(...)'`
+- Installs apt build deps (`curl`, plus whatever the sysreqs API returned for the resolved packages — e.g. `libsodium-dev`)
+- Downloads the latest `rv` binary from GitHub releases (x86_64 Linux) and runs `rv sync --locked` in `/srv`, then appends the resolved `rv` library path to `R_LIBS_USER` in `Renviron` so R can find the packages
+- Installs the `shinytigeR` tarball with `R CMD INSTALL`
 - Creates user `beitner` (uid 1002, gid 1003) for ShinyProxy
 - Sets `TIGER_DB_DIR=/opt/shinyapp` — the SQLite files must be mounted at this path
 
