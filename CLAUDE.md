@@ -23,9 +23,7 @@ rv run dev/run.R
 ```
 
 ```r
-# shiny::runApp("inst/app") on its own is NOT equivalent to the above — inst/app/app.R
-# just does library(shinytigeR), which fails (or silently resolves resource paths wrong)
-# unless the package is already installed/loaded in that R session. Use rv run dev/run.R,
+
 # or install the package first and call:
 shinytigeR::run_app()
 
@@ -71,6 +69,8 @@ devtools::test_active_file()  # run just the currently open test file
 - `selector_cell_inputs(area_vals, type_vals, n_items, only_new)` — builds the `cell_i_j` input list `mod_selector_server` expects
 - `make_user_db(user, item_ids, correct, areas)` — writes a temp SQLite user DB pre-populated with response rows, returns its path
 
+> **Known gap:** `mod_inspect.R` (read-only item-overview module) and the direct-ID-lookup addition to `mod_selector.R` were added after this suite was last updated and have **no `testthat` coverage yet** — only ad hoc verification during development. If you touch either, add `test_that()` cases to `test-modules.R` following the existing `mod_selector`/`mod_practice` pattern rather than leaving it untested.
+
 ---
 
 ## Project structure
@@ -96,6 +96,7 @@ app_v3/
 │   ├── mod_register.R     # module: self-registration (pre-login, semester-code gated)
 │   ├── mod_selector.R     # module: item filter/selection UI
 │   ├── mod_practice.R     # module: item display + answer checking
+│   ├── mod_inspect.R      # module: read-only item overview (direct ID lookup)
 │   └── mod_dashboard.R    # module: progress dashboard
 │
 ├── inst/app/
@@ -147,18 +148,22 @@ flowchart LR
         home[mod_home\nlanding]
         sel[mod_selector\nfilter / pick]
         prac[mod_practice\ndisplay + check]
+        insp[mod_inspect\nread-only overview]
         dash[mod_dashboard\nprogress]
     end
 
     home -->|go_train| sel
     sel  -->|practice_ids| prac
+    sel  -->|inspect_id| insp
     prac -->|write_trigger| dash
     prac -->|practice_ids = NULL| sel
+    insp -->|inspect_id = NULL| sel
 ```
 
 - **`go_train`** is a plain callback function passed to `mod_home`. When the "Jetzt üben" button is clicked it calls `bslib::nav_select()` using the app-level session (captured in `server.R` via closure) to navigate to the train panel.
-- **`practice_ids`** (`reactiveVal(NULL)`) is the only piece of shared cross-module state. `NULL` means show the selector; an integer vector of item IDs means show the practice module. It lives in `server.R` and is passed by reference to both `mod_selector` and `mod_practice`.
-- **`write_trigger`** (`reactiveVal(0L)`) is incremented by `mod_practice` after every confirmed DB write. `mod_dashboard` uses it to invalidate its user-data cache without being directly coupled to the practice module.
+- **`practice_ids`** (`reactiveVal(NULL)`) drives the selector ↔ practice toggle. `NULL` means show the selector; an integer vector of item IDs means show the practice module. It lives in `server.R` and is passed by reference to both `mod_selector` and `mod_practice`.
+- **`inspect_id`** (`reactiveVal(NULL)`) is set when a student looks up a single item by ID in the selector (see `R/mod_selector.R` below). It routes to `mod_inspect` — a read-only overview — instead of the practice queue, and takes priority over `practice_ids` in the train-view switch. It never triggers a DB write.
+- **`write_trigger`** (`reactiveVal(0L)`) is incremented by `mod_practice` after every confirmed DB write. `mod_dashboard` uses it to invalidate its user-data cache without being directly coupled to the practice module. `mod_inspect` never touches it, since it never writes.
 
 ### Authentication pattern
 
@@ -168,16 +173,17 @@ All modules are registered **inside** an `observeEvent(credentials()$user_auth, 
 
 ### Train panel view switching
 
-The train panel renders either the selector or the practice UI dynamically:
+The train panel renders the selector, practice, or inspect UI dynamically. `inspect_id` takes priority — if a student has looked up an item by ID, that overview shows even if a practice queue also happens to be set:
 
 ```r
 output$train_view <- renderUI({
-  if (is.null(practice_ids())) mod_selector_ui("selector_1")
-  else                          mod_practice_ui("practice_1")
+  if (!is.null(inspect_id()))  mod_inspect_ui("inspect_1")
+  else if (is.null(practice_ids())) mod_selector_ui("selector_1", data_item)
+  else                               mod_practice_ui("practice_1")
 })
 ```
 
-Both module **servers** are registered once at login time and remain active; only the UI toggles.
+All three module **servers** are registered once at login time and remain active; only the UI toggles.
 
 ---
 
@@ -271,12 +277,16 @@ Self-registration form on the login panel, gated by a shared **semester code** (
 
 Renders a **checkbox matrix** (rows = item types, columns = learning areas) built from plain `tags$input`/`tags$label` HTML — not `checkboxInput()` — so the layout is fully controlled via CSS (`.sel-matrix`, `.sel-cb`, `.sel-col-label`, `.sel-row-label`). Row headers and column headers act as select-all toggles for their row/column; a corner checkbox selects all. The reactivity is flat: cell checkboxes → `selected_combos()` → `filtered_items()` → `avail_info` output + submit handler. No `reactiveValues` bool matrix; each cell is read directly via `input[[paste0("cell_", i, "_", j)]]`.
 
+Below the matrix, a collapsed `<details>` disclosure (`.sel-direct-details`) holds a **direct item lookup by ID** — for students who want to jump straight to one known item (e.g. to show a lecturer), rather than a randomized selection. The ID input and its button are wired via Bootstrap's `.input-group` (not custom flex/height CSS) so they auto-align without fighting the box model by hand. Submitting a valid ID sets `inspect_id`, **not** `practice_ids` — this deliberately does not enter the practice queue (see `R/mod_inspect.R`). An unrecognized ID shows a warning notification and leaves state untouched.
+
 ### `R/mod_practice.R`
 
 The practice module has two separate `renderUI` outputs to avoid unnecessary re-renders:
 
 - **`output$item_stimulus`** — only invalidates when `current_item()` changes (i.e., when moving to a new item). Never re-renders on check.
 - **`output$item_answers`** — invalidates on both item change and check. Renders interactive radio inputs before check; disabled result-colored inputs + feedback card after check.
+
+The progress bar (`output$progress_bar`) also shows the current item's `id_item` next to "Aufgabe X von Y", so a student stuck on a question can report its ID (e.g. to a lecturer) without needing the separate lookup flow in `mod_selector`.
 
 **Answer coloring** is done via CSS classes on the radio `<input>`:
 - `.radio-result-correct`, `.radio-result-incorrect`, `.radio-result-skip` — defined in `app.css`
@@ -288,7 +298,15 @@ state <- reactiveValues(pos=1L, checked=FALSE, answer_id=NULL)
 ```
 `pos` is the index into `practice_ids()`. Moving to the next item increments `pos`; finishing all items sets `practice_ids(NULL)` to return to the selector.
 
+### `R/mod_inspect.R`
+
+Read-only "item overview" shown when a student looks up an item by ID in `mod_selector` (`inspect_id` reactive, set in `server.R`). Conceptually distinct from practice: the student isn't attempting the item, so **`db_write_response()` is never called** here — nothing in this module touches `db_user.sqlite`, keeping the response log and IRT competency estimate uncontaminated by lookups.
+
+The stimulus and all answer options render immediately, but the correct answer and all per-option feedback texts stay hidden behind a `revealed` reactive (`FALSE` until the "Antwort & Feedback anzeigen" button is clicked, reset whenever `inspect_id()` changes) — a deliberate one-click gate so a mistyped/curious ID lookup doesn't instantly spoil the answer. Once revealed, the correct option is highlighted using the same `correct_answer_txt`/`correct_answer_img` classes `mod_practice.R` uses (suffix chosen from `item$type_answer`, same as practice — don't hardcode `_txt`), and every option with feedback text gets its own `.feedback-card`. The "Zurück zur Auswahl" button sets `inspect_id(NULL)`.
+
 ### `R/mod_dashboard.R`
+
+> **Status: mockup.** The 2PL IRT competency estimate and its thresholds/labels below are a placeholder to demonstrate the dashboard concept, not an empirically validated model. Replacing it with an AI-assisted, empirically derived competency dashboard is the scope of the follow-up **"kiwi"** project — don't treat the current θ cutoffs or recommendation logic as settled design worth preserving during that work.
 
 Reactive dependency chain:
 ```
@@ -387,8 +405,11 @@ Key CSS classes to be aware of when changing layout:
 | `.home-steps` / `.home-step` / `.home-step-num` | Home panel numbered steps layout |
 | `.sel-matrix` / `.sel-cb` / `.sel-col-label` / `.sel-row-label` | Checkbox matrix in selector |
 | `.sel-options-row` | Flex row containing number input, avail info, and toggle |
+| `.sel-direct-details` / `.sel-direct-summary` / `.sel-direct-row` | Collapsed direct-ID-lookup disclosure below the selector matrix; `.sel-direct-row` is a Bootstrap `.input-group` |
+| `.practice-item-id` | Item ID badge next to "Aufgabe X von Y" in the practice progress bar |
 | `.practice-answers-section` | Gray tinted answers area below stimulus in practice card |
 | `.answer-option` | Per-answer radio row; hover suppressed post-check via `:has(input:disabled)` |
+| `.answer-option.is-static` | Non-interactive variant used by `mod_inspect.R` — kills hover affordance only, must **not** set `background-color` in the base state or it silently overrides `.correct_answer_txt`/`.incorrect_answer_txt` (equal-or-higher specificity beats source order) |
 | `.radio-result-correct/incorrect/skip` | Post-check radio fill color (requires `!important`) |
 | `.feedback-card` | Per-answer feedback block with colored left border and shadow |
 | `.practice-stat` / `.practice-stat-val` / `.practice-stat-lbl` | Dashboard practice behaviour grid cells |
@@ -435,16 +456,13 @@ docker build --platform linux/amd64 -t shinytiger deploy/
 
 The `--platform linux/amd64` flag is required when building on Apple Silicon; without it Docker selects `arm64` and the `x86_64` rv binary fails under Rosetta.
 
-### Dockerfile structure (multi-stage)
+### Dockerfile structure (single-stage)
 
-**Stage 1 — builder (`rocker/r-ver:4.6`)**
-- Installs apt dev headers (libsodium-dev, etc.) and build tools
-- Downloads the latest `rv` binary from GitHub releases (x86_64 Linux)
-- Runs `rv sync --locked` to install all R packages into the system library
+Based on `rocker/r-ver:4.6`. Deliberately single-stage — installs R packages as pre-compiled binaries from PPM, which avoids rv library-path complexity across stages and is faster than compiling from source, so there's no separate builder/runtime split to keep dev headers out of the final image:
 
-**Stage 2 — runtime (`rocker/r-ver:4.6`)**
-- Copies the installed R library from the builder stage (no dev headers in the final image)
-- Installs the `shinytigeR` tarball with `R -e 'install.packages(...)'`
+- Installs apt build deps (`curl`, plus whatever the sysreqs API returned for the resolved packages — e.g. `libsodium-dev`)
+- Downloads the latest `rv` binary from GitHub releases (x86_64 Linux) and runs `rv sync --locked` in `/srv`, then appends the resolved `rv` library path to `R_LIBS_USER` in `Renviron` so R can find the packages
+- Installs the `shinytigeR` tarball with `R CMD INSTALL`
 - Creates user `beitner` (uid 1002, gid 1003) for ShinyProxy
 - Sets `TIGER_DB_DIR=/opt/shinyapp` — the SQLite files must be mounted at this path
 

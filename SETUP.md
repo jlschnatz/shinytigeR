@@ -1,6 +1,6 @@
 # Local setup
 
-There are two ways to run the `shinytigeR`app locally:
+There are two ways to run the `shinytigeR` app locally:
 
 1. **Native way** (macOS/Linux friendly)
 2. **Using Docker** (any OS, fully isolated)
