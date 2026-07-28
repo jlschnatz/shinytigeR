@@ -73,17 +73,9 @@ app_ui <- function() {
               tags$p(
                 class = "login-hint mt-3 mb-0",
                 bsicons::bs_icon("info-circle"),
-                " Noch kein Konto? Registriere dich mit dem Semester-Code aus dem Praktikum.",
-                " Zum Ausprobieren: ",
-                tags$code("test"),
-                " / ",
-                tags$code("test123")
-              ),
-              tags$p(
-                class = "text-center mt-3 mb-0",
-                style = "font-size: 0.85rem; color: #6c757d;",
-                "Noch kein Konto? ",
-                actionLink("show_register", "Jetzt registrieren")
+                " Noch kein Konto? ",
+                actionLink("show_register", "Registriere"),
+                " dich mit dem Semester-Code aus dem Praktikum."
               )
             ),
             # ── Registration form (hidden, toggled in) ────────────────────────

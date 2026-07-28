@@ -140,6 +140,25 @@
   font-size: 0.85em;
 }
 
+/* shinyauthr hardcodes inline red/bold/centered styling on its error <p>;
+   override it to match .reg-error's aesthetic below. */
+#login-error p {
+  color: var(--tiger-incorrect) !important;
+  font-weight: 400 !important;
+  font-size: 0.85rem !important;
+  text-align: left !important;
+  padding-top: 0 !important;
+  margin-top: 0.75rem !important;
+  line-height: 1.4;
+}
+
+#login-error p::before {
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  content: "\f06a";
+  margin-right: 0.4rem;
+}
+
 /* ── Registration form ─────────────────────────────────────────────────────── */
 .reg-error {
   color: var(--tiger-incorrect);
