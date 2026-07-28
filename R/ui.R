@@ -3,10 +3,14 @@
 #' @export
 app_ui <- function() {
   bslib::page_navbar(
-    title = div(
-      class = "d-flex align-items-center gap-2",
-      tags$img(src = "img_app/tiger_logo_white.png", height = "26px"),
-      tags$b("tigeR", class = "fw-bolder")
+    title = actionLink(
+      inputId = "brand_home",
+      label = div(
+        class = "d-flex align-items-center gap-2",
+        tags$img(src = "img_app/tiger_logo_white.png", height = "26px"),
+        tags$b("tigeR", class = "fw-bolder")
+      ),
+      class = "navbar-brand-link"
     ),
     id = "main_tabs",
     navbar_options = bslib::navbar_options(
@@ -104,6 +108,13 @@ app_ui <- function() {
       title = div(bsicons::bs_icon("bar-chart-fill"), "Fortschritt"),
       value = "progress_panel",
       mod_dashboard_ui("dashboard_1")
+    ),
+
+    # ── FAQ ───────────────────────────────────────────────────────────────────
+    bslib::nav_panel(
+      title = div(bsicons::bs_icon("question-circle-fill"), "FAQ"),
+      value = "faq_panel",
+      div(class = "main-content", mod_faq_ui("faq_1"))
     ),
 
     # ── Spacer + Logout ───────────────────────────────────────────────────────

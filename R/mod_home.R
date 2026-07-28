@@ -19,10 +19,10 @@ mod_home_ui <- function(id) {
             class = "home-step",
             div(class = "home-step-num", "1"),
             div(
-              tags$b("Aufgaben auswählen"),
+              tags$b("Üben"),
               tags$p(
                 class = "text-muted mb-0",
-                "Wähle Themenbereiche und Aufgabentypen aus."
+                "Wähle Themenbereiche und Aufgabentypen aus, beantworte Fragen und erhalte direktes, aufgabenbezogenes Feedback."
               )
             )
           ),
@@ -30,10 +30,10 @@ mod_home_ui <- function(id) {
             class = "home-step",
             div(class = "home-step-num", "2"),
             div(
-              tags$b("Üben & Feedback erhalten"),
+              tags$b("Fortschritt"),
               tags$p(
                 class = "text-muted mb-0",
-                "Beantworte Fragen und erhalte direktes, individuelles Feedback."
+                "Verfolge im Dashboard, wie sich deine Kompetenz in den einzelnen Themenbereichen entwickelt."
               )
             )
           ),
@@ -41,44 +41,12 @@ mod_home_ui <- function(id) {
             class = "home-step",
             div(class = "home-step-num", "3"),
             div(
-              tags$b("Fortschritt verfolgen"),
+              tags$b("FAQ"),
               tags$p(
                 class = "text-muted mb-0",
-                "Sieh im Dashboard, wie sich deine Kompetenz entwickelt."
+                "Finde Antworten auf häufige Fragen sowie weiterführende Links zu Aufgabenpool und Dokumentation."
               )
             )
-          )
-        ),
-        tags$hr(class = "my-4"),
-        # ── Pool info + contact ────────────────────────────────────────────────
-        div(
-          class = "d-flex flex-column gap-1 mt-3",
-          uiOutput(ns("pool_info")),
-          tags$p(
-            class = "text-muted mb-0",
-            bsicons::bs_icon("book"),
-            " Dokumentation der R-Datensätze: ",
-            tags$a(
-              href = "https://pandar.netlify.app/daten/datensaetze/",
-              target = "_blank",
-              "https://pandar.netlify.app/daten/datensaetze/"
-            )
-          ),
-          tags$p(
-            class = "text-muted mb-0",
-            bsicons::bs_icon("terminal"),
-            " R-Grundlagen üben: ",
-            tags$a(
-              href = "https://meikesteinhilber.github.io/otter/",
-              target = "_blank",
-              "otter"
-            )
-          ),
-          tags$p(
-            class = "text-muted mb-0",
-            bsicons::bs_icon("envelope"),
-            " Fragen oder Probleme? ",
-            tags$a(href = paste0("mailto:", CONTACT_EMAIL), CONTACT_EMAIL)
           )
         )
       )
@@ -104,20 +72,6 @@ mod_home_server <- function(id, data_item, credentials, go_train) {
         tags$p(
           class = "text-muted mb-0",
           "Willkommen bei tigeR — deiner Übungsplattform für Statistik und R mit individuellem Feedback."
-        )
-      )
-    })
-
-    output$pool_info <- renderUI({
-      n_total <- nrow(data_item)
-      n_areas <- length(unique(data_item$learning_area))
-      tags$p(
-        class = "text-muted mb-0",
-        bsicons::bs_icon("collection"),
-        sprintf(
-          " Der aktuelle Aufgabenpool umfasst %d Aufgaben aus %d Themenbereichen.",
-          n_total,
-          n_areas
         )
       )
     })

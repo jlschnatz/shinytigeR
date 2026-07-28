@@ -20,10 +20,15 @@
 }
 
 /* ── Hide protected nav tabs until authenticated ────────────────────────────── */
-.navbar-nav a[data-value="home_panel"],
 .navbar-nav a[data-value="train_panel"],
-.navbar-nav a[data-value="progress_panel"] {
+.navbar-nav a[data-value="progress_panel"],
+.navbar-nav a[data-value="faq_panel"] {
   display: none;
+}
+
+/* home_panel is never a tab — reachable only via the navbar brand/logo link */
+.navbar-nav a[data-value="home_panel"] {
+  display: none !important;
 }
 
 /* ── Navbar brand alignment ────────────────────────────────────────────────── */
@@ -32,6 +37,18 @@
   align-items: center;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+}
+
+/* Brand/logo click target — looks like a logo, not a link */
+.navbar-brand-link,
+.navbar-brand-link:hover,
+.navbar-brand-link:focus {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.navbar-brand-link {
+  cursor: pointer;
 }
 
 .navbar-brand img {
