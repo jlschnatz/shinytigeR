@@ -87,7 +87,10 @@ mod_practice_server <- function(
       div(
         div(
           class = "d-flex justify-content-between text-muted small mb-1",
-          span(sprintf("Aufgabe %d von %d", state$pos, length(ids))),
+          span(
+            sprintf("Aufgabe %d von %d", state$pos, length(ids)),
+            tags$span(class = "practice-item-id ms-2", sprintf("(ID %d)", ids[state$pos]))
+          ),
           span(sprintf("%d%%", pct))
         ),
         div(

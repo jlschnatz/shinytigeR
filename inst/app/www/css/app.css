@@ -231,6 +231,14 @@
   background-color: transparent;
 }
 
+.answer-option.is-static {
+  cursor: default;
+}
+
+.answer-option.is-static:hover {
+  background-color: transparent;
+}
+
 .answer-label {
   line-height: 1.4;
 }
@@ -415,6 +423,21 @@
   width: 2.2em;
   height: 1.15em;
   margin-top: 0.15em;
+}
+
+/* Direct item lookup — small collapsible card, low visual weight */
+.sel-direct-details {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.sel-direct-summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  list-style: none;
+}
+
+.sel-direct-summary::-webkit-details-marker {
+  display: none;
 }
 
 /* Keep avail_info inline within the flex options row */
