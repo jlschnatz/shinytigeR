@@ -13,6 +13,7 @@ test_that("selector: filtered_items respects area filter", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
+        inspect_id = reactiveVal(NULL),
         credentials = fake_credentials(),
         write_trigger = write_trigger
       ),
@@ -37,6 +38,7 @@ test_that("selector: filtered_items respects type filter", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
+        inspect_id = reactiveVal(NULL),
         credentials = fake_credentials(),
         write_trigger = write_trigger
       ),
@@ -62,11 +64,13 @@ test_that("selector: submit sets practice_ids to a sampled integer vector", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
+        inspect_id = reactiveVal(NULL),
         credentials = fake_credentials(),
         write_trigger = write_trigger
       ),
       {
-        do.call(session$setInputs, selector_cell_inputs(n_items = 3L))
+        do.call(session$setInputs, selector_cell_inputs())
+        n_items(3L)
         session$setInputs(submit = 1L)
 
         ids <- practice_ids()
@@ -90,6 +94,7 @@ test_that("selector: submit respects n_items cap when fewer items available", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
+        inspect_id = reactiveVal(NULL),
         credentials = fake_credentials(),
         write_trigger = write_trigger
       ),
@@ -97,8 +102,9 @@ test_that("selector: submit respects n_items cap when fewer items available", {
         # Request more items than exist in the filtered set (only 3 in Regression)
         do.call(
           session$setInputs,
-          selector_cell_inputs(area_vals = "Regression", n_items = 50L)
+          selector_cell_inputs(area_vals = "Regression")
         )
+        n_items(50L)
         session$setInputs(submit = 1L)
         expect_length(practice_ids(), 3L)
       }
@@ -122,6 +128,7 @@ test_that("selector: only_new excludes already-answered items", {
       args = list(
         data_item = data_item,
         practice_ids = practice_ids,
+        inspect_id = reactiveVal(NULL),
         credentials = fake_credentials(),
         write_trigger = write_trigger
       ),
