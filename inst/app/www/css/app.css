@@ -401,128 +401,188 @@
   min-height: 120px;
 }
 
-/* ── Checkbox matrix ────────────────────────────────────────────────────────── */
-.sel-matrix-wrap {
-  overflow-x: auto;
+.practice-item-id {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: #6c757d;
+  background-color: #f1f3f5;
+  border-radius: 20px;
+  padding: 0.25rem 0.7rem;
 }
 
-.sel-matrix {
-  border-collapse: collapse;
-  font-size: 1.05rem;
-  table-layout: auto;
-  width: 100%;
-}
-
-.sel-matrix th,
-.sel-matrix td {
-  border: 1px solid #dee2e6;
-  text-align: center;
-  vertical-align: middle;
-  padding: 0.8rem 1rem;
-}
-
-.sel-matrix .sel-corner     { background-color: #f8f9fa; }
-.sel-matrix .sel-row-header { background-color: #f8f9fa; text-align: left; white-space: nowrap; }
-.sel-matrix .sel-col-header { background-color: #f8f9fa; }
-.sel-matrix .sel-cell       { background-color: #fff; }
-
-.sel-col-label {
-  display: block;
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.45rem;
+/* Clickable variant — copies the item ID on click (item_id_badge() in utils.R,
+   an rclipboard::rclipButton). Overrides Bootstrap's default btn padding/
+   background so it still reads as a badge, not a button. */
+.practice-item-id-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid transparent;
+  background-color: #f1f3f5;
+  line-height: 1.2;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.sel-row-label {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin-left: 0.6rem;
-  vertical-align: middle;
-  cursor: pointer;
+.practice-item-id-btn:hover,
+.practice-item-id-btn:focus-visible {
+  background-color: #e6eef5;
+  border-color: var(--tiger-primary);
+  color: var(--tiger-primary);
 }
 
-/* Options row sizing */
-.sel-options-row .form-group { margin-bottom: 0; }
-
-.sel-options-row input[type="number"] {
-  font-size: 1.05rem;
-  padding: 0.45rem 0.6rem;
-  height: auto;
+.practice-item-id-btn:focus-visible {
+  outline: 2px solid var(--tiger-primary);
+  outline-offset: 2px;
 }
 
-.sel-options-row .form-check-label {
-  font-size: 1.05rem;
+/* Transient confirmation, applied by the client-only success listener in
+   ui.R's header script (never by a Shiny observer — see comment there). */
+.practice-item-id-btn.is-copied {
+  background-color: #d1e7dd;
+  border-color: #0f5132;
+  color: #0f5132;
 }
 
-.sel-options-row .form-check-input {
-  width: 2.2em;
-  height: 1.15em;
-  margin-top: 0.15em;
-}
-
-/* Direct item lookup — small collapsible card, low visual weight */
-.sel-direct-details {
-  color: var(--bs-secondary-color, #6c757d);
-}
-
-.sel-direct-summary {
-  cursor: pointer;
-  font-size: 0.9rem;
-  list-style: none;
-}
-
-.sel-direct-summary::-webkit-details-marker {
-  display: none;
-}
-
-/* Keep avail_info inline within the flex options row */
-.sel-avail-info,
-.sel-avail-info .shiny-html-output {
+/* ── Learning-area chip list ───────────────────────────────────────────────── */
+.sel-area-row {
   display: flex;
   align-items: center;
-  margin-bottom: 0;
-  font-size: 1.05rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eef0f2;
 }
 
-.sel-cb {
+.sel-area-row:last-child {
+  border-bottom: none;
+}
+
+.sel-area-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.sel-chip-group {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.sel-chip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.sel-chip-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.sel-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100px;
+  border-radius: 20px;
+  padding: 0.28rem 0.8rem;
+  font-size: 0.88rem;
+  border: 1px solid #dee2e6;
+  background-color: #fff;
   cursor: pointer;
-  width: 1.3rem;
-  height: 1.3rem;
-  vertical-align: middle;
-  accent-color: var(--tiger-primary);
+  margin-bottom: 0;
+  transition: background-color .15s, border-color .15s;
 }
 
-.sel-cb:not(:disabled):hover {
-  filter: brightness(0.9);
+.sel-chip-input:checked + .sel-chip {
+  background-color: var(--tiger-primary);
+  border-color: var(--tiger-primary);
+  color: #fff;
 }
 
-.sel-count-wrap,
-.sel-count-wrap .shiny-html-output {
-  display: block;
-  line-height: 1;
-  margin-top: 3px;
-}
-
-.sel-count {
-  display: block;
-  font-size: 0.7rem;
-  color: #6c757d;
-  line-height: 1;
-}
-
-.sel-count-empty {
-  color: #ced4da;
-}
-
-.sel-cell-empty {
-  background-color: #f8f9fa !important;
-}
-
-.sel-cell-empty .sel-cb {
+.sel-chip-input:disabled + .sel-chip {
+  opacity: 0.4;
   cursor: not-allowed;
-  opacity: 0.35;
 }
+
+.sel-chip-input:not(:disabled):hover + .sel-chip {
+  filter: brightness(0.96);
+}
+
+.sel-chip-input:checked:not(:disabled):hover + .sel-chip {
+  filter: brightness(0.92);
+}
+
+.sel-chip-count {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.sel-chip-header {
+  font-weight: 600;
+}
+
+.sel-chip-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: var(--tiger-skip);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 9px;
+  padding: 1px 6px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ── Item count: stepper + presets ────────────────────────────────────────── */
+.sel-count-row {
+  margin-bottom: 0.25rem;
+}
+
+.sel-stepper-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sel-count-value {
+  min-width: 2rem;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.sel-preset-btn {
+  border-radius: 20px;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.75rem;
+}
+
+.sel-stepper-btn:hover,
+.sel-stepper-btn:focus,
+.sel-stepper-btn:active,
+.sel-preset-btn:hover,
+.sel-preset-btn:focus,
+.sel-preset-btn:active {
+  background-color: var(--tiger-primary) !important;
+  border-color: var(--tiger-primary) !important;
+  color: #fff !important;
+}
+
 
 /* ── Dataset table ─────────────────────────────────────────────────────────── */
 .shiny-html-output table { font-size: 0.88rem; }

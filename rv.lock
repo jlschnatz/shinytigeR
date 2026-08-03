@@ -420,6 +420,16 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "rclipboard"
+version = "0.2.1"
+source = { repository = "https://packagemanager.posit.co/cran/latest" }
+force_source = false
+dependencies = [
+    "shiny",
+    { name = "bslib", requirement = "(>= 0.5.1)" },
+]
+
+[[packages]]
 name = "rlang"
 version = "1.2.0"
 source = { repository = "https://packagemanager.posit.co/cran/latest" }

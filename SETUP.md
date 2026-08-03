@@ -57,13 +57,23 @@ rv sync
 
 This installs all packages pinned in `rv.lock` into the local `rv/` library. 
 
-### 5. Run the app
+### 5. Create the databases
+
+```bash
+rv run dev/seed_db.R
+```
+
+See [Databases](#databases) below for what this creates and why the real ones
+aren't in the repository.
+
+### 6. Run the app
 
 ```bash
 rv run dev/run.R
 ```
 
 This loads the package via `pkgload::load_all()` and starts the app at `http://localhost:7331`.
+Log in with **`test` / `test123`**.
 
 ## Option 2: Docker
 
@@ -87,3 +97,46 @@ To stop:
 ```bash
 docker compose -f docker/docker-compose.yml down
 ```
+
+## Databases
+
+The app reads three SQLite files from `TIGER_DB_DIR` (default: the project root).
+**None of them are in the repository**, and all three are gitignored:
+
+| File | Contains | Why it isn't committed |
+| --- | --- | --- |
+| `db_credentials.sqlite` | Usernames + hashed passwords | Real student accounts |
+| `db_user.sqlite` | Every response ever recorded | Personal research data — and it changes on every local practice session, so tracking it would mean a dirty binary file after every run |
+| `db_item.sqlite` | The item pool | The full pool is the assessment content of a graded module; this repository is public |
+
+Run the seed script to create working local copies:
+
+```bash
+rv run dev/seed_db.R
+```
+
+It creates a credentials database with a single **`test` / `test123`** account,
+an empty user database, and — if no item pool is present — copies the committed
+14-item sample (`dev/db_item_sample.sqlite`) into place. That sample covers all
+seven learning areas, both item types, and includes image items, which is enough
+to develop against.
+
+The script **refuses to overwrite existing databases** unless run with `--force`,
+and it never overwrites an existing `db_item.sqlite` at all.
+
+> **Note on the sample pool:** only 32 of the 116 items in the full pool carry IRT
+> parameters, and three learning areas have none. The sample prefers
+> parameterised items where they exist, but two of its areas have none — so the
+> competency dashboard will legitimately show "Keine Daten" for those. That is
+> the real behaviour, not a setup problem.
+
+### Maintainers: regenerating the sample
+
+With the full `db_item.sqlite` present:
+
+```bash
+rv run dev/make_sample_items.R
+```
+
+This rewrites `dev/db_item_sample.sqlite`. The selection is seeded, so re-running
+without pool changes produces no diff.

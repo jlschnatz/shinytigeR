@@ -260,6 +260,7 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `build_response_row(item, answer_idx, user_id, session_token)` | Constructs the `data.frame` row written to `db_user.sqlite` |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
+| `item_id_badge(id_item, input_id, class)` | Click-to-copy item-ID badge shared by `mod_practice.R` and `mod_inspect.R`, built on `rclipboard::rclipButton()` for the `bslib::tooltip()` hover label. `input_id` must be the caller's `ns("copy_item_id")` — a fixed, namespaced ID, since each module is instantiated once. **Never observed server-side, on purpose** — confirmed against `shiny.js`: `unbindInputs()` (run before every `renderUI` re-render) tears down the JS binding but never calls the client's `InputNoResendDecorator.forget()`, so a freshly recreated `actionButton` resends its reset value (`0`), which differs from the cached post-click value and gets treated as a genuine change. Since both badges live inside a `renderUI` that reruns on every item change, a server `observeEvent` on this input would fire "copied" on every item advance, not just on real clicks — confirmed by testing this exact scenario with a debug observer before settling on the client-only approach. The "✓ Kopiert" confirmation is instead a single, page-lifetime `ClipboardJS('.practice-item-id-btn').on('success', …)` listener registered once in `ui.R`'s header script (`DOMContentLoaded`), never per-render. |
 
 ### `R/mod_home.R`
 
@@ -275,9 +276,15 @@ Self-registration form on the login panel, gated by a shared **semester code** (
 
 ### `R/mod_selector.R`
 
-Renders a **checkbox matrix** (rows = item types, columns = learning areas) built from plain `tags$input`/`tags$label` HTML — not `checkboxInput()` — so the layout is fully controlled via CSS (`.sel-matrix`, `.sel-cb`, `.sel-col-label`, `.sel-row-label`). Row headers and column headers act as select-all toggles for their row/column; a corner checkbox selects all. The reactivity is flat: cell checkboxes → `selected_combos()` → `filtered_items()` → `avail_info` output + submit handler. No `reactiveValues` bool matrix; each cell is read directly via `input[[paste0("cell_", i, "_", j)]]`.
+Renders one **row per learning area**, each with a pill-style "chip" toggle per item type (`Inhaltlich` / `R-Code`) — built from plain `tags$input`/`tags$label` HTML (a hidden checkbox + a `<label>` styled via the adjacent-sibling `:checked` selector in `.sel-chip`/`.sel-chip-input`), not `checkboxInput()`, same rationale as the old matrix: full CSS control over layout. A header row above the list holds one "select all" chip per item type (`type_all_1`/`type_all_2`, ids `cell_i_j` where `i` = type index, `j` = area index) — clicking it drives every cell checkbox of that type via `updateCheckboxInput()`. There is no per-area or global "select all" (deliberately dropped — only 2 chips per area made it redundant).
 
-Below the matrix, a collapsed `<details>` disclosure (`.sel-direct-details`) holds a **direct item lookup by ID** — for students who want to jump straight to one known item (e.g. to show a lecturer), rather than a randomized selection. The ID input and its button are wired via Bootstrap's `.input-group` (not custom flex/height CSS) so they auto-align without fighting the box model by hand. Submitting a valid ID sets `inspect_id`, **not** `practice_ids` — this deliberately does not enter the practice queue (see `R/mod_inspect.R`). An unrecognized ID shows a warning notification and leaves state untouched.
+The reactivity is flat: cell checkboxes → `selected_combos()` → `filtered_items()` → submit handler. There's no separate selection-summary text — the selection is already visible from which chips are highlighted, and the max-available count already appears in the "Alle verfügbaren (N)" preset label, so a redundant summary line was removed. No `reactiveValues` bool matrix; each cell is read directly via `input[[paste0("cell_", i, "_", j)]]`.
+
+Each chip shows a live count (`output$count_i_j`) — total or new-only depending on the "Nur neue Aufgaben ziehen" switch (`input$only_new`) — and, when that switch is off, an orange `.sel-chip-badge` showing how many of that cell's items are unattempted (`output$badge_i_j`). A single `observe()` block re-evaluates every cell whenever `only_new` or the new-item counts change: cells with zero new items are `shinyjs::disable()`d and auto-unchecked via `updateCheckboxInput(..., value = FALSE)` — this is why `shinyjs::useShinyjs()` in `ui.R`'s header matters here, not just for `mod_practice.R`.
+
+**Item count** is a stepper (`n_minus`/`n_plus` buttons) plus preset buttons (5/10/20/"Alle verfügbaren (N)") — deliberately not a slider or `numericInput`: with a pool that keeps growing, a linear slider's usable range (students realistically want 5–30 items) would shrink to a sliver of the track, and "Alle verfügbaren" needs to track the *current filtered selection*, not the pool's total size. The value lives in a plain `reactiveVal` (`n_items`), not a bound Shiny input — there's no widget whose `input$id` holds the number. A second `want_all` `reactiveVal` tracks whether the "Alle verfügbaren" preset is active; `effective_n()` resolves to `nrow(filtered_items())` when `want_all()` is `TRUE`, else `n_items()`. Any stepper/preset-5/10/20 click clears `want_all`. Tests that need a specific count call `n_items(<value>)` directly inside `testServer()`'s `expr` (which runs in the module's own environment) rather than `session$setInputs(n_items = ...)` — see `selector_cell_inputs()` in `helper-modules.R`.
+
+Below the area list, a second `bslib::card` (same `card_header` + `card_body` pattern as the main selector card, headed "Spezifische Aufgabe auswählen") holds a **direct item lookup by ID** — for students who want to jump straight to one known item (e.g. to show a lecturer), rather than a randomized selection. The ID input and its button are wired via Bootstrap's `.input-group` (not custom flex/height CSS) so they auto-align without fighting the box model by hand. Submitting a valid ID sets `inspect_id`, **not** `practice_ids` — this deliberately does not enter the practice queue (see `R/mod_inspect.R`). An unrecognized ID shows a warning notification and leaves state untouched.
 
 ### `R/mod_practice.R`
 
@@ -286,7 +293,7 @@ The practice module has two separate `renderUI` outputs to avoid unnecessary re-
 - **`output$item_stimulus`** — only invalidates when `current_item()` changes (i.e., when moving to a new item). Never re-renders on check.
 - **`output$item_answers`** — invalidates on both item change and check. Renders interactive radio inputs before check; disabled result-colored inputs + feedback card after check.
 
-The progress bar (`output$progress_bar`) also shows the current item's `id_item` next to "Aufgabe X von Y", so a student stuck on a question can report its ID (e.g. to a lecturer) without needing the separate lookup flow in `mod_selector`.
+The progress bar (`output$progress_bar`) also shows the current item's `id_item` next to "Aufgabe X von Y", so a student stuck on a question can report its ID (e.g. to a lecturer) without needing the separate lookup flow in `mod_selector`. The badge is built by `item_id_badge()` and copies the ID on click — same component and behaviour as the one in `mod_inspect.R`.
 
 **Answer coloring** is done via CSS classes on the radio `<input>`:
 - `.radio-result-correct`, `.radio-result-incorrect`, `.radio-result-skip` — defined in `app.css`
@@ -403,10 +410,14 @@ Key CSS classes to be aware of when changing layout:
 | `.login-page` / `.login-card` / `.login-card-header` / `.login-card-body` | Login page layout |
 | `.reg-error` / `.reg-success` | Registration feedback message styling (`mod_register.R`'s `reg_msg()`) |
 | `.home-steps` / `.home-step` / `.home-step-num` | Home panel numbered steps layout |
-| `.sel-matrix` / `.sel-cb` / `.sel-col-label` / `.sel-row-label` | Checkbox matrix in selector |
-| `.sel-options-row` | Flex row containing number input, avail info, and toggle |
-| `.sel-direct-details` / `.sel-direct-summary` / `.sel-direct-row` | Collapsed direct-ID-lookup disclosure below the selector matrix; `.sel-direct-row` is a Bootstrap `.input-group` |
-| `.practice-item-id` | Item ID badge next to "Aufgabe X von Y" in the practice progress bar |
+| `.sel-area-row` / `.sel-area-label` / `.sel-chip-group` | Selector's per-learning-area row layout |
+| `.sel-chip-wrap` / `.sel-chip-input` / `.sel-chip` / `.sel-chip-header` | Pill-toggle chip: hidden checkbox + styled label, sibling `:checked` selector drives active state |
+| `.sel-chip-count` / `.sel-chip-badge` | In-chip item count / floating "N neu" badge |
+| `.sel-stepper-btn` / `.sel-count-value` / `.sel-preset-btn` | Item-count stepper (−/+) and preset pills (5/10/20/Alle verfügbaren) |
+| `.sel-footer` | Selector's bottom row: selection summary text + submit button |
+| `.sel-direct-row` | Direct-ID-lookup card's input row below the selector; a Bootstrap `.input-group` |
+| `.practice-item-id` | Item ID badge — practice progress bar and inspect header |
+| `.practice-item-id-btn` / `.is-copied` | Clickable variant built by `item_id_badge()`; `.is-copied` is the transient post-copy state applied by the client-only success listener in `ui.R` |
 | `.practice-answers-section` | Gray tinted answers area below stimulus in practice card |
 | `.answer-option` | Per-answer radio row; hover suppressed post-check via `:has(input:disabled)` |
 | `.answer-option.is-static` | Non-interactive variant used by `mod_inspect.R` — kills hover affordance only, must **not** set `background-color` in the base state or it silently overrides `.correct_answer_txt`/`.incorrect_answer_txt` (equal-or-higher specificity beats source order) |

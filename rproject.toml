@@ -18,4 +18,5 @@ dependencies = [
     "sodium",
     "ggplot2",
     "markdown",
+    "rclipboard",
 ]

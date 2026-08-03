@@ -88,8 +88,9 @@ mod_practice_server <- function(
         div(
           class = "d-flex justify-content-between text-muted small mb-1",
           span(
+            class = "d-inline-flex align-items-center",
             sprintf("Aufgabe %d von %d", state$pos, length(ids)),
-            tags$span(class = "practice-item-id ms-2", sprintf("(ID %d)", ids[state$pos]))
+            item_id_badge(ids[state$pos], ns("copy_item_id"), class = "ms-2")
           ),
           span(sprintf("%d%%", pct))
         ),
@@ -301,6 +302,7 @@ mod_practice_server <- function(
       },
       ignoreNULL = TRUE
     )
+
 
     # ── Reset button state when moving to a new item ──────────────────────────
     observeEvent(

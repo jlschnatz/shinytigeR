@@ -8,7 +8,7 @@ mod_selector_ui <- function(id, data_item) {
   n_areas <- length(area_keys)
   n_types <- length(type_keys)
 
-  # Total item counts per cell — static, used only to disable permanently empty cells
+  # Total item counts per cell — static, used only to permanently disable empty cells
   total_counts <- outer(
     seq_len(n_types),
     seq_len(n_areas),
@@ -17,50 +17,63 @@ mod_selector_ui <- function(id, data_item) {
     })
   )
 
-  cb <- function(input_id, checked = TRUE, disabled = FALSE) {
-    tags$input(
-      type = "checkbox",
-      id = input_id,
-      class = "sel-cb",
-      checked = if (checked && !disabled) NA else NULL,
-      disabled = if (disabled) NA else NULL
-    )
-  }
+  # Each cell is a hidden checkbox + a `<label>` styled as a pill via CSS
+  # (`.sel-chip` / `:checked` in app.css) — same pattern as the old checkbox
+  # matrix, just restyled. Keeps state in the DOM so shinyjs::disable() /
+  # updateCheckboxInput() can drive it without losing checked state on re-render.
 
-  header_cells <- tagList(
-    tags$th(class = "sel-corner", cb(ns("all"))),
-    lapply(seq_len(n_areas), function(j) {
-      tags$th(
-        class = "sel-col-header",
-        tags$label(
-          `for` = ns(paste0("col_", j)),
-          class = "sel-col-label",
-          area_keys[j]
-        ),
-        cb(ns(paste0("col_", j)))
-      )
-    })
-  )
-
-  data_rows <- lapply(seq_len(n_types), function(i) {
-    tags$tr(
-      tags$th(
-        class = "sel-row-header",
-        cb(ns(paste0("row_", i))),
-        tags$label(
-          `for` = ns(paste0("row_", i)),
-          class = "sel-row-label",
-          type_keys[i]
-        )
-      ),
-      lapply(seq_len(n_areas), function(j) {
-        empty <- total_counts[i, j] == 0L
-        tags$td(
-          class = paste("sel-cell", if (empty) "sel-cell-empty" else ""),
-          cb(ns(paste0("cell_", i, "_", j)), checked = !empty, disabled = empty),
-          uiOutput(ns(paste0("count_", i, "_", j)), class = "sel-count-wrap")
+  # ── Column headers — select-all per item type ───────────────────────────────
+  type_header_row <- div(
+    class = "sel-area-row sel-type-header",
+    div(class = "sel-area-label"),
+    div(
+      class = "sel-chip-group",
+      lapply(seq_len(n_types), function(i) {
+        div(
+          class = "sel-chip-wrap",
+          tags$input(
+            type = "checkbox",
+            id = ns(paste0("type_all_", i)),
+            class = "sel-chip-input"
+          ),
+          tags$label(
+            `for` = ns(paste0("type_all_", i)),
+            class = "sel-chip sel-chip-header",
+            type_keys[i]
+          )
         )
       })
+    )
+  )
+
+  # ── One row per learning area, one chip per item type ───────────────────────
+  area_rows <- lapply(seq_len(n_areas), function(j) {
+    div(
+      class = "sel-area-row",
+      div(class = "sel-area-label", area_vals[j]),
+      div(
+        class = "sel-chip-group",
+        lapply(seq_len(n_types), function(i) {
+          empty <- total_counts[i, j] == 0L
+          cell_id <- ns(paste0("cell_", i, "_", j))
+          div(
+            class = "sel-chip-wrap",
+            tags$input(
+              type = "checkbox",
+              id = cell_id,
+              class = "sel-chip-input",
+              disabled = if (empty) NA else NULL
+            ),
+            tags$label(
+              `for` = cell_id,
+              class = "sel-chip",
+              type_keys[i],
+              uiOutput(ns(paste0("count_", i, "_", j)), inline = TRUE, container = tags$span),
+              uiOutput(ns(paste0("badge_", i, "_", j)), inline = TRUE, container = tags$span)
+            )
+          )
+        })
+      )
     )
   })
 
@@ -75,56 +88,48 @@ mod_selector_ui <- function(id, data_item) {
         )
       ),
       bslib::card_body(
-        class = "p-4",
-        # ── Checkbox matrix ────────────────────────────────────────────────────
+        class = "p-3",
         tags$p(
-          class = "text-muted mb-3",
+          class = "text-muted mb-2",
           "Wähle Themenbereiche und Aufgabentypen aus — du bekommst dann eine zufällige Auswahl zum Üben."
         ),
         div(
-          class = "sel-matrix-wrap mb-2",
-          tags$table(
-            class = "sel-matrix",
-            tags$thead(tags$tr(header_cells)),
-            tags$tbody(data_rows)
-          )
+          class = "sel-area-list mb-1",
+          type_header_row,
+          area_rows
         ),
-        # ── Options row ────────────────────────────────────────────────────────
+        # ── Only-new toggle ──────────────────────────────────────────────────────
         div(
-          class = "d-flex align-items-center gap-3 flex-wrap mb-1 sel-options-row",
-          numericInput(
-            ns("n_items"),
-            label = NULL,
-            value = 10L,
-            min = 1L,
-            max = 50L,
-            step = 1L,
-            width = "75px"
+          class = "form-check form-switch mt-2 mb-2",
+          tags$input(
+            type = "checkbox",
+            class = "form-check-input",
+            id = ns("only_new"),
+            role = "switch"
           ),
-          uiOutput(ns("avail_info"), class = "sel-avail-info"),
-          div(
-            class = "ms-auto",
-            div(
-              class = "form-check form-switch mb-0",
-              tags$input(
-                type = "checkbox",
-                class = "form-check-input",
-                id = ns("only_new"),
-                role = "switch"
-              ),
-              tags$label(
-                class = "form-check-label",
-                `for` = ns("only_new"),
-                "Nur neue Aufgaben"
-              )
-            )
+          tags$label(
+            class = "form-check-label",
+            `for` = ns("only_new"),
+            "Nur neue Aufgaben ziehen"
           )
         ),
+        # ── Item count: stepper + presets + submit ───────────────────────────────
         div(
-          class = "d-grid mt-2",
+          class = "d-flex align-items-center justify-content-between gap-2 flex-wrap mt-2 pt-2 sel-footer",
+          div(
+            class = "d-flex align-items-center gap-2 flex-wrap sel-count-row",
+            tags$span(class = "text-muted me-1", "Anzahl Aufgaben"),
+            actionButton(ns("n_minus"), "−", class = "btn btn-outline-secondary sel-stepper-btn"),
+            div(class = "sel-count-value", uiOutput(ns("n_value"), inline = TRUE)),
+            actionButton(ns("n_plus"), "+", class = "btn btn-outline-secondary sel-stepper-btn"),
+            actionButton(ns("preset_5"), "5", class = "btn btn-outline-secondary sel-preset-btn"),
+            actionButton(ns("preset_10"), "10", class = "btn btn-outline-secondary sel-preset-btn"),
+            actionButton(ns("preset_20"), "20", class = "btn btn-outline-secondary sel-preset-btn"),
+            actionButton(ns("preset_all"), uiOutput(ns("preset_all_label"), inline = TRUE), class = "btn btn-outline-secondary sel-preset-btn")
+          ),
           actionButton(
             ns("submit"),
-            div(bsicons::bs_icon("play-fill"), tags$b("Üben starten")),
+            div(bsicons::bs_icon("play-fill"), tags$b("Starten")),
             class = "btn btn-primary btn-lg"
           )
         )
@@ -132,31 +137,34 @@ mod_selector_ui <- function(id, data_item) {
     ),
     # ── Direct item lookup ──────────────────────────────────────────────────────
     bslib::card(
-      class = "mt-3",
+      class = "mt-2",
+      bslib::card_header(
+        div(
+          class = "d-flex align-items-center gap-2",
+          bsicons::bs_icon("hash"),
+          tags$b("Spezifische Aufgabe auswählen")
+        )
+      ),
       bslib::card_body(
-        class = "py-2 px-3",
-        tags$details(
-          class = "sel-direct-details",
-          tags$summary(
-            class = "sel-direct-summary",
-            bsicons::bs_icon("hash"),
-            " Direkt zu einer Aufgabe (z. B. um sie deiner Lehrperson zu zeigen)"
+        class = "p-3",
+        tags$p(
+          class = "text-muted mb-2",
+          "Direkt zu einer Aufgabe springen (z. B. um sie deiner Lehrperson zu zeigen)."
+        ),
+        div(
+          class = "input-group sel-direct-row",
+          tags$input(
+            id = ns("direct_id"),
+            type = "number",
+            class = "shiny-input-number form-control",
+            min = 1L,
+            step = 1L,
+            style = "flex: 0 0 120px;"
           ),
-          div(
-            class = "input-group sel-direct-row mt-2",
-            tags$input(
-              id = ns("direct_id"),
-              type = "number",
-              class = "shiny-input-number form-control",
-              min = 1L,
-              step = 1L,
-              style = "flex: 0 0 120px;"
-            ),
-            actionButton(
-              ns("direct_submit"),
-              div(bsicons::bs_icon("eye"), "Aufgabe ansehen"),
-              class = "btn btn-outline-primary"
-            )
+          actionButton(
+            ns("direct_submit"),
+            div(bsicons::bs_icon("eye"), "Aufgabe ansehen"),
+            class = "btn btn-outline-primary"
           )
         )
       )
@@ -178,49 +186,24 @@ mod_selector_server <- function(
     n_areas <- length(area_vals)
     n_types <- length(type_vals)
 
-    # ── Select-all / row / col header observers ──────────────────────────────
-
-    # "Select all" drives all row and col headers (cells follow via those)
-    observeEvent(
-      input$all,
-      {
-        for (i in seq_len(n_types)) {
-          updateCheckboxInput(session, paste0("row_", i), value = input$all)
-        }
-        for (j in seq_len(n_areas)) {
-          updateCheckboxInput(session, paste0("col_", j), value = input$all)
-        }
-      },
-      ignoreInit = TRUE
+    total_counts <- outer(
+      seq_len(n_types),
+      seq_len(n_areas),
+      Vectorize(function(i, j) {
+        sum(data_item$type_item == type_vals[i] & data_item$learning_area == area_vals[j])
+      })
     )
 
-    # Row header drives its cells
+    # ── Column header ("select all of this type") drives its cells ─────────────
     lapply(seq_len(n_types), function(i) {
       observeEvent(
-        input[[paste0("row_", i)]],
+        input[[paste0("type_all_", i)]],
         {
           for (j in seq_len(n_areas)) {
             updateCheckboxInput(
               session,
               paste0("cell_", i, "_", j),
-              value = input[[paste0("row_", i)]]
-            )
-          }
-        },
-        ignoreInit = TRUE
-      )
-    })
-
-    # Col header drives its cells
-    lapply(seq_len(n_areas), function(j) {
-      observeEvent(
-        input[[paste0("col_", j)]],
-        {
-          for (i in seq_len(n_types)) {
-            updateCheckboxInput(
-              session,
-              paste0("cell_", i, "_", j),
-              value = input[[paste0("col_", j)]]
+              value = input[[paste0("type_all_", i)]]
             )
           }
         },
@@ -240,34 +223,63 @@ mod_selector_server <- function(
       unique(as.integer(ud$id_item))
     })
 
-    # ── Per-cell counts — reactive to only_new toggle ─────────────────────────
-    pool_new <- reactive({
+    new_counts <- reactive({
       ids <- answered_ids()
-      if (isTRUE(input$only_new)) {
-        data_item[!data_item$id_item %in% ids, , drop = FALSE]
-      } else {
-        data_item
-      }
+      outer(
+        seq_len(n_types),
+        seq_len(n_areas),
+        Vectorize(function(i, j) {
+          sum(
+            !data_item$id_item %in% ids &
+              data_item$type_item == type_vals[i] &
+              data_item$learning_area == area_vals[j]
+          )
+        })
+      )
     })
 
+    # ── Per-cell count text + "N neu" badge ─────────────────────────────────────
     for (i in seq_len(n_types)) {
       for (j in seq_len(n_areas)) {
         local({
           ii <- i
           jj <- j
-          tv <- type_vals[ii]
-          av <- area_vals[jj]
           output[[paste0("count_", ii, "_", jj)]] <- renderUI({
-            pool <- pool_new()
-            n <- sum(pool$type_item == tv & pool$learning_area == av)
-            tags$span(
-              class = paste("sel-count", if (n == 0L) "sel-count-empty" else ""),
-              n
-            )
+            only_new_on <- isTRUE(input$only_new)
+            n <- if (only_new_on) new_counts()[ii, jj] else total_counts[ii, jj]
+            tags$span(class = "sel-chip-count", n)
+          })
+          output[[paste0("badge_", ii, "_", jj)]] <- renderUI({
+            n_new <- new_counts()[ii, jj]
+            if (isTRUE(input$only_new) || n_new == 0L) {
+              return(NULL)
+            }
+            tags$span(class = "sel-chip-badge", sprintf("%d neu", n_new))
           })
         })
       }
     }
+
+    # ── Disable + auto-deselect cells with no new items when only_new is on ────
+    observe({
+      only_new_on <- isTRUE(input$only_new)
+      nc <- new_counts()
+      for (i in seq_len(n_types)) {
+        for (j in seq_len(n_areas)) {
+          cell_id <- paste0("cell_", i, "_", j)
+          permanently_empty <- total_counts[i, j] == 0L
+          should_disable <- permanently_empty || (only_new_on && nc[i, j] == 0L)
+          if (should_disable) {
+            if (isTRUE(input[[cell_id]])) {
+              updateCheckboxInput(session, cell_id, value = FALSE)
+            }
+            shinyjs::disable(cell_id)
+          } else {
+            shinyjs::enable(cell_id)
+          }
+        }
+      }
+    })
 
     # Collect selected (area, type) combinations from the cell checkboxes
     selected_combos <- reactive({
@@ -304,33 +316,45 @@ mod_selector_server <- function(
       df
     })
 
-    output$avail_info <- renderUI({
-      n_avail <- nrow(filtered_items())
-      n_want <- as.integer(input$n_items)
-      if (is.na(n_want) || n_want < 1L) {
-        return(tags$span(
-          class = "text-danger",
-          bsicons::bs_icon("exclamation-circle"),
-          " Ungültige Anzahl."
-        ))
-      }
-      if (n_avail == 0L) {
-        return(tags$span(
-          class = "text-warning",
-          bsicons::bs_icon("exclamation-triangle"),
-          " Keine Aufgaben verfügbar."
-        ))
-      }
-      n_sel <- min(n_want, n_avail)
-      tags$span(
-        class = "text-muted",
-        sprintf("von %d verfügbar, %d werden geladen", n_avail, n_sel)
-      )
+    # ── Item count: stepper + presets ────────────────────────────────────────
+    n_items <- reactiveVal(10L)
+    want_all <- reactiveVal(FALSE)
+
+    effective_n <- reactive({
+      if (want_all()) max(nrow(filtered_items()), 1L) else n_items()
     })
+
+    observeEvent(input$n_minus, {
+      want_all(FALSE)
+      n_items(max(1L, effective_n() - 1L))
+    })
+    observeEvent(input$n_plus, {
+      want_all(FALSE)
+      n_items(min(50L, effective_n() + 1L))
+    })
+    observeEvent(input$preset_5, {
+      want_all(FALSE)
+      n_items(5L)
+    })
+    observeEvent(input$preset_10, {
+      want_all(FALSE)
+      n_items(10L)
+    })
+    observeEvent(input$preset_20, {
+      want_all(FALSE)
+      n_items(20L)
+    })
+    observeEvent(input$preset_all, want_all(TRUE))
+
+    output$n_value <- renderUI(effective_n())
+
+    output$preset_all_label <- renderUI(
+      sprintf("Alle verfügbaren (%d)", nrow(filtered_items()))
+    )
 
     observeEvent(input$submit, {
       fi <- filtered_items()
-      n_want <- as.integer(input$n_items)
+      n_want <- effective_n()
       if (nrow(fi) == 0L || is.na(n_want) || n_want < 1L) {
         showNotification("Keine Aufgaben für diese Auswahl.", type = "warning")
         return()

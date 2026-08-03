@@ -2,9 +2,10 @@ mod_inspect_ui <- function(id) {
   ns <- NS(id)
   div(
     class = "practice-wrap",
+    tags$p(class = "text-muted small mb-1", "Aufgabenübersicht"),
     div(
-      class = "text-muted small mb-1",
-      uiOutput(ns("id_badge"))
+      class = "d-flex align-items-center gap-2 mb-2 flex-wrap",
+      uiOutput(ns("id_badge"), inline = TRUE)
     ),
     bslib::card(
       bslib::card_body(
@@ -48,7 +49,7 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
     output$id_badge <- renderUI({
       item <- current_item()
       req(nrow(item) == 1L)
-      sprintf("Aufgabenübersicht — ID %d", item$id_item[1])
+      item_id_badge(item$id_item[1], ns("copy_item_id"))
     })
 
     # ── Stimulus — only invalidates when the item changes ──────────────────────
