@@ -27,10 +27,12 @@ rv run dev/run.R
 # or install the package first and call:
 shinytigeR::run_app()
 
-# Document (regenerate NAMESPACE and man/)
+# Document (regenerate NAMESPACE and man/) — needs devtools or roxygen2,
+# neither of which is in rproject.toml (see Testing below for why); install
+# one separately (e.g. in a personal, non-rv-managed library) to run this
 devtools::document()
 
-# Check the package
+# Check the package — same caveat as above
 devtools::check(vignettes = FALSE)
 
 # Build tarball + Dockerfile for deployment (run from project root)
@@ -56,10 +58,15 @@ Do **not** edit `rv.lock` by hand. The `rv/` directory is the local package libr
 
 ### Testing
 
-```r
-devtools::test()          # run the full testthat suite
-devtools::test_active_file()  # run just the currently open test file
+`testthat`, `withr`, and `pkgload` are in `rproject.toml` (all three are already declared in `DESCRIPTION`'s `Suggests:`, and `pkgload` is what `dev/run.R` uses to load the package). `devtools` deliberately is **not** — a dry run showed it pulls in ~25 extra packages (`roxygen2`, `rmarkdown`, `tinytex`, `usethis`, `rcmdcheck`, `stringi`, `ragg`/`systemfonts`, the `gert`/`credentials` git stack, …) and would even force a different `rlang` version, which risks shifting versions the app itself depends on. `testthat` + `withr` + `pkgload` alone add only 14 light packages with no new system dependencies (`fs` is the only sysreqs hit, and it's already pulled in by `shiny`/`bslib`).
+
+Run the suite via `rv run`, which uses the rv-managed library regardless of what (if anything) is in a personal R library:
+
+```bash
+rv run -e 'pkgload::load_all(quiet = TRUE); testthat::test_dir("tests/testthat")'
 ```
+
+If you have `devtools` available separately (e.g. in a personal, non-rv-managed library — not through `rv run`), `devtools::test()` / `devtools::test_active_file()` work the same way and are more convenient for iterating on a single file.
 
 `tests/testthat/` (1400+ lines) covers `irt.R`, `db.R`, `utils.R`, the dashboard helpers, registration (`db_register_user`/`db_username_exists`/`REG_*` constants), and module reactivity for `mod_selector`, `mod_practice`, and `mod_dashboard` via `shiny::testServer()`.
 

@@ -19,4 +19,7 @@ dependencies = [
     "ggplot2",
     "markdown",
     "rclipboard",
+    "testthat",
+    "withr",
+    "pkgload",
 ]
