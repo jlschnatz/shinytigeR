@@ -120,3 +120,32 @@ is_img_path <- function(x) {
   !is.na(x) &
     grepl("\\.(?:png|jpg|jpeg|svg|gif)$", x, ignore.case = TRUE, perl = TRUE)
 }
+
+# Item-ID badge that copies its own ID on click. Used by mod_practice.R (in the
+# progress bar) and mod_inspect.R (above the item card) so both behave alike.
+# Built on rclipboard::rclipButton (clipboard.js) rather than a hand-rolled
+# navigator.clipboard call, for the bslib tooltip integration.
+#
+# `input_id` must be namespaced by the caller (`ns("copy_item_id")`) and unique
+# within the app. The copy itself is entirely client-side — clipboard.js reads
+# `data-clipboard-text` on click — so nothing observes this input server-side;
+# the button's click counter resetting on every renderUI re-render (both call
+# sites live inside one) is therefore harmless.
+#
+# Known upstream quirk (rclip_fun, rclipboard 0.2.1): the helper script it
+# injects binds `new ClipboardJS(".btn", document.getElementById(inputId))`.
+# The second argument is meant to be a ClipboardJS options object, not a DOM
+# node, so passing an element there has no effect — the selector ends up
+# matching every `.btn` in the document, not just this one, and a fresh
+# instance is added on each re-render. Copying still works (each instance
+# reads `data-clipboard-text` off whatever `.btn` was actually clicked), it
+# just isn't scoped the way the package's own code implies.
+item_id_badge <- function(id_item, input_id, class = NULL) {
+  rclipboard::rclipButton(
+    inputId = input_id,
+    label = tagList(bsicons::bs_icon("clipboard"), sprintf("ID %d", as.integer(id_item))),
+    clipText = as.character(as.integer(id_item)),
+    class = paste("practice-item-id practice-item-id-btn", class),
+    tooltip = "Aufgaben-ID kopieren"
+  )
+}

@@ -25,4 +25,5 @@ Imports:
     shinyauthr,
     sodium,
     ggplot2,
-    markdown
+    markdown,
+    rclipboard

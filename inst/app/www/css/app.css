@@ -411,6 +411,43 @@
   padding: 0.25rem 0.7rem;
 }
 
+/* Clickable variant — copies the item ID on click (item_id_badge() in utils.R,
+   an rclipboard::rclipButton). Overrides Bootstrap's default btn padding/
+   background so it still reads as a badge, not a button. */
+.practice-item-id-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid transparent;
+  background-color: #f1f3f5;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.practice-item-id-btn:hover,
+.practice-item-id-btn:focus-visible {
+  background-color: #e6eef5;
+  border-color: var(--tiger-primary);
+  color: var(--tiger-primary);
+}
+
+.practice-item-id-btn:focus-visible {
+  outline: 2px solid var(--tiger-primary);
+  outline-offset: 2px;
+}
+
+/* Transient confirmation, applied by the client-only success listener in
+   ui.R's header script (never by a Shiny observer — see comment there). */
+.practice-item-id-btn.is-copied {
+  background-color: #d1e7dd;
+  border-color: #0f5132;
+  color: #0f5132;
+}
+
 /* ── Learning-area chip list ───────────────────────────────────────────────── */
 .sel-area-row {
   display: flex;

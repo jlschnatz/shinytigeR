@@ -5,12 +5,7 @@ mod_inspect_ui <- function(id) {
     tags$p(class = "text-muted small mb-1", "Aufgabenübersicht"),
     div(
       class = "d-flex align-items-center gap-2 mb-2 flex-wrap",
-      uiOutput(ns("id_badge"), inline = TRUE),
-      actionButton(
-        ns("copy_id"),
-        div(bsicons::bs_icon("clipboard"), "ID kopieren"),
-        class = "btn btn-outline-secondary btn-sm"
-      )
+      uiOutput(ns("id_badge"), inline = TRUE)
     ),
     bslib::card(
       bslib::card_body(
@@ -54,14 +49,7 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
     output$id_badge <- renderUI({
       item <- current_item()
       req(nrow(item) == 1L)
-      tags$span(class = "practice-item-id", sprintf("ID %d", item$id_item[1]))
-    })
-
-    observeEvent(input$copy_id, {
-      item <- current_item()
-      req(nrow(item) == 1L)
-      shinyjs::runjs(sprintf("navigator.clipboard.writeText('%d')", item$id_item[1]))
-      showNotification("Aufgaben-ID kopiert.", type = "message", duration = 2)
+      item_id_badge(item$id_item[1], ns("copy_item_id"))
     })
 
     # ── Stimulus — only invalidates when the item changes ──────────────────────

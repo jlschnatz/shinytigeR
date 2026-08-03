@@ -14,6 +14,7 @@ utils::globalVariables(c("item_num", "roll_acc", "area_short"))
 #' @importFrom shinyauthr loginUI loginServer logoutUI logoutServer
 #' @importFrom sodium password_verify password_store
 #' @importFrom markdown markdownToHTML
+#' @importFrom rclipboard rclipboardSetup rclipButton
 #' @importFrom stats optim setNames
 #' @importFrom utils head read.csv
 ## usethis namespace: end
