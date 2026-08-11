@@ -110,7 +110,7 @@ mod_selector_ui <- function(id, data_item) {
           tags$label(
             class = "form-check-label",
             `for` = ns("only_new"),
-            "Nur neue Aufgaben ziehen"
+            "Nur neue Aufgaben"
           )
         ),
         # ── Item count: stepper + presets + submit ───────────────────────────────
@@ -149,7 +149,7 @@ mod_selector_ui <- function(id, data_item) {
         class = "p-3",
         tags$p(
           class = "text-muted mb-2",
-          "Direkt zu einer Aufgabe springen (z. B. um sie deiner Lehrperson zu zeigen)."
+          "Direkt zu einer Aufgabe springen."
         ),
         div(
           class = "input-group sel-direct-row",
@@ -159,6 +159,7 @@ mod_selector_ui <- function(id, data_item) {
             class = "shiny-input-number form-control",
             min = 1L,
             step = 1L,
+            placeholder = "ID",
             style = "flex: 0 0 120px;"
           ),
           actionButton(
