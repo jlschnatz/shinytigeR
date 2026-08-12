@@ -355,6 +355,31 @@ test_that("practice: new practice_ids resets position to 1", {
   })
 })
 
+# ── mod_inspect_server ────────────────────────────────────────────────────────
+
+test_that("inspect: skip option is excluded before and after reveal", {
+  data_item <- make_data_item() # 3 options per item; option 3 = skip
+  inspect_id <- reactiveVal(NULL)
+
+  testServer(
+    mod_inspect_server,
+    args = list(data_item = data_item, inspect_id = inspect_id),
+    {
+      inspect_id(1L)
+      session$flushReact()
+      html_before <- output$item_answers$html
+      expect_false(grepl("berspringen", html_before))
+      expect_true(grepl("Richtig", html_before))
+      expect_true(grepl("Falsch", html_before))
+
+      session$setInputs(reveal = 1L)
+      html_after <- output$item_answers$html
+      expect_false(grepl("berspringen", html_after))
+      expect_true(grepl("Super!", html_after)) # feedback for the correct option
+    }
+  )
+})
+
 # ── mod_dashboard_server ──────────────────────────────────────────────────────
 
 test_that("dashboard: user_exists is FALSE with no DB data", {

@@ -108,7 +108,11 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
       correct_idx <- as.integer(item$answer_correct)
       show_answers <- revealed()
 
-      rows <- lapply(seq_along(choices), function(i) {
+      # Last option is always "Frage überspringen" (see get_answeroptions) —
+      # skipping isn't a meaningful choice in a read-only overview.
+      skip_idx <- length(choices)
+
+      rows <- lapply(seq_len(skip_idx - 1L), function(i) {
         is_correct <- show_answers && i == correct_idx
         suffix <- if (item$type_answer == "image") "img" else "txt"
         hi_class <- if (is_correct) paste0("correct_answer_", suffix) else ""
