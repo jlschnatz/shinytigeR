@@ -114,7 +114,10 @@ mod_practice_server <- function(
       item <- current_item()
       req(nrow(item) == 1L)
       item <- as.list(item[1, ])
-      session$sendCustomMessage("mathjax_typeset", TRUE)
+      session$onFlushed(
+        function() session$sendCustomMessage("mathjax_typeset", TRUE),
+        once = TRUE
+      )
       div(
         class = "stimulus mb-2",
         if (
@@ -290,7 +293,10 @@ mod_practice_server <- function(
         )
       }
 
-      session$sendCustomMessage("mathjax_typeset", TRUE)
+      session$onFlushed(
+        function() session$sendCustomMessage("mathjax_typeset", TRUE),
+        once = TRUE
+      )
       div(class = "answer-options", answers_ui)
     })
 
