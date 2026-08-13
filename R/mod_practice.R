@@ -1,5 +1,32 @@
-mod_practice_ui <- function(id) {
+mod_practice_ui <- function(id, data_item, practice_ids) {
   ns <- NS(id)
+
+  # Which of mc_wrap/num_wrap should be visible for the FIRST item of this
+  # queue, baked directly into the initial HTML. This can't be left to the
+  # server's observe() (below) alone: that observe() and this UI function are
+  # two separate reactive contexts that both react to practice_ids() but have
+  # no dependency edge between them, so their relative order within the same
+  # flush is unspecified. If the observe()'s shinyjs::show()/hide() messages
+  # for mc_wrap/num_wrap happen to be processed client-side before this UI's
+  # HTML has actually been inserted into the DOM, jQuery finds no matching
+  # element and the message is silently dropped — leaving whichever default
+  # was baked into the HTML (both visible, if neither is pre-hidden here).
+  # Item-to-item transitions later (via "Weiter") don't have this problem —
+  # the DOM already exists by then — so only the *first* item needs this.
+  ids <- practice_ids()
+  first_is_num <- FALSE
+  if (length(ids) > 0L) {
+    row <- data_item[data_item$id_item == ids[1], , drop = FALSE]
+    if (nrow(row) == 1L) first_is_num <- identical(as.character(row$answer_mode[1]), "num")
+  }
+  mc_ui <- div(id = ns("mc_wrap"), mod_mc_answer_ui(ns("answer_mc")))
+  num_ui <- div(id = ns("num_wrap"), mod_numeric_answer_ui(ns("answer_num")))
+  if (first_is_num) {
+    mc_ui <- shinyjs::hidden(mc_ui)
+  } else {
+    num_ui <- shinyjs::hidden(num_ui)
+  }
+
   div(
     class = "practice-wrap",
     # ── Progress bar ──────────────────────────────────────────────────────────
@@ -9,10 +36,16 @@ mod_practice_ui <- function(id) {
       bslib::card_body(
         # Stimulus — only re-renders when item changes, NOT on check
         shiny::withMathJax(uiOutput(ns("item_stimulus"))),
-        # Answers + feedback — re-renders on check; MathJax re-typesets only here
+        # Answers + feedback — both answer-mode child modules are mounted
+        # statically (never remounted per item); only their visibility is
+        # toggled, and only the numeric module's post-check panel re-renders
+        # via its own uiOutput. See mod_numeric_answer.R for why the numeric
+        # module's input/skip button specifically must stay a stable DOM node.
         div(
           class = "practice-answers-section",
-          shiny::withMathJax(uiOutput(ns("item_answers")))
+          shiny::withMathJax(
+            div(mc_ui, num_ui)
+          )
         )
       )
     ),
@@ -55,11 +88,16 @@ mod_practice_server <- function(
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Internal state — position in the queue + check state
+    # Internal state — position in the queue + check state.
+    # `result` (set once state$checked is TRUE) is a list with `category`
+    # ("correct"/"incorrect"/"skip"/"unmatched" — the last only for numeric
+    # items), `answer_idx` (matched distractor index, or NA), and `typed_value`
+    # (numeric input only, NA otherwise) — this is what the answer child
+    # modules read to render their post-check view.
     state <- reactiveValues(
       pos = 1L,
       checked = FALSE,
-      answer_id = NULL
+      result = NULL
     )
 
     # Reset to position 1 whenever a new queue is set
@@ -68,7 +106,7 @@ mod_practice_server <- function(
       {
         state$pos <- 1L
         state$checked <- FALSE
-        state$answer_id <- NULL
+        state$result <- NULL
       },
       ignoreNULL = TRUE
     )
@@ -77,6 +115,29 @@ mod_practice_server <- function(
       ids <- practice_ids()
       req(length(ids) > 0L, state$pos >= 1L, state$pos <= length(ids))
       data_item[data_item$id_item == ids[state$pos], , drop = FALSE]
+    })
+
+    # Both answer-mode child modules are registered once and stay active for
+    # the module's lifetime (same "register once, toggle UI" pattern as the
+    # top-level modules in server.R) — the observe() below picks which one's
+    # UI is actually visible, based on the current item's answer_mode.
+    mc_answer <- mod_mc_answer_server(
+      "answer_mc",
+      item = current_item,
+      checked = reactive(state$checked),
+      result = reactive(state$result)
+    )
+    num_answer <- mod_numeric_answer_server(
+      "answer_num",
+      item = current_item,
+      checked = reactive(state$checked),
+      result = reactive(state$result)
+    )
+
+    is_numeric_item <- reactive({
+      item <- current_item()
+      req(nrow(item) == 1L)
+      identical(item$answer_mode[1], "num")
     })
 
     # ── Progress bar ──────────────────────────────────────────────────────────
@@ -140,182 +201,35 @@ mod_practice_server <- function(
       )
     })
 
-    # ── Answers + feedback — re-renders on check; stimulus is untouched ───────
-    output$item_answers <- renderUI({
+    # ── Toggle which answer-mode child is visible — no remounting ────────────
+    observe({
       item <- current_item()
       req(nrow(item) == 1L)
-      item <- as.list(item[1, ])
-      choices <- get_answeroptions(item)
-
-      answers_ui <- if (!state$checked) {
-        radio_opts <- lapply(seq_along(choices), function(i) {
-          id_i <- paste0(ns("answer"), "_", i)
-          if (item$type_answer == "image" && is_img_path(choices[i])) {
-            div(
-              class = "d-flex align-items-center mb-3",
-              tags$input(
-                type = "radio",
-                class = "form-check-input me-2",
-                name = ns("answer"),
-                id = id_i,
-                value = i,
-                style = "width:1.2em;height:1.2em;cursor:pointer;"
-              ),
-              tags$label(
-                `for` = id_i,
-                class = "label-answer",
-                tags$img(src = choices[i], class = "img-fluid answer-img")
-              )
-            )
-          } else {
-            div(
-              class = "answer-option mb-2",
-              tags$input(
-                type = "radio",
-                class = "form-check-input",
-                name = ns("answer"),
-                id = id_i,
-                value = i,
-                style = "width:1.1em;height:1.1em;cursor:pointer;"
-              ),
-              tags$label(
-                `for` = id_i,
-                class = "ms-2 answer-label",
-                style = "cursor:pointer;",
-                shiny::HTML(render_md(choices[i]))
-              )
-            )
-          }
-        })
-        tagAppendChildren(
-          div(id = ns("answer"), class = "shiny-input-radiogroup"),
-          .list = radio_opts
-        )
+      if (identical(item$answer_mode[1], "num")) {
+        shinyjs::hide("mc_wrap")
+        shinyjs::show("num_wrap")
       } else {
-        result <- evaluate_answer(item, state$answer_id)
-        feedbacks <- get_feedbackoptions(item)
-        fb_text <- if (state$answer_id <= length(feedbacks)) {
-          feedbacks[[state$answer_id]]
-        } else {
-          ""
-        }
-        suffix <- if (item$type_answer == "image") "img" else "txt"
-        hi_class <- paste0(result, "_answer_", suffix)
-        color_var <- switch(
-          result,
-          correct = "var(--tiger-correct)",
-          incorrect = "var(--tiger-incorrect)",
-          skip = "var(--tiger-skip)"
-        )
-        icon_name <- switch(
-          result,
-          correct = "check-circle-fill",
-          incorrect = "x-circle-fill",
-          skip = "skip-forward-fill"
-        )
-        title_str <- switch(
-          result,
-          correct = "Richtig!",
-          incorrect = "Leider falsch",
-          skip = "Übersprungen"
-        )
-
-        tagList(
-          lapply(seq_along(choices), function(i) {
-            is_sel <- i == state$answer_id
-            id_i <- paste0(ns("answer"), "_", i)
-            radio_cls <- paste(
-              "form-check-input",
-              if (is_sel) paste0("radio-result-", result) else ""
-            )
-            if (item$type_answer == "image" && is_img_path(choices[i])) {
-              div(
-                class = paste(
-                  "d-flex align-items-center mb-3",
-                  if (is_sel) hi_class else ""
-                ),
-                tags$input(
-                  type = "radio",
-                  class = paste(radio_cls, "me-2"),
-                  name = paste0(ns("answer"), "_done"),
-                  id = id_i,
-                  disabled = NA,
-                  checked = if (is_sel) NA else NULL,
-                  style = "width:1.2em;height:1.2em;"
-                ),
-                tags$label(
-                  `for` = id_i,
-                  class = "label-answer",
-                  tags$img(
-                    src = choices[i],
-                    class = "img-fluid answer-img",
-                    style = if (!is_sel) "opacity:0.65;" else NULL
-                  )
-                )
-              )
-            } else {
-              div(
-                class = paste(
-                  "answer-option mb-2",
-                  if (is_sel) hi_class else ""
-                ),
-                tags$input(
-                  type = "radio",
-                  class = radio_cls,
-                  name = paste0(ns("answer"), "_done"),
-                  id = id_i,
-                  disabled = NA,
-                  checked = if (is_sel) NA else NULL,
-                  style = "width:1.1em;height:1.1em;"
-                ),
-                tags$label(
-                  `for` = id_i,
-                  class = "ms-2 answer-label",
-                  style = if (!is_sel) "opacity:0.65;" else NULL,
-                  shiny::HTML(render_md(choices[i]))
-                )
-              )
-            }
-          }),
-          if (nzchar(fb_text)) {
-            div(
-              class = "feedback-card mt-4",
-              style = sprintf("border-left: 4px solid %s;", color_var),
-              div(
-                class = "feedback-header",
-                style = sprintf("color: %s;", color_var),
-                bsicons::bs_icon(icon_name),
-                tags$b(title_str)
-              ),
-              div(class = "feedback-body mt-1", shiny::HTML(render_md(fb_text)))
-            )
-          }
-        )
+        shinyjs::show("mc_wrap")
+        shinyjs::hide("num_wrap")
       }
-
-      session$onFlushed(
-        function() session$sendCustomMessage("mathjax_typeset", TRUE),
-        once = TRUE
-      )
-      div(class = "answer-options", answers_ui)
     })
 
-    # ── Answer selection — enable check button ─────────────────────────────────
-    observeEvent(
-      input$answer,
-      {
-        shinyjs::enable("check")
-      },
-      ignoreNULL = TRUE
-    )
-
+    # ── Check-button gating — mirrors whichever child module is active ───────
+    observe({
+      ready <- if (is_numeric_item()) {
+        isTRUE(num_answer$ready())
+      } else {
+        isTRUE(mc_answer$ready())
+      }
+      if (ready) shinyjs::enable("check") else shinyjs::disable("check")
+    })
 
     # ── Reset button state when moving to a new item ──────────────────────────
     observeEvent(
       state$pos,
       {
         state$checked <- FALSE
-        state$answer_id <- NULL
+        state$result <- NULL
         shinyjs::disable("check")
         shinyjs::hide("next_item")
         shinyjs::show("check")
@@ -327,7 +241,7 @@ mod_practice_server <- function(
       practice_ids(),
       {
         state$checked <- FALSE
-        state$answer_id <- NULL
+        state$result <- NULL
         shinyjs::disable("check")
         shinyjs::hide("next_item")
         shinyjs::show("check")
@@ -336,23 +250,32 @@ mod_practice_server <- function(
       ignoreInit = TRUE
     )
 
-    # ── Check answer ──────────────────────────────────────────────────────────
-    observeEvent(input$check, {
-      req(input$check, input$answer)
-      ans_idx <- as.integer(input$answer)
-      state$answer_id <- ans_idx
+    # ── Shared check-flow: store the result, write the response row ──────────
+    finish_check <- function(category, answer_idx = NA_integer_, typed_value = NA_real_) {
+      state$result <- list(
+        category = category,
+        answer_idx = answer_idx,
+        typed_value = typed_value
+      )
       state$checked <- TRUE
 
       shinyjs::hide("check")
       shinyjs::show("next_item")
 
-      # Write to DB
       item <- as.list(current_item()[1, ])
       uid <- credentials()$info$user_name
       token <- session$token
+      row <- build_response_row(
+        item,
+        answer_idx,
+        uid,
+        token,
+        typed_value = typed_value,
+        skipped = category == "skip"
+      )
       tryCatch(
         {
-          db_write_response(uid, build_response_row(item, ans_idx, uid, token))
+          db_write_response(uid, row)
           write_trigger(write_trigger() + 1L)
         },
         error = function(e) {
@@ -366,7 +289,37 @@ mod_practice_server <- function(
           )
         }
       )
+    }
+
+    # ── Check answer ──────────────────────────────────────────────────────────
+    observeEvent(input$check, {
+      req(input$check)
+      item <- current_item()
+      req(nrow(item) == 1L)
+      item_list <- as.list(item[1, ])
+
+      if (is_numeric_item()) {
+        typed_value <- num_answer$raw_answer()
+        req(!is.na(typed_value))
+        ev <- evaluate_numeric_answer(item_list, typed_value)
+        finish_check(ev$result, answer_idx = ev$matched_idx, typed_value = typed_value)
+      } else {
+        ans_idx <- mc_answer$raw_answer()
+        req(!is.na(ans_idx))
+        category <- evaluate_answer(item_list, ans_idx)
+        finish_check(category, answer_idx = ans_idx)
+      }
     })
+
+    # ── Explicit skip (numeric items only) ────────────────────────────────────
+    observeEvent(
+      num_answer$skip_requested(),
+      {
+        req(is_numeric_item(), !isTRUE(state$checked))
+        finish_check("skip")
+      },
+      ignoreInit = TRUE
+    )
 
     # ── Next item ─────────────────────────────────────────────────────────────
     observeEvent(input$next_item, {

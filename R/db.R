@@ -53,6 +53,21 @@ db_write_response <- function(user_id, df, path = DB_USERS()) {
     function(con) {
       if (!DBI::dbExistsTable(con, user_id)) {
         DBI::dbCreateTable(con, user_id, df)
+      } else {
+        # Per-user tables are created lazily from whatever build_response_row()
+        # produced on that user's first-ever write, so a table created before
+        # a new response column existed (e.g. typed_value, added for numeric
+        # items) won't have it. Add any missing columns before appending,
+        # rather than requiring a one-off migration of every existing table.
+        existing_cols <- DBI::dbListFields(con, user_id)
+        missing_cols <- setdiff(names(df), existing_cols)
+        for (col in missing_cols) {
+          sql_type <- if (is.numeric(df[[col]])) "REAL" else "TEXT"
+          DBI::dbExecute(
+            con,
+            sprintf('ALTER TABLE "%s" ADD COLUMN "%s" %s', user_id, col, sql_type)
+          )
+        }
       }
       DBI::dbAppendTable(con, user_id, df)
     },

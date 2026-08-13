@@ -28,6 +28,46 @@ make_data_item <- function() {
     type_answer = "text",
     irt_discr = 1.0,
     irt_diff = 0.0,
+    answer_mode = "mc",
+    stringsAsFactors = FALSE
+  )
+}
+
+# Single numeric-item row (answer_mode = "num") — distractor values live in
+# answeroption_0X same as MC, but as numeric strings and with no trailing
+# "Überspringen" slot (numeric items skip via a dedicated button, not a last
+# radio option). Correct value is answeroption_01 (answer_correct = 1L).
+make_numeric_item <- function(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20)) {
+  values <- c(correct_value, distractors)
+  n <- length(values)
+  opts <- rep(NA_character_, 6)
+  fbs <- rep(NA_character_, 6)
+  opts[seq_len(n)] <- as.character(values)
+  fbs[seq_len(n)] <- paste0("Feedback ", seq_len(n))
+  data.frame(
+    id_item = id_item,
+    learning_area = factor("Deskriptivstatistik", levels = LEARNING_AREA_LEVELS),
+    type_item = "content",
+    bloom_taxonomy = "application",
+    stimulus_text = "Berechne den Mittelwert.",
+    stimulus_image = NA_character_,
+    answeroption_01 = opts[1],
+    answeroption_02 = opts[2],
+    answeroption_03 = opts[3],
+    answeroption_04 = opts[4],
+    answeroption_05 = opts[5],
+    answeroption_06 = opts[6],
+    if_answeroption_01 = fbs[1],
+    if_answeroption_02 = fbs[2],
+    if_answeroption_03 = fbs[3],
+    if_answeroption_04 = fbs[4],
+    if_answeroption_05 = fbs[5],
+    if_answeroption_06 = fbs[6],
+    answer_correct = 1L,
+    type_answer = NA_character_,
+    irt_discr = 1.0,
+    irt_diff = 0.0,
+    answer_mode = "num",
     stringsAsFactors = FALSE
   )
 }

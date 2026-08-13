@@ -150,6 +150,25 @@ test_that("db_write_response appends rows for subsequent answers", {
   expect_setequal(ud$id_item, c(1L, 2L))
 })
 
+test_that("db_write_response adds a missing column to a pre-existing user table", {
+  # Reproduces a real per-user table created before typed_value existed (i.e.
+  # from an MC-only build_response_row()) — a later write that includes the
+  # new column must not fail with "table X has no column named typed_value".
+  path <- make_temp_db()
+  old_row <- make_response_row("carol", item_id = 1L)
+  db_write_response("carol", old_row, path) # table created without typed_value
+
+  new_row <- make_response_row("carol", item_id = 2L)
+  new_row$typed_value <- 4.5
+
+  expect_no_error(db_write_response("carol", new_row, path))
+
+  ud <- db_get_userdata("carol", path)
+  expect_equal(nrow(ud), 2L)
+  expect_true(is.na(ud$typed_value[ud$id_item == 1L]))
+  expect_equal(ud$typed_value[ud$id_item == 2L], 4.5)
+})
+
 test_that("db_get_userdata returns empty data.frame for unknown user", {
   path <- make_temp_db()
   ud <- db_get_userdata("nobody", path)

@@ -96,68 +96,110 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
 
     observeEvent(input$reveal, revealed(TRUE))
 
-    # ── Answer options — every option shown; correct one + all feedback ────────
-    # revealed on request. Nothing here is ever written to db_user.sqlite: this
-    # is inspection, not an attempt.
+    # ── Answer options — revealed on request. Nothing here is ever written to
+    # db_user.sqlite: this is inspection, not an attempt.
+    # MC: every option shown; correct one highlighted + every option's own
+    #     feedback revealed (unchanged behaviour).
+    # Numeric: only the correct value + its feedback are ever shown — the
+    #     other distractor values/feedback stay hidden even after reveal, per
+    #     the numeric-item restriction (distractor feedback is only meant to
+    #     be seen by actually answering with that value in practice mode).
     output$item_answers <- renderUI({
       item <- current_item()
       req(nrow(item) == 1L)
       item <- as.list(item[1, ])
-      choices <- get_answeroptions(item)
-      feedbacks <- get_feedbackoptions(item)
-      correct_idx <- as.integer(item$answer_correct)
       show_answers <- revealed()
-
-      # Last option is always "Frage überspringen" (see get_answeroptions) —
-      # skipping isn't a meaningful choice in a read-only overview.
-      skip_idx <- length(choices)
-
-      rows <- lapply(seq_len(skip_idx - 1L), function(i) {
-        is_correct <- show_answers && i == correct_idx
-        suffix <- if (item$type_answer == "image") "img" else "txt"
-        hi_class <- if (is_correct) paste0("correct_answer_", suffix) else ""
-        opt <- if (item$type_answer == "image" && is_img_path(choices[i])) {
-          div(
-            class = paste(
-              "d-flex align-items-center mb-2 answer-option is-static",
-              hi_class
-            ),
-            tags$img(src = choices[i], class = "img-fluid answer-img")
-          )
-        } else {
-          div(
-            class = paste("answer-option is-static mb-2", hi_class),
-            div(
-              class = "answer-label",
-              shiny::HTML(render_md(choices[i]))
-            )
-          )
-        }
-        fb_text <- if (show_answers && i <= length(feedbacks)) {
-          feedbacks[[i]]
-        } else {
-          ""
-        }
-        tagList(
-          opt,
-          if (show_answers && nzchar(fb_text)) {
-            div(
-              class = "feedback-card mt-1 mb-3",
-              style = sprintf(
-                "border-left: 4px solid %s;",
-                if (is_correct) "var(--tiger-correct)" else "var(--tiger-skip)"
-              ),
-              div(class = "feedback-body", shiny::HTML(render_md(fb_text)))
-            )
-          }
-        )
-      })
 
       session$onFlushed(
         function() session$sendCustomMessage("mathjax_typeset", TRUE),
         once = TRUE
       )
-      div(class = "answer-options", rows)
+
+      if (identical(item$answer_mode, "num")) {
+        choices <- get_answeroptions(item)
+        feedbacks <- get_feedbackoptions(item)
+        correct_idx <- as.integer(item$answer_correct)
+        correct_value <- if (correct_idx <= length(choices)) choices[correct_idx] else NA_character_
+        correct_fb <- if (show_answers && correct_idx <= length(feedbacks)) {
+          feedbacks[[correct_idx]]
+        } else {
+          ""
+        }
+        div(
+          class = "answer-options",
+          if (!show_answers) {
+            div(class = "text-muted", "Numerische Aufgabe — Antwort ausgeblendet.")
+          } else {
+            tagList(
+              div(
+                class = "answer-option is-static mb-2 correct_answer_txt",
+                div(
+                  class = "answer-label",
+                  sprintf("Richtige Antwort: %s", correct_value)
+                )
+              ),
+              if (nzchar(correct_fb)) {
+                div(
+                  class = "feedback-card mt-1 mb-3",
+                  style = "border-left: 4px solid var(--tiger-correct);",
+                  div(class = "feedback-body", shiny::HTML(render_md(correct_fb)))
+                )
+              }
+            )
+          }
+        )
+      } else {
+        choices <- get_answeroptions(item)
+        feedbacks <- get_feedbackoptions(item)
+        correct_idx <- as.integer(item$answer_correct)
+
+        # Last option is always "Frage überspringen" (see get_answeroptions) —
+        # skipping isn't a meaningful choice in a read-only overview.
+        skip_idx <- length(choices)
+
+        rows <- lapply(seq_len(skip_idx - 1L), function(i) {
+          is_correct <- show_answers && i == correct_idx
+          suffix <- if (item$type_answer == "image") "img" else "txt"
+          hi_class <- if (is_correct) paste0("correct_answer_", suffix) else ""
+          opt <- if (item$type_answer == "image" && is_img_path(choices[i])) {
+            div(
+              class = paste(
+                "d-flex align-items-center mb-2 answer-option is-static",
+                hi_class
+              ),
+              tags$img(src = choices[i], class = "img-fluid answer-img")
+            )
+          } else {
+            div(
+              class = paste("answer-option is-static mb-2", hi_class),
+              div(
+                class = "answer-label",
+                shiny::HTML(render_md(choices[i]))
+              )
+            )
+          }
+          fb_text <- if (show_answers && i <= length(feedbacks)) {
+            feedbacks[[i]]
+          } else {
+            ""
+          }
+          tagList(
+            opt,
+            if (show_answers && nzchar(fb_text)) {
+              div(
+                class = "feedback-card mt-1 mb-3",
+                style = sprintf(
+                  "border-left: 4px solid %s;",
+                  if (is_correct) "var(--tiger-correct)" else "var(--tiger-skip)"
+                ),
+                div(class = "feedback-body", shiny::HTML(render_md(fb_text)))
+              )
+            }
+          )
+        })
+
+        div(class = "answer-options", rows)
+      }
     })
 
     observeEvent(input$back, inspect_id(NULL))

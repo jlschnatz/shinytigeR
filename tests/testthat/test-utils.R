@@ -159,6 +159,58 @@ test_that("build_response_row marks incorrect correctly", {
   expect_false(isTRUE(row$bool_correct))
 })
 
+# ── parse_numeric_input ────────────────────────────────────────────────────────
+
+test_that("parse_numeric_input accepts both decimal separators", {
+  expect_equal(parse_numeric_input("3.5"), 3.5)
+  expect_equal(parse_numeric_input("3,5"), 3.5)
+})
+
+test_that("parse_numeric_input returns NA for empty or unparseable input", {
+  expect_true(is.na(parse_numeric_input("")))
+  expect_true(is.na(parse_numeric_input("  ")))
+  expect_true(is.na(parse_numeric_input(NA_character_)))
+  expect_true(is.na(parse_numeric_input("abc")))
+})
+
+# ── evaluate_numeric_answer ─────────────────────────────────────────────────────
+
+test_that("evaluate_numeric_answer matches the correct value exactly", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  res <- evaluate_numeric_answer(item, 5)
+  expect_equal(res$matched_idx, 1L)
+  expect_equal(res$result, "correct")
+})
+
+test_that("evaluate_numeric_answer matches a distractor within tolerance", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  # 4.51 is within 1% (rel) tolerance band of the 4.5 distractor via abs floor
+  res <- evaluate_numeric_answer(item, 4.51)
+  expect_equal(res$matched_idx, 2L)
+  expect_equal(res$result, "incorrect")
+})
+
+test_that("evaluate_numeric_answer returns unmatched when nothing is close", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  res <- evaluate_numeric_answer(item, 999)
+  expect_true(is.na(res$matched_idx))
+  expect_equal(res$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer returns unmatched for NA input", {
+  item <- make_numeric_item()
+  res <- evaluate_numeric_answer(item, NA_real_)
+  expect_equal(res$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer breaks ties by closest distance", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(5.005, 100, 200))
+  # 5.001 is within tolerance of both 5 (idx 1) and 5.005 (idx 2) — closer to idx 1
+  res <- evaluate_numeric_answer(item, 5.001)
+  expect_equal(res$matched_idx, 1L)
+  expect_equal(res$result, "correct")
+})
+
 # ── safe_sample ───────────────────────────────────────────────────────────────
 
 test_that("safe_sample returns at most size elements", {

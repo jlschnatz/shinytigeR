@@ -56,3 +56,10 @@ REG_USERNAME_PATTERN <- "^[a-zA-Z0-9_.-]{3,30}$"
 REG_PW_MIN_LENGTH    <- 8L
 REG_MAX_ATTEMPTS     <- 3L
 REG_ATTEMPT_DELAY_S  <- 1.0
+
+# Numeric-item answer matching: a typed value matches a distractor if it's
+# within this fraction of the distractor's value. NUM_MATCH_ABS_FLOOR keeps
+# the relative tolerance from blowing up for distractor values near zero —
+# the effective absolute tolerance is max(distractor * NUM_MATCH_REL_TOL, NUM_MATCH_ABS_FLOOR).
+NUM_MATCH_REL_TOL   <- 0.01
+NUM_MATCH_ABS_FLOOR <- 0.01
