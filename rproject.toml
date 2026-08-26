@@ -22,4 +22,5 @@ dependencies = [
     "testthat",
     "withr",
     "pkgload",
+    "plotly",
 ]

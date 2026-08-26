@@ -1,7 +1,7 @@
 #' @keywords internal
 "_PACKAGE"
 
-utils::globalVariables(c("item_num", "roll_acc", "area_short"))
+utils::globalVariables(c("date", "theta", "area_short"))
 
 ## usethis namespace: start
 #' @import shiny
@@ -9,6 +9,7 @@ utils::globalVariables(c("item_num", "roll_acc", "area_short"))
 #' @import bsicons
 #' @import shinyjs
 #' @import ggplot2
+#' @import plotly
 #' @importFrom DBI dbConnect dbDisconnect dbReadTable dbWriteTable dbExistsTable dbListTables dbGetQuery dbExecute dbAppendTable dbCreateTable
 #' @importFrom RSQLite SQLite
 #' @importFrom shinyauthr loginUI loginServer logoutUI logoutServer

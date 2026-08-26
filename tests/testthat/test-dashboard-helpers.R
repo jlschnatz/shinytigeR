@@ -53,37 +53,49 @@ test_that("evidence_label dot count matches tier", {
   expect_equal(evidence_label(8L)$dots, 3L)
 })
 
-# ── rolling_mean_k ────────────────────────────────────────────────────────────
+# ── ability_trajectory_data ───────────────────────────────────────────────────
 
-test_that("rolling_mean_k returns same length as input", {
-  x <- c(1, 0, 1, 1, 0)
-  expect_length(rolling_mean_k(x, k = 3L), length(x))
+test_that("ability_trajectory_data drops rows with NA theta", {
+  ab <- data.frame(
+    computed_at = c(1000L, 1000L, 2000L, 2000L),
+    learning_area = rep(c(LEARNING_AREA_LEVELS[1], LEARNING_AREA_LEVELS[2]), 2),
+    theta = c(0.5, NA, 0.7, NA),
+    n_items = c(5L, 0L, 6L, 0L),
+    stringsAsFactors = FALSE
+  )
+  result <- ability_trajectory_data(ab)
+  expect_equal(nrow(result), 2L)
+  expect_true(all(!is.na(result$theta)))
 })
 
-test_that("rolling_mean_k with k=1 returns the input unchanged", {
-  x <- c(0.2, 0.8, 0.5)
-  expect_equal(rolling_mean_k(x, k = 1L), x)
+test_that("ability_trajectory_data adds a Date column and short, ordered area labels", {
+  ab <- data.frame(
+    computed_at = c(1700000000L, 1700000000L),
+    learning_area = c(LEARNING_AREA_LEVELS[3], LEARNING_AREA_LEVELS[1]),
+    theta = c(0.1, 0.2),
+    n_items = c(4L, 5L),
+    stringsAsFactors = FALSE
+  )
+  result <- ability_trajectory_data(ab)
+  expect_s3_class(result$date, "Date")
+  expect_s3_class(result$area_short, "factor")
+  # Factor levels follow LEARNING_AREA_LEVELS canonical order, not input order
+  expect_equal(
+    levels(result$area_short)[1:3],
+    names(LEARNING_AREA_LABELS)[match(LEARNING_AREA_LEVELS[1:3], LEARNING_AREA_LABELS)]
+  )
 })
 
-test_that("rolling_mean_k uses expanding window at the start", {
-  # First value: window of 1 → mean of x[1] = 1
-  # Second value: window of 2 → mean of x[1:2] = 0.5
-  x <- c(1, 0, 0, 0, 0)
-  result <- rolling_mean_k(x, k = 10L)
-  expect_equal(result[1], 1.0)
-  expect_equal(result[2], 0.5)
-})
-
-test_that("rolling_mean_k converges to mean over full window once k items seen", {
-  x <- c(1, 0, 1, 0, 1, 0) # alternating, mean = 0.5
-  result <- rolling_mean_k(x, k = 4L)
-  # From position 4 onward the window is full
-  expect_equal(result[4], mean(x[1:4]))
-  expect_equal(result[6], mean(x[3:6]))
-})
-
-test_that("rolling_mean_k handles length-1 input", {
-  expect_equal(rolling_mean_k(0.7, k = 5L), 0.7)
+test_that("ability_trajectory_data handles an all-NA input", {
+  ab <- data.frame(
+    computed_at = 1000L,
+    learning_area = LEARNING_AREA_LEVELS[1],
+    theta = NA_real_,
+    n_items = 0L,
+    stringsAsFactors = FALSE
+  )
+  result <- ability_trajectory_data(ab)
+  expect_equal(nrow(result), 0L)
 })
 
 # ── recommend_next ────────────────────────────────────────────────────────────

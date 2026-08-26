@@ -60,15 +60,24 @@ pct_bar <- function(pct, color = PRIMARY_COLOR) {
   )
 }
 
-rolling_mean_k <- function(x, k = 10L) {
-  n <- length(x)
-  vapply(
-    seq_len(n),
-    function(i) {
-      mean(x[max(1L, i - k + 1L):i], na.rm = TRUE)
-    },
-    numeric(1)
+# Reshapes the raw db_ability.sqlite history (one row per learning area per
+# computed_at batch) into a plot-ready long data.frame: drops batches with no
+# usable theta for that area, adds a Date column and short area labels
+# ordered to match LEARNING_AREA_LEVELS (so facets render in canonical order).
+ability_trajectory_data <- function(ability_raw) {
+  ab <- ability_raw[!is.na(ability_raw$theta), ]
+  if (nrow(ab) == 0L) {
+    return(ab)
+  }
+  ab$date <- as.Date(as.POSIXct(ab$computed_at, origin = "1970-01-01"))
+  short_levels <- names(LEARNING_AREA_LABELS)[
+    match(LEARNING_AREA_LEVELS, LEARNING_AREA_LABELS)
+  ]
+  ab$area_short <- factor(
+    names(LEARNING_AREA_LABELS)[match(ab$learning_area, LEARNING_AREA_LABELS)],
+    levels = short_levels
   )
+  ab[order(ab$learning_area, ab$computed_at), ]
 }
 
 recommend_next <- function(comp, n_unique_vec) {
@@ -176,6 +185,13 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       )
     })
 
+    # Full ability history (every saved batch, not just the latest) — feeds
+    # the "Fähigkeitsverlauf" trajectory plot below.
+    ability_history <- reactive({
+      ability_version()
+      db_get_ability(credentials()$info$user_name)
+    })
+
     observeEvent(input$refresh_ability, {
       req(can_refresh_ability())
       compute_and_save_ability(
@@ -205,6 +221,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       fa <- first_attempts()
       comp <- competency()
       can_refresh <- can_refresh_ability()
+      show_trajectory <- length(unique(ability_trajectory_data(ability_history())$computed_at)) >= 2L
 
       # ── Aggregate stats ──────────────────────────────────────────────────────
       n_total <- nrow(ud)
@@ -298,10 +315,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       } else {
         list()
       }
-
-      # ── Rolling accuracy data ─────────────────────────────────────────────────
-      ud_ord <- ud[order(ud$id_datetime), ]
-      ud_ord <- ud_ord[!is.na(ud_ord$bool_correct), ]
 
       tagList(
         # ── Value boxes ──────────────────────────────────────────────────────────
@@ -480,23 +493,23 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           )
         ),
 
-        # ── Learning curve ────────────────────────────────────────────────────
-        if (nrow(ud_ord) >= 3L) {
+        # ── Ability trajectory ────────────────────────────────────────────────
+        if (show_trajectory) {
           bslib::card(
             class = "mb-4",
             bslib::card_header(
               div(
                 class = "d-flex align-items-center gap-2",
                 bsicons::bs_icon("graph-up-arrow"),
-                tags$b("Lernkurve"),
+                tags$b("Fähigkeitsverlauf"),
                 tags$span(
                   class = "text-muted small ms-1",
-                  "(gleitender Durchschnitt, Fenstergröße 10)"
+                  "(θ je gespeicherter Schätzung · Klick auf die Legende blendet Bereiche aus)"
                 )
               )
             ),
             bslib::card_body(
-              plotOutput(session$ns("learning_curve_plot"), height = "220px")
+              plotly::plotlyOutput(session$ns("ability_trajectory_chart"), height = "440px")
             )
           )
         },
@@ -674,55 +687,117 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       )
     })
 
-    # ── Learning curve plot ───────────────────────────────────────────────────
-    output$learning_curve_plot <- renderPlot(
-      {
-        ud <- user_data()
-        ud <- ud[order(ud$id_datetime), ]
-        ud <- ud[!is.na(ud$bool_correct), ]
-        req(nrow(ud) >= 3L)
+    # ── Ability trajectory chart (interactive) ────────────────────────────────
+    # Single overlaid panel, one line per learning area — chosen over facets
+    # specifically so it stays usable on a phone screen: a static faceted
+    # ggplot doesn't reflow (the browser just scales a fixed-size raster
+    # image down), so 7 narrow columns just fail differently than one busy
+    # panel would. plotly renders a real responsive HTML widget instead.
+    # 7 crossing lines sharing one panel is more than color alone can safely
+    # disambiguate (see LEARNING_AREA_COLORS in constants.R), which is why
+    # this relies on two secondary encodings that only an interactive chart
+    # can offer: a unified hover (exact θ for every visible area at that
+    # date, color-matched via hovertemplate) and a clickable legend to
+    # declutter on demand (click hides a series, double-click isolates it —
+    # plotly's default trace-click behavior, not custom code). No confidence
+    # band is drawn since estimate_theta() provides no standard error — a
+    # fabricated band would misrepresent precision that isn't there.
+    #
+    # Two layout details needed explicit tuning vs. plotly's defaults, found
+    # by testing at a real 390px mobile viewport (not just a resized desktop
+    # window — that does NOT reflow the same way): (1) the top margin has to
+    # be set explicitly or the y=3 tick gets clipped; (2) plotly has no
+    # built-in paginated/scrolling legend the way some other JS chart libs
+    # do, so a 7-entry horizontal legend just wraps onto multiple lines on a
+    # narrow screen — `plotlyOutput`'s height above is sized with room for
+    # that, rather than fighting plotly for a compact legend it doesn't
+    # support natively.
+    output$ability_trajectory_chart <- plotly::renderPlotly({
+      hist <- ability_trajectory_data(ability_history())
+      req(length(unique(hist$computed_at)) >= 2L)
 
-        ud$item_num <- seq_len(nrow(ud))
-        ud$roll_acc <- rolling_mean_k(as.numeric(ud$bool_correct), k = 10L)
-        ud$area_short <- ifelse(
-          ud$learning_area %in% LEARNING_AREA_LEVELS,
-          names(LEARNING_AREA_LABELS)[match(
-            ud$learning_area,
-            LEARNING_AREA_LABELS
-          )],
-          ud$learning_area
-        )
+      # Connecting line is lowess-smoothed per area when there's enough data
+      # to make that meaningful; otherwise falls back to a plain straight
+      # connect-the-dots line. Ability snapshots are saved at most once per
+      # login (see ability_computed_this_session in R/server.R), so most
+      # students will only ever have a handful of points — lowess on 2-3
+      # points isn't a real smooth, it just reproduces (or barely perturbs)
+      # the straight line, so there's no point special-casing it away; 4 is
+      # the practical minimum for the smooth to show real local curvature
+      # rather than a straight-line-in-disguise.
+      # Markers always show the true recorded theta, never the smoothed
+      # value, and carry the hover tooltip; the line is a pure visual trend
+      # overlay (hoverinfo = "skip") grouped with its markers via
+      # legendgroup so the legend still toggles both together as one series.
+      min_n_smooth <- 4L
+      areas_present <- levels(hist$area_short)
+      fig <- plotly::plot_ly()
+      for (area in areas_present) {
+        d <- hist[hist$area_short == area, ]
+        if (nrow(d) == 0L) next
+        d <- d[order(d$date), ]
+        col <- LEARNING_AREA_COLORS[match(area, levels(hist$area_short))]
 
-        ggplot2::ggplot(ud, ggplot2::aes(x = item_num, y = roll_acc)) +
-          ggplot2::geom_line(colour = PRIMARY_COLOR, linewidth = 1) +
-          ggplot2::geom_point(
-            ggplot2::aes(colour = area_short),
-            size = 2,
-            alpha = 0.6,
-            show.legend = TRUE
-          ) +
-          ggplot2::geom_hline(
-            yintercept = 0.5,
-            linetype = "dashed",
-            colour = "grey60",
-            linewidth = 0.4
-          ) +
-          ggplot2::scale_y_continuous(
-            labels = \(x) paste(x * 100, "%", sep = ""),
-            limits = c(0, 1),
-            expand = c(0.02, 0)
-          ) +
-          ggplot2::scale_colour_brewer(palette = "Dark2", name = NULL) +
-          ggplot2::labs(x = "Aufgabe Nr.", y = "Korrektrate (gleitend)") +
-          ggplot2::theme_minimal(base_size = 12) +
-          ggplot2::theme(
-            legend.position = "bottom",
-            legend.text = ggplot2::element_text(size = 9),
-            panel.grid.minor = ggplot2::element_blank(),
-            plot.margin = ggplot2::margin(4, 8, 4, 4)
+        if (nrow(d) >= min_n_smooth) {
+          sm <- stats::lowess(as.numeric(d$date), d$theta)
+          line_x <- as.Date(sm$x, origin = "1970-01-01")
+          line_y <- sm$y
+        } else {
+          line_x <- d$date
+          line_y <- d$theta
+        }
+
+        fig <- fig |>
+          plotly::add_lines(
+            x = line_x,
+            y = line_y,
+            line = list(color = col, width = 2.2),
+            legendgroup = area,
+            showlegend = FALSE,
+            hoverinfo = "skip",
+            name = area
+          ) |>
+          plotly::add_markers(
+            x = d$date,
+            y = d$theta,
+            marker = list(color = col, size = 7, line = list(color = "white", width = 1)),
+            legendgroup = area,
+            showlegend = TRUE,
+            name = area,
+            hovertemplate = "%{y:.2f}<extra>%{fullData.name}</extra>"
           )
-      },
-      res = 96
-    )
+      }
+
+      fig |>
+        plotly::layout(
+          xaxis = list(
+            title = "",
+            showline = TRUE,
+            linecolor = "#c8ccd1",
+            mirror = TRUE,
+            showgrid = TRUE,
+            gridcolor = "#eef1f4",
+            zeroline = FALSE
+          ),
+          yaxis = list(
+            title = "Fähigkeit (θ)",
+            range = c(-3, 3),
+            showline = TRUE,
+            linecolor = "#c8ccd1",
+            mirror = TRUE,
+            showgrid = TRUE,
+            gridcolor = "#eef1f4",
+            zeroline = TRUE,
+            zerolinecolor = "#c8ccd1",
+            zerolinewidth = 1
+          ),
+          plot_bgcolor = "#fcfdfe",
+          hovermode = "x unified",
+          dragmode = FALSE,
+          legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.25),
+          margin = list(t = 30, b = 10)
+        ) |>
+        plotly::config(displayModeBar = FALSE, scrollZoom = FALSE)
+    })
   })
 }
