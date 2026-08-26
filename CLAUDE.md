@@ -68,13 +68,14 @@ rv run -e 'pkgload::load_all(quiet = TRUE); testthat::test_dir("tests/testthat")
 
 If you have `devtools` available separately (e.g. in a personal, non-rv-managed library — not through `rv run`), `devtools::test()` / `devtools::test_active_file()` work the same way and are more convenient for iterating on a single file.
 
-`tests/testthat/` (1400+ lines) covers `irt.R`, `db.R`, `utils.R`, the dashboard helpers, registration (`db_register_user`/`db_username_exists`/`REG_*` constants), and module reactivity for `mod_selector`, `mod_practice`, and `mod_dashboard` via `shiny::testServer()`.
+`tests/testthat/` (1400+ lines) covers `irt.R`, `db.R`, `utils.R`, the dashboard helpers, registration (`db_register_user`/`db_username_exists`/`REG_*` constants), and module reactivity for `mod_selector`, `mod_practice`, and `mod_dashboard` via `shiny::testServer()`. `test-server.R` is the one exception that tests `app_server` itself end-to-end (`shiny::testServer(app_server, {...})`) rather than a single module — reserve that pattern for bugs that specifically span the `server.R` wiring layer between modules, like the one documented in `R/mod_dashboard.R`'s "Bug, hit and fixed once" callout below.
 
 **`tests/testthat/helper-modules.R`** has reusable fixtures for `testServer()`-based module tests — check here before writing ad hoc test setup:
 - `make_data_item()` — minimal 6-row item `data.frame` (2 areas × content/coding/content, IRT params set)
 - `fake_credentials(user)` — a logged-in `credentials()` reactive
 - `selector_cell_inputs(area_vals, type_vals, n_items, only_new)` — builds the `cell_i_j` input list `mod_selector_server` expects
 - `make_user_db(user, item_ids, correct, areas)` — writes a temp SQLite user DB pre-populated with response rows, returns its path
+- `make_ability_db(user, computed_at, theta, n_items)` — writes a temp SQLite ability DB pre-populated with one saved snapshot (one row per learning area), returns its path
 
 > **Known gap:** `mod_inspect.R` (read-only item-overview module) and the direct-ID-lookup addition to `mod_selector.R` were added after this suite was last updated and have **no `testthat` coverage yet** — only ad hoc verification during development. If you touch either, add `test_that()` cases to `test-modules.R` following the existing `mod_selector`/`mod_practice` pattern rather than leaving it untested.
 
@@ -134,6 +135,7 @@ app_v3/
 │
 ├── db_item.sqlite         # item pool (gitignored in production, present locally)
 ├── db_user.sqlite         # per-user response log (gitignored)
+├── db_ability.sqlite      # persisted per-user ability (theta) snapshots (gitignored)
 └── db_credentials.sqlite  # hashed passwords (gitignored)
 ```
 
@@ -171,6 +173,7 @@ flowchart LR
 - **`practice_ids`** (`reactiveVal(NULL)`) drives the selector ↔ practice toggle. `NULL` means show the selector; an integer vector of item IDs means show the practice module. It lives in `server.R` and is passed by reference to both `mod_selector` and `mod_practice`.
 - **`inspect_id`** (`reactiveVal(NULL)`) is set when a student looks up a single item by ID in the selector (see `R/mod_selector.R` below). It routes to `mod_inspect` — a read-only overview — instead of the practice queue, and takes priority over `practice_ids` in the train-view switch. It never triggers a DB write.
 - **`write_trigger`** (`reactiveVal(0L)`) is incremented by `mod_practice` after every confirmed DB write. `mod_dashboard` uses it to invalidate its user-data cache without being directly coupled to the practice module. `mod_inspect` never touches it, since it never writes.
+- **`ability_computed_this_session`** (`reactiveVal(FALSE)`) latches `TRUE` once a fresh ability (θ) estimate has been computed and persisted to `db_ability.sqlite` during the current login — either by the silent auto-check that runs once right after login, or by `mod_dashboard`'s refresh button. It's declared in `server.R` alongside `write_trigger` and passed to `mod_dashboard_server`; see `R/mod_dashboard.R` below for why it exists (θ shouldn't be recomputed more than once per sitting).
 
 ### Authentication pattern
 
@@ -207,7 +210,8 @@ Single source of truth for:
 | `ITEM_TYPE_LABELS` | named `character` | `"Inhaltlich" = "content"`, `"R-Code" = "coding"` — these must match `type_item` values in `db_item.sqlite` |
 | `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
-| `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` | functions | Return full paths to the three SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
+| `LEARNING_AREA_COLORS` | `character` vector | 7-color palette (matching `LEARNING_AREA_LEVELS` order) for the interactive ability-trajectory chart, derived from the official Goethe University 5-color palette — see `R/mod_dashboard.R` below |
+| `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` | functions | Return full paths to the four SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
 | `REG_USERNAME_PATTERN` / `REG_PW_MIN_LENGTH` / `REG_MAX_ATTEMPTS` / `REG_ATTEMPT_DELAY_S` | validation constants | Used by `mod_register.R` — see that section below |
 
@@ -226,6 +230,9 @@ All database access. Uses a simple open/close pattern (`db_with()`) — no conne
 | `db_get_userdata(user_id)` | Returns all response rows for a user, or an empty `data.frame` if none |
 | `db_user_exists(user_id)` | Returns `TRUE` if the user has any recorded responses |
 | `db_write_response(user_id, df)` | Appends one response row; creates the user table if it doesn't exist yet |
+| `db_get_ability(user_id)` | Returns all saved ability (θ) snapshot rows for a user from `db_ability.sqlite`, or an empty `data.frame` if none |
+| `db_write_ability(user_id, df)` | Appends one batch of ability rows (one row per learning area, sharing a `computed_at`); creates the user table if it doesn't exist yet |
+| `ability_needs_update(user_id)` | `TRUE` if the user has a response newer than their most recently saved ability snapshot (or has responses but no snapshot yet); `FALSE` if there's nothing new, or no responses at all |
 | `db_get_credentials()` | Returns the credentials table for `shinyauthr` |
 | `db_username_exists(username)` | `TRUE`/`FALSE`; case-sensitive. Used by `mod_register.R` |
 | `db_register_user(username, password_plain)` | Inserts a new row into `credentials_db` inside a `BEGIN IMMEDIATE` transaction (dupe-check + insert are atomic); hashes with `sodium::password_store()`; `stop("username_taken")` if the username exists |
@@ -240,7 +247,8 @@ Two-parameter logistic (2PL) IRT model for estimating student ability.
 |---|---|
 | `prob_2pl(theta, a, b)` | Item response probability: `1 / (1 + exp(-a*(theta-b)))` |
 | `estimate_theta(responses, a, b)` | MLE via L-BFGS-B (`optim`), bounded to `[-3, 3]`. Returns `NA` on error |
-| `estimate_competency(responses, items)` | Runs `estimate_theta` per learning area using **first attempts only**. Returns a `data.frame` with columns `learning_area`, `theta`, `n_items` |
+| `estimate_competency(responses, items)` | Runs `estimate_theta` per learning area. Returns a `data.frame` with columns `learning_area`, `theta`, `n_items` |
+| `compute_and_save_ability(user_id, session_token, items)` | Pulls the user's full response history, dedupes to the **latest attempt per item** via `latest_attempts()` (`R/utils.R`), runs `estimate_competency()`, and persists the result to `db_ability.sqlite` via `db_write_ability()`. The single call site both the login-time auto-check (`R/server.R`) and the dashboard's refresh button (`R/mod_dashboard.R`) use — see that module's section below for the full trigger/persistence design |
 
 Parameters `a` (discrimination) and `b` (difficulty) come from `irt_discr` and `irt_diff` columns in `db_item.sqlite`. Items with missing IRT parameters are silently excluded from estimation.
 
@@ -265,6 +273,8 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `get_feedbackoptions(item)` | Extracts non-NA values from `if_answeroption_01`…`if_answeroption_06` |
 | `evaluate_answer(item, answer_idx)` | Returns `"correct"`, `"incorrect"`, or `"skip"` (last option is always the skip option) |
 | `build_response_row(item, answer_idx, user_id, session_token)` | Constructs the `data.frame` row written to `db_user.sqlite` |
+| `latest_attempts(user_data)` | Keeps only the most recent response per `id_item` (by `id_datetime`), not the first. Used exclusively to build the input to the ability estimate (`compute_and_save_ability()`) — unrelated to `mod_dashboard.R`'s own `first_attempts`, which still feeds the "Erstversuche" descriptive stats |
+| `build_ability_rows(competency, user_id, session_token)` | Reshapes an `estimate_competency()` result into the `data.frame` written to `db_ability.sqlite` — one row per learning area, all sharing a single `computed_at` timestamp (one "batch") |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
 | `item_id_badge(id_item, input_id, class)` | Click-to-copy item-ID badge shared by `mod_practice.R` and `mod_inspect.R`, built on `rclipboard::rclipButton()` for the `bslib::tooltip()` hover label. `input_id` must be the caller's `ns("copy_item_id")` — a fixed, namespaced ID, since each module is instantiated once. **Never observed server-side, on purpose** — confirmed against `shiny.js`: `unbindInputs()` (run before every `renderUI` re-render) tears down the JS binding but never calls the client's `InputNoResendDecorator.forget()`, so a freshly recreated `actionButton` resends its reset value (`0`), which differs from the cached post-click value and gets treated as a genuine change. Since both badges live inside a `renderUI` that reruns on every item change, a server `observeEvent` on this input would fire "copied" on every item advance, not just on real clicks — confirmed by testing this exact scenario with a debug observer before settling on the client-only approach. The "✓ Kopiert" confirmation is instead a single, page-lifetime `ClipboardJS('.practice-item-id-btn').on('success', …)` listener registered once in `ui.R`'s header script (`DOMContentLoaded`), never per-render. |
@@ -322,11 +332,35 @@ The stimulus and all answer options render immediately, but the correct answer a
 
 > **Status: mockup.** The 2PL IRT competency estimate and its thresholds/labels below are a placeholder to demonstrate the dashboard concept, not an empirically validated model. Replacing it with an AI-assisted, empirically derived competency dashboard is the scope of the follow-up **"kiwi"** project — don't treat the current θ cutoffs or recommendation logic as settled design worth preserving during that work.
 
-Reactive dependency chain:
+**Descriptive stats** (accuracy %, days practiced, etc.) still use `user_data` (all attempts) and `first_attempts` (deduped to the first attempt per item) exactly as before — this reactive chain is unchanged:
 ```
-write_trigger → user_data → first_attempts → competency
+write_trigger → user_data → first_attempts
 ```
-`first_attempts` de-duplicates by `(user_id, item_id)` — only the first attempt per item feeds the IRT model. All descriptive stats (accuracy %, days practiced, etc.) use `user_data` (all attempts).
+
+**The ability (θ) estimate is persisted, not recomputed live.** It used to be computed straight from `first_attempts()` on every `write_trigger` tick — jittering after every single answered item, which isn't plausible (ability doesn't meaningfully shift within one sitting). It now works like this instead:
+
+- The `competency` reactive no longer calls `estimate_competency()` directly. It reads the **most recent saved batch** from `db_ability.sqlite` (`db_get_ability()`), reshaped to the same `learning_area`/`theta`/`n_items` shape `estimate_competency()` used to return — so `recommend_next()` and the competency table render are unchanged.
+- A snapshot is written by `compute_and_save_ability()` (`R/irt.R`) — which itself dedupes to the **latest** attempt per item (`latest_attempts()`, `R/utils.R`), not the first — at two trigger points, both gated by `ability_needs_update()` (`R/db.R`: is there a response newer than the last saved snapshot?):
+  1. **Silently at login** (`R/server.R`, right after `write_trigger`/`ability_computed_this_session` are declared) — catches up a student who practiced last session without ever visiting the dashboard. This one is gated **only** by `ability_needs_update()`.
+  2. **On demand**, via the "Fähigkeitsverlauf aktualisieren" button in the competency card (`input$refresh_ability` → `can_refresh_ability()` gates both the button's enabled state and the `observeEvent` handler). This one is gated by `ability_needs_update()` **and** the per-login `ability_computed_this_session` flag (`R/server.R`), so the button can fire **at most once per login**.
+- `ability_computed_this_session` (`reactiveVal(FALSE)`, declared in `server.R`) is set `TRUE` **only by the button handler**, never by the silent login catch-up. See the bug callout immediately below for why that distinction is load-bearing, not incidental.
+- `ability_version` (a local `reactiveVal`) is bumped after a button-triggered save to force `competency()` to re-read `db_ability.sqlite`; the login-time write doesn't need this since it lands on disk before the module's reactives first evaluate.
+
+This also seeds a **history** in `db_ability.sqlite` (one batch per `computed_at`) rather than throwing the estimate away after each render — consumed by the "Fähigkeitsverlauf" trajectory chart described next.
+
+> **Bug, hit and fixed once — don't reintroduce it.** The first version of this feature had the login-time silent catch-up *also* call `ability_computed_this_session(TRUE)` after writing its snapshot. Symptom: a student who had any unprocessed data from a **previous** session (however small — even just one leftover response) would trigger the silent catch-up on login; that catch-up then latched the session flag *before the student had done any practice this session at all*. Every item they subsequently answered updated `db_user.sqlite` fine (unrelated code path), but the dashboard's refresh button stayed permanently disabled for the rest of that login, reporting "in dieser Sitzung bereits aktualisiert" — even though the student's brand-new practice had never actually been reflected in a saved θ snapshot. From the student's perspective this looked exactly like "I did items but it didn't save."
+>
+> The fix: the silent catch-up's job is only to clear out *stale, pre-session* data — it must never consume the session's one button-triggered-recompute allowance, since that allowance exists to gate *this session's own* new practice. `ability_computed_this_session` is therefore set **only** inside `mod_dashboard_server`'s `observeEvent(input$refresh_ability, ...)` handler, never inside `server.R`'s login block. If you touch either trigger path again, keep them on separate gates: the login catch-up checks `ability_needs_update()` alone; the button checks `ability_needs_update() && !ability_computed_this_session()`.
+>
+> **Regression test:** `tests/testthat/test-server.R` — `"login's silent ability catch-up does not block the dashboard button for new in-session practice"`. This is an app-level `shiny::testServer(app_server, {...})` test (module inputs addressed as `"selector_1-cell_1_1"`, `"practice_1-check"`, `"dashboard_1-refresh_ability"`, etc.), not a `mod_dashboard_server`-level one — the existing `testServer(mod_dashboard_server, ...)` tests construct `ability_computed_this_session` as an already-correct externally-supplied `reactiveVal`, so they can't exercise a bug that lived in `server.R`'s login block. The test writes a stale pre-session response directly to `db_user.sqlite`, logs in (triggering the silent catch-up), then drives a **real** practice answer through the selector + practice UI (deliberately not a direct `db_write_response()` call — that would bypass `write_trigger` and mask the exact cache-invalidation path the bug lived in), clicks the refresh button, and asserts the new item is actually reflected in a fresh `db_ability.sqlite` batch. Verified to fail against the buggy version (reintroducing `ability_computed_this_session(TRUE)` in the login block) before being kept as the fixed-version regression test.
+
+**"Fähigkeitsverlauf" trajectory chart** (`output$ability_trajectory_chart`, `ability_trajectory_data()`) plots the full `db_ability.sqlite` history — every saved batch, not just the latest — as one line per learning area, only shown once there are ≥2 batches (a single point isn't a trajectory). Built with **`plotly`**, not `ggplot2`.
+
+**Why `plotly` and not a static `ggplot2` chart:** `renderPlot` produces a server-rendered raster image that does not reflow — on a phone-width viewport it doesn't resize sensibly, it just scales the same fixed image down. `plotly` renders a real responsive HTML widget instead. Two layout details needed explicit tuning beyond `plotly`'s defaults, found by testing at a real emulated 390px mobile viewport (`chromote::ChromoteSession$new()$Emulation$setDeviceMetricsOverride(...)` — a resized desktop browser window does **not** reproduce the same layout, only real device-metrics emulation does): the default top margin clips the θ=3 tick (fixed via `plotly::layout(margin = list(t = 30, ...))`), and a 7-entry horizontal legend wraps onto multiple lines on a narrow screen, so `plotlyOutput(..., height = "440px")` is sized with room for that rather than fighting for a compact legend. See the comment above `output$ability_trajectory_chart` in `R/mod_dashboard.R`.
+
+**Why one overlaid panel instead of facets, given 7 crossing lines is a real readability risk:** color alone cannot safely disambiguate 7 series that can be adjacent/crossing anywhere (a categorical palette is only reliably colorblind-safe for ~3 series under that "all-pairs" condition). This is only viable because the interactive chart ships two secondary encodings a static image can't: a unified hover (`hovermode = "x unified"`) showing the exact θ for every visible area at that date, color-matched via `hovertemplate`; and a clickable legend (click hides a series, double-click isolates it — `plotly`'s default trace-click behavior) to declutter on demand. Don't strip either out if you touch this chart — they're load-bearing for the color choice, not decoration. No confidence band is drawn since `estimate_theta()` has no standard error to show — fabricating one would misrepresent precision that isn't there.
+
+**`LEARNING_AREA_COLORS`** (`constants.R`) is the official 5-color Goethe University palette (blue/yellow/magenta/green/orange), extended to 7 by lightening two of the five hues rather than interpolating across all five — `colorRampPalette()` across non-adjacent brand hues (blue↔yellow, magenta↔green, ...) produces muddy near-identical browns/olives regardless of color space (tried both sRGB and Lab interpolation before rejecting this approach), because those pairs are colour-opponent. See the comment on the constant for which two hues were tinted and why.
 
 **Competency labels** (mapped from θ):
 
@@ -353,7 +387,7 @@ write_trigger → user_data → first_attempts → competency
 
 ## Databases
 
-Three SQLite files, location controlled by the `TIGER_DB_DIR` environment variable:
+Four SQLite files, location controlled by the `TIGER_DB_DIR` environment variable:
 
 ### `db_item.sqlite` — item pool (read-only at runtime)
 
@@ -390,6 +424,19 @@ One table per user, named by `id_user`. Each row is one response:
 | `answer_correct` | integer | Correct answer index (denormalized) |
 | `bool_correct` | logical | `TRUE`/`FALSE`/`NA` (NA = skipped) |
 | `skipped` | logical | `TRUE` if last option was selected |
+
+### `db_ability.sqlite` — persisted ability (θ) snapshots (read-write at runtime)
+
+One table per user, named by `id_user`. Each row is one learning area's estimate from one computation batch (see `R/mod_dashboard.R` above for when batches are written):
+
+| Column | Type | Description |
+|---|---|---|
+| `id_user` | text | Username |
+| `id_session` | text | Shiny session token that triggered this batch |
+| `computed_at` | integer | `as.integer(Sys.time())` at compute time — shared by every row of one batch; used both to find the "current" snapshot (max `computed_at`) and to detect whether newer response data exists (`ability_needs_update()`) |
+| `learning_area` | text | One of `LEARNING_AREA_LEVELS` — a batch always writes all 7, even if `theta` is `NA` for areas with no data |
+| `theta` | real | Estimated ability, or `NA` if the area had no usable data in that batch |
+| `n_items` | integer | Number of items (latest-attempt-deduped) feeding that area's estimate |
 
 ### `db_credentials.sqlite` — authentication
 
@@ -432,6 +479,7 @@ Key CSS classes to be aware of when changing layout:
 | `.feedback-card` | Per-answer feedback block with colored left border and shadow |
 | `.practice-stat` / `.practice-stat-val` / `.practice-stat-lbl` | Dashboard practice behaviour grid cells |
 | `.dashboard-comp-table` | Competency map table in dashboard |
+| `#refresh_ability` (button id, not a class) | "Fähigkeitsverlauf aktualisieren" — disabled via the `disabled` HTML attribute (not `shinyjs::disable`) driven by `can_refresh_ability()` in the `renderUI` |
 | `.rec-num` | Circular number badge in recommendations card |
 
 ### Resource paths
@@ -486,9 +534,10 @@ Based on `rocker/r-ver:4.6`. Deliberately single-stage — installs R packages a
 
 ### ShinyProxy
 
-The container exposes port 3838. ShinyProxy should mount the three SQLite database files into `/opt/shinyapp/`:
+The container exposes port 3838. ShinyProxy should mount the four SQLite database files into `/opt/shinyapp/`:
 - `/opt/shinyapp/db_item.sqlite`
 - `/opt/shinyapp/db_user.sqlite`
+- `/opt/shinyapp/db_ability.sqlite` — must exist (even as an empty file) before first launch, same as `db_user.sqlite`; `db_write_ability()` creates per-user tables lazily but the file itself needs to be present for the bind-mount
 - `/opt/shinyapp/db_credentials.sqlite`
 
 ShinyProxy's app config must also set **`TIGER_REG_CODE`** (the semester code — see `R/mod_register.R` above) as a container env var. It is **not** baked into `deploy/Dockerfile` (that would ship a secret in the image); without it set at runtime, self-registration is disabled with an error pointing students to `CONTACT_EMAIL`.
