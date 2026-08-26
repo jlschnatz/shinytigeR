@@ -102,6 +102,61 @@ test_that("estimate_competency returns NA theta for areas with no responses", {
   expect_false(is.na(result$theta[1]))
 })
 
+# ── compute_and_save_ability ──────────────────────────────────────────────────
+
+test_that("compute_and_save_ability writes one persisted snapshot from the user's latest attempts", {
+  user_path <- tempfile(fileext = ".sqlite")
+  ability_path <- tempfile(fileext = ".sqlite")
+
+  items <- data.frame(
+    id_item = 1:2,
+    irt_discr = c(1, 1),
+    irt_diff = c(0, 0),
+    stringsAsFactors = FALSE
+  )
+
+  row <- function(item_id, correct, dt) {
+    data.frame(
+      id_user = "alice",
+      id_session = "sess1",
+      id_date = as.integer(Sys.Date()),
+      id_datetime = dt,
+      id_item = item_id,
+      learning_area = LEARNING_AREA_LEVELS[1],
+      selected_option = 1L,
+      answer_correct = 1L,
+      bool_correct = correct,
+      skipped = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+  # item 1 answered wrong then right (latest should win); item 2 answered once
+  db_write_response("alice", row(1L, FALSE, 100L), user_path)
+  db_write_response("alice", row(1L, TRUE, 200L), user_path)
+  db_write_response("alice", row(2L, TRUE, 150L), user_path)
+
+  result <- compute_and_save_ability("alice", "tok", items, user_path, ability_path)
+
+  expect_equal(nrow(result), length(LEARNING_AREA_LEVELS))
+  saved <- db_get_ability("alice", ability_path)
+  expect_equal(nrow(saved), length(LEARNING_AREA_LEVELS))
+  area1_n <- saved$n_items[saved$learning_area == LEARNING_AREA_LEVELS[1]]
+  # Both items count once each (deduped to latest attempt), not the 3 raw rows
+  expect_equal(area1_n, 2L)
+})
+
+test_that("compute_and_save_ability is a no-op for a user with no responses", {
+  user_path <- tempfile(fileext = ".sqlite")
+  ability_path <- tempfile(fileext = ".sqlite")
+  items <- data.frame(
+    id_item = integer(0), irt_discr = numeric(0), irt_diff = numeric(0)
+  )
+
+  result <- compute_and_save_ability("nobody", "tok", items, user_path, ability_path)
+  expect_null(result)
+  expect_equal(nrow(db_get_ability("nobody", ability_path)), 0L)
+})
+
 test_that("estimate_competency excludes items with missing IRT parameters", {
   responses <- data.frame(
     id_item = 1L,

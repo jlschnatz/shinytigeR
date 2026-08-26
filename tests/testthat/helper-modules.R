@@ -89,3 +89,27 @@ make_user_db <- function(
   DBI::dbWriteTable(con, user, rows)
   path
 }
+
+# Build a temp SQLite ability DB pre-populated with one saved snapshot
+# (one row per learning area, all sharing computed_at).
+make_ability_db <- function(
+  user = "testuser",
+  computed_at = as.integer(Sys.time()),
+  theta = setNames(rep(0.5, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS),
+  n_items = setNames(rep(3L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+) {
+  path <- tempfile(fileext = ".sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  rows <- data.frame(
+    id_user = user,
+    id_session = "sess",
+    computed_at = computed_at,
+    learning_area = LEARNING_AREA_LEVELS,
+    theta = unname(theta[LEARNING_AREA_LEVELS]),
+    n_items = unname(n_items[LEARNING_AREA_LEVELS]),
+    stringsAsFactors = FALSE
+  )
+  DBI::dbWriteTable(con, user, rows)
+  path
+}

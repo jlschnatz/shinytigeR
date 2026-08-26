@@ -59,6 +59,22 @@ app_server <- function(input, output, session) {
     # write_trigger: incremented after each confirmed DB write so dashboard
     # knows to re-fetch user data without being tightly coupled to practice
     write_trigger <- reactiveVal(0L)
+    # ability_computed_this_session: latches TRUE once the dashboard's refresh
+    # button has been used during this login, so it's never clicked more than
+    # once per session even if new data keeps arriving — ability isn't
+    # expected to shift within a single sitting. Deliberately NOT set by the
+    # silent login catch-up below: that only clears out *stale* data from a
+    # prior session, and must not consume this session's one allowed
+    # button-triggered recompute for practice the student hasn't done yet.
+    ability_computed_this_session <- reactiveVal(FALSE)
+
+    # ── Ability auto-catch-up — silent, runs once at login ──────────────────
+    # If the student practiced last session without ever visiting the
+    # dashboard (or clicking its refresh button), catch the estimate up now.
+    uid <- credentials()$info$user_name
+    if (isTRUE(ability_needs_update(uid))) {
+      compute_and_save_ability(uid, session$token, data_item)
+    }
 
     # ── Train view — switches between selector, practice, and inspect ─────────
     output$train_view <- renderUI({
@@ -117,7 +133,8 @@ app_server <- function(input, output, session) {
       "dashboard_1",
       data_item = data_item,
       credentials = credentials,
-      write_trigger = write_trigger
+      write_trigger = write_trigger,
+      ability_computed_this_session = ability_computed_this_session
     )
   })
 }

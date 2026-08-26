@@ -61,3 +61,23 @@ estimate_competency <- function(responses, items) {
     stringsAsFactors = FALSE
   )
 }
+
+# Computes a fresh competency snapshot from a user's full response history
+# (deduped to the latest attempt per item) and persists it to db_ability.sqlite.
+# The single call site for both the login-time auto-check and the dashboard's
+# refresh button (see R/server.R and R/mod_dashboard.R).
+compute_and_save_ability <- function(user_id, session_token, items,
+                                     user_path = DB_USERS(),
+                                     ability_path = DB_ABILITY()) {
+  ud <- db_get_userdata(user_id, path = user_path)
+  if (nrow(ud) == 0L) {
+    return(invisible(NULL))
+  }
+  ud$bool_correct <- as.logical(ud$bool_correct)
+  la <- latest_attempts(ud)
+  la$learning_area <- factor(la$learning_area, levels = LEARNING_AREA_LEVELS)
+  comp <- estimate_competency(la, items)
+  rows <- build_ability_rows(comp, user_id, session_token)
+  db_write_ability(user_id, rows, path = ability_path)
+  invisible(rows)
+}

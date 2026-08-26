@@ -114,7 +114,7 @@ mod_dashboard_ui <- function(id) {
 
 # ── Server ────────────────────────────────────────────────────────────────────
 
-mod_dashboard_server <- function(id, data_item, credentials, write_trigger) {
+mod_dashboard_server <- function(id, data_item, credentials, write_trigger, ability_computed_this_session) {
   moduleServer(id, function(input, output, session) {
     user_exists <- reactive({
       write_trigger()
@@ -132,7 +132,9 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger) {
       ud
     })
 
-    # Only first attempts per item feed the competency model
+    # First attempts per item feed the descriptive ("Erstversuche") stats below
+    # — this is unrelated to the ability estimate, which uses the *latest*
+    # attempt per item instead (see compute_and_save_ability() in R/irt.R).
     first_attempts <- reactive({
       ud <- user_data()
       if (nrow(ud) == 0L) {
@@ -141,16 +143,48 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger) {
       ud[!duplicated(ud[, c("id_user", "id_item")]), ]
     })
 
+    # Bumped after a successful compute_and_save_ability() call to force a
+    # re-fetch of the persisted estimate below.
+    ability_version <- reactiveVal(0L)
+
+    needs_ability_update <- reactive({
+      write_trigger()
+      isTRUE(ability_needs_update(credentials()$info$user_name))
+    })
+
+    can_refresh_ability <- reactive({
+      needs_ability_update() && !isTRUE(ability_computed_this_session())
+    })
+
+    # The persisted ability snapshot (most recent computed_at batch), reshaped
+    # to the same learning_area/theta/n_items shape estimate_competency()
+    # returns, so nothing downstream needs to change.
     competency <- reactive({
-      fa <- first_attempts()
-      if (nrow(fa) == 0L) {
+      ability_version()
+      ab <- db_get_ability(credentials()$info$user_name)
+      if (nrow(ab) == 0L) {
         return(NULL)
       }
-      fa$learning_area <- factor(
-        fa$learning_area,
-        levels = LEARNING_AREA_LEVELS
+      latest_batch <- max(ab$computed_at, na.rm = TRUE)
+      ab <- ab[ab$computed_at == latest_batch, ]
+      idx <- match(LEARNING_AREA_LEVELS, ab$learning_area)
+      data.frame(
+        learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+        theta = ab$theta[idx],
+        n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
+        stringsAsFactors = FALSE
       )
-      estimate_competency(fa, data_item)
+    })
+
+    observeEvent(input$refresh_ability, {
+      req(can_refresh_ability())
+      compute_and_save_ability(
+        credentials()$info$user_name,
+        session$token,
+        data_item
+      )
+      ability_computed_this_session(TRUE)
+      ability_version(ability_version() + 1L)
     })
 
     output$dash_content <- renderUI({
@@ -170,6 +204,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger) {
       ud <- user_data()
       fa <- first_attempts()
       comp <- competency()
+      can_refresh <- can_refresh_ability()
 
       # ── Aggregate stats ──────────────────────────────────────────────────────
       n_total <- nrow(ud)
@@ -321,12 +356,34 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger) {
                   tags$b("Kompetenzprofil"),
                   tags$span(
                     class = "text-muted small ms-1",
-                    "(nur Erstversuche · ●●● = hohe Evidenz)"
+                    "(●●● = hohe Evidenz)"
                   )
                 )
               ),
               bslib::card_body(
                 class = "p-0",
+                div(
+                  class = "d-flex justify-content-between align-items-center p-2 border-bottom gap-2",
+                  tags$span(
+                    class = "text-muted small",
+                    if (is.null(comp)) {
+                      "Noch keine Fähigkeitsschätzung vorhanden."
+                    } else if (can_refresh) {
+                      NULL
+                    } else if (isTRUE(ability_computed_this_session())) {
+                      "In dieser Sitzung bereits aktualisiert."
+                    } else {
+                      "Keine neuen Daten seit der letzten Schätzung."
+                    }
+                  ),
+                  actionButton(
+                    session$ns("refresh_ability"),
+                    "Fähigkeitsverlauf aktualisieren",
+                    icon = shiny::icon("rotate"),
+                    class = "btn-sm btn-outline-primary",
+                    disabled = if (!can_refresh) "disabled" else NULL
+                  )
+                ),
                 tags$table(
                   class = "table table-sm table-hover mb-0 dashboard-comp-table",
                   tags$thead(

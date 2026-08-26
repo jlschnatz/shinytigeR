@@ -394,7 +394,8 @@ test_that("dashboard: user_exists is FALSE with no DB data", {
       args = list(
         data_item = data_item,
         credentials = fake_credentials(),
-        write_trigger = write_trigger
+        write_trigger = write_trigger,
+        ability_computed_this_session = reactiveVal(FALSE)
       ),
       {
         expect_false(isTRUE(user_exists()))
@@ -415,7 +416,8 @@ test_that("dashboard: user_exists becomes TRUE after a response is written", {
       args = list(
         data_item = data_item,
         credentials = fake_credentials(),
-        write_trigger = write_trigger
+        write_trigger = write_trigger,
+        ability_computed_this_session = reactiveVal(FALSE)
       ),
       {
         expect_false(isTRUE(user_exists()))
@@ -456,7 +458,8 @@ test_that("dashboard: first_attempts de-duplicates repeated items", {
       args = list(
         data_item = data_item,
         credentials = fake_credentials(),
-        write_trigger = write_trigger
+        write_trigger = write_trigger,
+        ability_computed_this_session = reactiveVal(FALSE)
       ),
       {
         ud <- user_data()
@@ -483,7 +486,8 @@ test_that("dashboard: competency is NULL with no user data", {
       args = list(
         data_item = data_item,
         credentials = fake_credentials(),
-        write_trigger = write_trigger
+        write_trigger = write_trigger,
+        ability_computed_this_session = reactiveVal(FALSE)
       ),
       {
         expect_null(competency())
@@ -504,7 +508,8 @@ test_that("dashboard: write_trigger invalidates user_data cache", {
       args = list(
         data_item = data_item,
         credentials = fake_credentials(),
-        write_trigger = write_trigger
+        write_trigger = write_trigger,
+        ability_computed_this_session = reactiveVal(FALSE)
       ),
       {
         expect_equal(nrow(user_data()), 0L)
@@ -524,6 +529,94 @@ test_that("dashboard: write_trigger invalidates user_data cache", {
         # Now increment write_trigger (as practice module would)
         write_trigger(1L)
         expect_equal(nrow(user_data()), 1L)
+      }
+    )
+  })
+})
+
+test_that("dashboard: competency reads from the persisted ability snapshot", {
+  data_item <- make_data_item()
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    theta <- setNames(rep(NA_real_, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+    theta["Regression"] <- 1.5
+    ability_path <- make_ability_db("testuser", theta = theta)
+    file.copy(ability_path, DB_ABILITY())
+
+    testServer(
+      mod_dashboard_server,
+      args = list(
+        data_item = data_item,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger,
+        ability_computed_this_session = reactiveVal(FALSE)
+      ),
+      {
+        comp <- competency()
+        expect_false(is.null(comp))
+        expect_equal(comp$theta[comp$learning_area == "Regression"], 1.5)
+      }
+    )
+  })
+})
+
+test_that("dashboard: refresh button is blocked once already computed this session", {
+  data_item <- make_data_item()
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    user_path <- make_user_db("testuser", item_ids = 1:2, areas = c("Regression", "Regression"))
+    file.copy(user_path, DB_USERS())
+
+    ability_flag <- reactiveVal(TRUE) # already computed this session
+    testServer(
+      mod_dashboard_server,
+      args = list(
+        data_item = data_item,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger,
+        ability_computed_this_session = ability_flag
+      ),
+      {
+        expect_false(can_refresh_ability())
+      }
+    )
+  })
+})
+
+test_that("dashboard: refresh button computes and saves ability, then latches the session flag", {
+  data_item <- make_data_item()
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    user_path <- make_user_db("testuser", item_ids = 1:2, areas = c("Regression", "Regression"))
+    file.copy(user_path, DB_USERS())
+
+    ability_flag <- reactiveVal(FALSE)
+    testServer(
+      mod_dashboard_server,
+      args = list(
+        data_item = data_item,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger,
+        ability_computed_this_session = ability_flag
+      ),
+      {
+        expect_true(can_refresh_ability())
+        expect_null(competency())
+
+        session$setInputs(refresh_ability = 1L)
+
+        expect_true(isTRUE(ability_flag()))
+        expect_false(is.null(competency()))
+        expect_false(can_refresh_ability())
       }
     )
   })

@@ -175,6 +175,56 @@ test_that("safe_sample handles empty input without error", {
   expect_length(safe_sample(integer(0)), 0)
 })
 
+# ── latest_attempts ───────────────────────────────────────────────────────────
+
+test_that("latest_attempts keeps the most recent row per item, not the first", {
+  ud <- data.frame(
+    id_item = c(1L, 1L, 2L),
+    id_datetime = c(100L, 200L, 150L),
+    bool_correct = c(FALSE, TRUE, TRUE),
+    stringsAsFactors = FALSE
+  )
+  result <- latest_attempts(ud)
+  expect_equal(nrow(result), 2L)
+  expect_equal(result$bool_correct[result$id_item == 1L], TRUE)
+  expect_equal(result$id_datetime[result$id_item == 1L], 200L)
+})
+
+test_that("latest_attempts handles an empty data.frame", {
+  ud <- data.frame(id_item = integer(0), id_datetime = integer(0))
+  result <- latest_attempts(ud)
+  expect_equal(nrow(result), 0L)
+})
+
+test_that("latest_attempts is a no-op when each item was answered once", {
+  ud <- data.frame(
+    id_item = 1:3,
+    id_datetime = c(100L, 200L, 300L),
+    stringsAsFactors = FALSE
+  )
+  result <- latest_attempts(ud)
+  expect_equal(nrow(result), 3L)
+  expect_setequal(result$id_item, 1:3)
+})
+
+# ── build_ability_rows ────────────────────────────────────────────────────────
+
+test_that("build_ability_rows produces one row per learning area with a shared computed_at", {
+  comp <- data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = c(1.2, NA, 0, -0.5, NA, 0.3, 1.0),
+    n_items = c(5L, 0L, 2L, 3L, 0L, 4L, 6L),
+    stringsAsFactors = FALSE
+  )
+  rows <- build_ability_rows(comp, user_id = "alice", session_token = "tok1")
+
+  expect_equal(nrow(rows), length(LEARNING_AREA_LEVELS))
+  expect_true(all(rows$id_user == "alice"))
+  expect_true(all(rows$id_session == "tok1"))
+  expect_length(unique(rows$computed_at), 1L)
+  expect_equal(rows$theta, comp$theta)
+})
+
 # ── is_img_path ───────────────────────────────────────────────────────────────
 
 test_that("is_img_path detects common image extensions", {

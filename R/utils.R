@@ -109,6 +109,31 @@ build_response_row <- function(item, answer_idx, user_id, session_token) {
   )
 }
 
+# Keeps only the most recent response per item (by id_datetime), rather than
+# the first — a re-answered item's latest attempt is what should feed the
+# ability estimate.
+latest_attempts <- function(user_data) {
+  if (nrow(user_data) == 0L) {
+    return(user_data)
+  }
+  ord <- order(user_data$id_item, user_data$id_datetime)
+  ud <- user_data[ord, ]
+  ud[!duplicated(ud$id_item, fromLast = TRUE), ]
+}
+
+# One row per learning area for a single computed_at batch (see estimate_competency()).
+build_ability_rows <- function(competency, user_id, session_token) {
+  data.frame(
+    id_user = as.character(user_id),
+    id_session = as.character(session_token),
+    computed_at = as.integer(Sys.time()),
+    learning_area = as.character(competency$learning_area),
+    theta = competency$theta,
+    n_items = as.integer(competency$n_items),
+    stringsAsFactors = FALSE
+  )
+}
+
 safe_sample <- function(x, size = length(x)) {
   if (length(x) == 0L) {
     return(x)
