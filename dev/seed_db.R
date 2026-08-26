@@ -1,7 +1,8 @@
-# Creates the two databases a contributor needs to run the app locally:
+# Creates the databases a contributor needs to run the app locally:
 #
 #   db_credentials.sqlite  — a single test account (test / test123)
 #   db_user.sqlite         — empty; tables are created per user on first write
+#   db_ability.sqlite      — empty; tables are created per user on first write
 #
 # Neither file is tracked by git (see .gitignore). They are derived artifacts:
 # regenerate them rather than committing them, so that local practice sessions
@@ -25,12 +26,13 @@ force <- "--force" %in% args
 db_dir <- Sys.getenv("TIGER_DB_DIR", unset = ".")
 creds_path <- file.path(db_dir, "db_credentials.sqlite")
 users_path <- file.path(db_dir, "db_user.sqlite")
+ability_path <- file.path(db_dir, "db_ability.sqlite")
 
 # ── Guard ───────────────────────────────────────────────────────────────────
 # The real credentials DB holds ~250 student password hashes and the real user
 # DB holds three years of responses. Overwriting either by accident is not
 # recoverable from this repo, so require an explicit --force.
-existing <- Filter(file.exists, c(creds_path, users_path))
+existing <- Filter(file.exists, c(creds_path, users_path, ability_path))
 if (length(existing) > 0L && !force) {
   stop(
     "Refusing to overwrite existing database(s):\n  ",
@@ -75,6 +77,12 @@ if (file.exists(users_path)) file.remove(users_path)
 con_u <- DBI::dbConnect(RSQLite::SQLite(), users_path)
 DBI::dbDisconnect(con_u)
 
+# ── Ability estimates: empty ────────────────────────────────────────────────
+# db_write_ability() creates a per-user table on first write, same as above.
+if (file.exists(ability_path)) file.remove(ability_path)
+con_a <- DBI::dbConnect(RSQLite::SQLite(), ability_path)
+DBI::dbDisconnect(con_a)
+
 # ── Items: sample pool, only if no pool is present ──────────────────────────
 # Deliberately not covered by --force: the full pool is not reproducible from
 # this repository, so this never overwrites an existing db_item.sqlite.
@@ -93,6 +101,7 @@ message(
   "Seeded:\n",
   "  ", creds_path, "  (1 account: ", TEST_USER, " / ", TEST_PW, ")\n",
   "  ", users_path, "  (empty)\n",
+  "  ", ability_path, "  (empty)\n",
   items_note,
   "\nStart the app with:  rv run dev/run.R\n"
 )

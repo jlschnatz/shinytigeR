@@ -60,6 +60,47 @@ db_write_response <- function(user_id, df, path = DB_USERS()) {
   )
 }
 
+db_get_ability <- function(user_id, path = DB_ABILITY()) {
+  db_with(
+    path,
+    function(con) {
+      if (!DBI::dbExistsTable(con, user_id)) {
+        return(data.frame())
+      }
+      DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', user_id))
+    },
+    wal = TRUE
+  )
+}
+
+db_write_ability <- function(user_id, df, path = DB_ABILITY()) {
+  db_with(
+    path,
+    function(con) {
+      if (!DBI::dbExistsTable(con, user_id)) {
+        DBI::dbCreateTable(con, user_id, df)
+      }
+      DBI::dbAppendTable(con, user_id, df)
+    },
+    wal = TRUE
+  )
+}
+
+# TRUE if there's response data newer than the most recently saved ability
+# snapshot for this user (or if no snapshot exists yet but responses do).
+ability_needs_update <- function(user_id, user_path = DB_USERS(), ability_path = DB_ABILITY()) {
+  ud <- db_get_userdata(user_id, path = user_path)
+  if (nrow(ud) == 0L) {
+    return(FALSE)
+  }
+  last_response <- max(ud$id_datetime, na.rm = TRUE)
+  ab <- db_get_ability(user_id, path = ability_path)
+  if (nrow(ab) == 0L) {
+    return(TRUE)
+  }
+  last_response > max(ab$computed_at, na.rm = TRUE)
+}
+
 db_get_credentials <- function(path = DB_CREDS()) {
   db_with(path, function(con) {
     DBI::dbGetQuery(con, "SELECT * FROM credentials_db")
