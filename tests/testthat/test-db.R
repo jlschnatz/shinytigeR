@@ -169,6 +169,20 @@ test_that("db_write_response adds a missing column to a pre-existing user table"
   expect_equal(ud$typed_value[ud$id_item == 2L], 4.5)
 })
 
+test_that("db_get_userdata reads a multi-correct answer_correct from a legacy INTEGER column intact", {
+  # Tables created before multi-correct numeric items declare answer_correct
+  # INTEGER (from make_response_row's 1L); a later "1;3" row must read back as
+  # "1;3", not be coerced to 1.
+  path <- make_temp_db()
+  db_write_response("dave", make_response_row("dave", item_id = 1L), path)
+  new_row <- make_response_row("dave", item_id = 2L)
+  new_row$answer_correct <- "1;3"
+  db_write_response("dave", new_row, path)
+
+  ud <- expect_no_warning(db_get_userdata("dave", path))
+  expect_equal(ud$answer_correct, c("1", "1;3"))
+})
+
 test_that("db_get_userdata returns empty data.frame for unknown user", {
   path <- make_temp_db()
   ud <- db_get_userdata("nobody", path)

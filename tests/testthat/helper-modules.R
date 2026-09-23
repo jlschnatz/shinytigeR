@@ -36,15 +36,32 @@ make_data_item <- function() {
 # Single numeric-item row (answer_mode = "num") — distractor values live in
 # answeroption_0X same as MC, but as numeric strings and with no trailing
 # "Überspringen" slot (numeric items skip via a dedicated button, not a last
-# radio option). Correct value is answeroption_01 (answer_correct = 1L).
-make_numeric_item <- function(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20)) {
+# radio option). Correct value is answeroption_01 (answer_correct = "1") unless
+# `answer_correct` says otherwise (e.g. "1;3"). `lower`/`upper` are per-option
+# range bounds, aligned with c(correct_value, distractors); NA = exact match.
+make_numeric_item <- function(
+  id_item = 200L,
+  correct_value = 5,
+  distractors = c(4.5, 6, 20),
+  lower = NA_real_,
+  upper = NA_real_,
+  answer_correct = "1"
+) {
   values <- c(correct_value, distractors)
   n <- length(values)
   opts <- rep(NA_character_, 6)
   fbs <- rep(NA_character_, 6)
+  lo <- rep(NA_real_, 6)
+  up <- rep(NA_real_, 6)
   opts[seq_len(n)] <- as.character(values)
   fbs[seq_len(n)] <- paste0("Feedback ", seq_len(n))
-  data.frame(
+  lo[seq_len(n)] <- rep_len(lower, n)
+  up[seq_len(n)] <- rep_len(upper, n)
+  bounds <- stats::setNames(
+    as.list(c(lo, up)),
+    c(sprintf("lower_answeroption_%02d", 1:6), sprintf("upper_answeroption_%02d", 1:6))
+  )
+  df <- data.frame(
     id_item = id_item,
     learning_area = factor("Deskriptivstatistik", levels = LEARNING_AREA_LEVELS),
     type_item = "content",
@@ -63,13 +80,14 @@ make_numeric_item <- function(id_item = 200L, correct_value = 5, distractors = c
     if_answeroption_04 = fbs[4],
     if_answeroption_05 = fbs[5],
     if_answeroption_06 = fbs[6],
-    answer_correct = 1L,
+    answer_correct = answer_correct,
     type_answer = NA_character_,
     irt_discr = 1.0,
     irt_diff = 0.0,
     answer_mode = "num",
     stringsAsFactors = FALSE
   )
+  cbind(df, as.data.frame(bounds))
 }
 
 # Fake credentials reactive — returns a logged-in user

@@ -3,12 +3,13 @@
 # testing only — never run this against the production DB, since it inserts
 # fake practice items into the real item pool. For the production-safe
 # schema migration alone (answer_mode column + backfill, no sample items),
-# use dev/migrate_answer_mode.R directly — this script sources it to reuse
-# migrate_answer_mode() rather than duplicating that logic.
+# use dev/migrate_answer_mode.R and dev/migrate_numeric_bounds.R directly —
+# this script sources both to reuse their functions rather than duplicating
+# that logic.
 #
-# Idempotent — safe to re-run. Existing rows with the same id_item are left
-# untouched (not re-inserted), so running this twice is a no-op the second
-# time.
+# Idempotent — safe to re-run. Existing rows with the sample ids (9000x) are
+# deleted and re-inserted, so edits to the samples below take effect on the
+# next run. Only these fake sample ids are ever touched.
 #
 # Why a script and not a one-off SQL edit: dev/make_sample_items.R rebuilds
 # dev/db_item_sample.sqlite from scratch out of the full db_item.sqlite —
@@ -29,9 +30,12 @@
 
 .migrate_answer_mode_sourced_only <- TRUE
 source("dev/migrate_answer_mode.R") # defines migrate_answer_mode(), doesn't auto-run it
+.migrate_numeric_bounds_sourced_only <- TRUE
+source("dev/migrate_numeric_bounds.R") # defines migrate_numeric_bounds(), doesn't auto-run it
 
 path <- file.path(Sys.getenv("TIGER_DB_DIR", unset = "."), "db_item.sqlite")
 migrate_answer_mode(path)
+migrate_numeric_bounds(path)
 
 con <- DBI::dbConnect(RSQLite::SQLite(), path)
 on.exit(DBI::dbDisconnect(con), add = TRUE)
@@ -95,15 +99,51 @@ samples <- data.frame(
   stringsAsFactors = FALSE
 )
 
-existing <- DBI::dbGetQuery(con, "SELECT id_item FROM item_db")$id_item
-new_rows <- samples[!samples$id_item %in% existing, ]
-
-if (nrow(new_rows) == 0L) {
-  message("Numeric sample items already present (ids ", paste(samples$id_item, collapse = ", "), ") — nothing to do.")
-} else {
-  DBI::dbAppendTable(con, "item_db", new_rows)
-  message(
-    "Added ", nrow(new_rows), " numeric sample item(s): ",
-    paste(new_rows$id_item, collapse = ", ")
-  )
+# 90001-90003 have exact results, so no ranges: every option matches its own
+# value exactly (all bound columns NA — see "Numeric item rules" in CLAUDE.md).
+for (b in c(sprintf("lower_answeroption_%02d", 1:6), sprintf("upper_answeroption_%02d", 1:6))) {
+  samples[[b]] <- NA_real_
 }
+
+# 90004 exercises the two newer rules: rounded results accepted via ranges
+# (asymmetric, covering both rounding and truncating), and two correct
+# options (sample variance with n - 1 AND population variance with n), each
+# with its own feedback. Values 2, 4, 6, 8: SS = 20, s² = 6.667, σ² = 5,
+# s = 2.582, σ = 2.236.
+variance <- samples[1, ]
+variance$id_item <- 90004L
+variance$theo_diff <- "medium"
+variance$stimulus_text <- "Berechne die Varianz der folgenden Werte: 2, 4, 6, 8. Runde auf zwei Nachkommastellen."
+variance$answeroption_01 <- "6.67"
+variance$answeroption_02 <- "5"
+variance$answeroption_03 <- "20"
+variance$answeroption_04 <- "2.58"
+variance$answeroption_05 <- "2.24"
+variance$answer_correct <- "1;2"
+variance$if_answeroption_01 <- "Richtig! Das ist die Stichprobenvarianz: Quadratsumme 20 geteilt durch n - 1 = 3."
+variance$if_answeroption_02 <- "Richtig! Das ist die Populationsvarianz: Quadratsumme 20 geteilt durch n = 4."
+variance$if_answeroption_03 <- "Das ist die Quadratsumme - du hast noch nicht durch n bzw. n - 1 geteilt."
+variance$if_answeroption_04 <- "Das ist die Standardabweichung (mit n - 1), nicht die Varianz - die Wurzel ist hier ein Schritt zu viel."
+variance$if_answeroption_05 <- "Das ist die Standardabweichung (mit n), nicht die Varianz - die Wurzel ist hier ein Schritt zu viel."
+variance$lower_answeroption_01 <- 6.66
+variance$upper_answeroption_01 <- 6.67
+variance$lower_answeroption_04 <- 2.58
+variance$upper_answeroption_04 <- 2.59
+variance$lower_answeroption_05 <- 2.23
+variance$upper_answeroption_05 <- 2.24
+variance$irt_discr <- 1.0
+variance$irt_diff <- 0.2
+samples <- rbind(samples, variance)
+
+# Delete + re-insert (only these fake ids), so edits above take effect on re-run.
+invisible(DBI::dbWithTransaction(con, {
+  DBI::dbExecute(
+    con,
+    sprintf("DELETE FROM item_db WHERE id_item IN (%s)", paste(samples$id_item, collapse = ", "))
+  )
+  DBI::dbAppendTable(con, "item_db", samples)
+}))
+message(
+  "Wrote ", nrow(samples), " numeric sample item(s): ",
+  paste(samples$id_item, collapse = ", ")
+)

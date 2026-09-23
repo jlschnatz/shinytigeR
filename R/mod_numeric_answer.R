@@ -1,6 +1,6 @@
 # Numeric answer widget — same contract as mod_mc_answer.R (see there for the
 # full contract description). A student types a number instead of picking a
-# radio option; matching against the item's distractor values (tolerance-based,
+# radio option; matching against the item's options (per-option value ranges,
 # see evaluate_numeric_answer() in utils.R) happens in the caller, not here.
 #
 # Differences from mod_mc_answer.R:
@@ -11,7 +11,7 @@
 #     separate function, mod_numeric_answer_skip_ui(), which the parent places
 #     in its action-button row next to "Antwort prüfen".
 #   - `result()$category` can additionally be "unmatched" — the typed number
-#     didn't land within tolerance of any distractor — which renders a fixed
+#     didn't land in any option's range — which renders a fixed
 #     fallback message rather than any if_answeroption_0X feedback text.
 #   - Unlike mod_mc_answer's radio group, the input field and skip button are
 #     STATIC UI (not inside a renderUI keyed on the current item): a freshly
@@ -119,14 +119,14 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
       res <- result()
       req(!is.null(res))
       it <- as.list(it[1, ])
-      feedbacks <- get_feedbackoptions(it)
+      # answer_idx is the option's column position (see get_numeric_options())
+      opts <- get_numeric_options(it)
       idx <- res$answer_idx
       fb_text <- if (
-        res$category %in% c("correct", "incorrect") &&
-          !is.na(idx) &&
-          idx <= length(feedbacks)
+        res$category %in% c("correct", "incorrect") && !is.na(idx) && idx %in% opts$idx
       ) {
-        feedbacks[[idx]]
+        fb <- opts$feedback[opts$idx == idx]
+        if (is.na(fb)) "" else fb
       } else {
         ""
       }

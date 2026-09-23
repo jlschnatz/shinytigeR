@@ -448,6 +448,41 @@ test_that("practice: numeric item — unmatched value is NA-scored, not incorrec
   })
 })
 
+test_that("practice: numeric item — second correct option within its range is scored correct", {
+  data_item <- make_numeric_item(
+    id_item = 200L, correct_value = 6.67, distractors = c(5, 20),
+    lower = c(6.66, NA, NA), upper = c(6.67, NA, NA),
+    answer_correct = "1;2"
+  )
+  practice_ids <- reactiveVal(c(200L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_num-num_value` = "5", check = 1L)
+
+        expect_equal(state$result$category, "correct")
+        expect_equal(state$result$answer_idx, 2L)
+
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_true(as.logical(ud$bool_correct))
+        expect_equal(ud$selected_option, 2L)
+        expect_equal(ud$answer_correct, "1;2")
+      }
+    )
+  })
+})
+
 test_that("practice: numeric item — explicit skip button records skipped = TRUE", {
   data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
   practice_ids <- reactiveVal(c(200L))
@@ -532,6 +567,31 @@ test_that("inspect: numeric item hides the answer before reveal and shows only c
       expect_false(grepl("Feedback 2", html_after))
       expect_false(grepl("Feedback 3", html_after))
       expect_false(grepl("Feedback 4", html_after))
+    }
+  )
+})
+
+test_that("inspect: numeric item with several correct options lists each, with its range", {
+  data_item <- make_numeric_item(
+    id_item = 200L, correct_value = 6.67, distractors = c(5, 20),
+    lower = c(6.66, NA, NA), upper = c(6.67, NA, NA),
+    answer_correct = "1;2"
+  )
+  inspect_id <- reactiveVal(NULL)
+
+  testServer(
+    mod_inspect_server,
+    args = list(data_item = data_item, inspect_id = inspect_id),
+    {
+      inspect_id(200L)
+      session$flushReact()
+      session$setInputs(reveal = 1L)
+      html <- output$item_answers$html
+      expect_true(grepl("Richtige Antworten", html))
+      expect_true(grepl("6.67 (akzeptiert: 6.66 bis 6.67)", html, fixed = TRUE))
+      expect_true(grepl("Feedback 1", html))
+      expect_true(grepl("Feedback 2", html))
+      expect_false(grepl("Feedback 3", html)) # the incorrect option stays hidden
     }
   )
 })

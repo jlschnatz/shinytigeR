@@ -46,23 +46,24 @@ Note `docker/Dockerfile.dev` (used by `SETUP.md`'s Docker option) is dev-only (l
 ### Manually testing numeric items
 
 ```bash
-rv run dev/add_numeric_samples.R   # idempotent — adds 3 numeric sample items (ids 90001-90003) to your local db_item.sqlite
+rv run dev/add_numeric_samples.R   # idempotent — runs both migrations, then (re)writes 4 numeric sample items (ids 90001-90004) in your local db_item.sqlite
 rv run dev/run.R
 ```
 
-Log in and either select the matching learning area (Deskriptivstatistik/Wahrscheinlichkeit/Regression) in the selector, or use "Spezifische Aufgabe auswählen" to jump straight to `90001`/`90002`/`90003` — the direct-ID lookup goes to `mod_inspect.R`, not the practice queue, so to exercise the practice flow (typing an answer, matching/unmatched/skip, the check button) use the selector. `dev/db_item_sample.sqlite` (what a fresh clone gets via `dev/seed_db.R`) already has these three items baked in too.
+Log in and either select the matching learning area (Deskriptivstatistik/Wahrscheinlichkeit/Regression) in the selector, or use "Spezifische Aufgabe auswählen" to jump straight to an id — the direct-ID lookup goes to `mod_inspect.R`, not the practice queue, so to exercise the practice flow (typing an answer, matching/unmatched/skip, the check button) use the selector. `dev/db_item_sample.sqlite` (what a fresh clone gets via `dev/seed_db.R`) already has these four items baked in too.
 
-The three sample items (all `type_item = "content"`, `answer_correct = 1`):
+The four sample items (all `type_item = "content"`; see "Numeric item rules" under Databases for what the columns mean):
 
-| `id_item` | Learning area | Question (abridged) | Distractor values (`answeroption_01`…`04`) | Correct |
-|---|---|---|---|---|
-| `90001` | Deskriptivstatistik | Mean of 2, 4, 6, 8 | `5` / `4.5` / `6` / `20` | `5` |
-| `90002` | Wahrscheinlichkeit | P(two heads in two fair coin flips), as a decimal | `0.25` / `0.5` / `0.75` / `1` | `0.25` |
-| `90003` | Regression | ŷ for x = 4 given y = 2x + 3 | `11` / `9` / `8` / `24` | `11` |
+| `id_item` | Learning area | Question (abridged) | Option values (`answeroption_01`…) | Ranges | `answer_correct` |
+|---|---|---|---|---|---|
+| `90001` | Deskriptivstatistik | Mean of 2, 4, 6, 8 | `5` / `4.5` / `6` / `20` | none (exact) | `1` |
+| `90002` | Wahrscheinlichkeit | P(two heads in two fair coin flips), as a decimal | `0.25` / `0.5` / `0.75` / `1` | none (exact) | `1` |
+| `90003` | Regression | ŷ for x = 4 given y = 2x + 3 | `11` / `9` / `8` / `24` | none (exact) | `1` |
+| `90004` | Deskriptivstatistik | Variance of 2, 4, 6, 8, two decimals | `6.67` / `5` / `20` / `2.58` / `2.24` | 01: 6.66–6.67, 04: 2.58–2.59, 05: 2.23–2.24; 02/03 exact | `1;2` |
 
-Useful manual cases against the current tolerance (`max(value × NUM_MATCH_REL_TOL, NUM_MATCH_ABS_FLOOR)`, i.e. ±1 % with a 0.01 floor): exact match (`5`), comma decimal (`0,25`), in-tolerance near-miss (`5.04`), matched distractor (`4.5` → incorrect + its feedback), unmatched (`7` → no distractor hit), and the skip button.
+Useful manual cases: exact match (`5` on 90001), comma decimal (`0,25` on 90002), exact-only near-miss (`5.01` on 90001 → unmatched), matched distractor (`4.5` on 90001 → incorrect + its feedback), in-range value (`6,66` on 90004 → correct), second correct option (`5` on 90004 → correct, different feedback), ranged distractor (`2.59` on 90004 → incorrect), unmatched (`7`), and the skip button.
 
-`dev/add_numeric_samples.R` is dev/local-only (it inserts fake practice items) — **never** run it against a production DB. For just the schema migration (`answer_mode` column + backfill, no sample items — safe against production), use `dev/migrate_answer_mode.R` directly; see the Deployment section below for when that has to run.
+`dev/add_numeric_samples.R` is dev/local-only (it inserts fake practice items) — **never** run it against a production DB. For just the schema migrations (no sample items — safe against production), use `dev/migrate_answer_mode.R` and `dev/migrate_numeric_bounds.R` directly; see the Deployment section below for when they have to run.
 
 ### Dependency management (rv)
 
@@ -94,7 +95,7 @@ If you have `devtools` available separately (e.g. in a personal, non-rv-managed 
 **`tests/testthat/helper-modules.R`** has reusable fixtures for `testServer()`-based module tests — check here before writing ad hoc test setup:
 
 - `make_data_item()` — minimal 6-row `mc` item `data.frame` (2 areas × content/coding/content, IRT params set, `answer_mode = "mc"`)
-- `make_numeric_item(id_item, correct_value, distractors)` — single-row `num` item `data.frame`, distractor values in reused `answeroption_0X` columns
+- `make_numeric_item(id_item, correct_value, distractors, lower, upper, answer_correct)` — single-row `num` item `data.frame`, option values in reused `answeroption_0X` columns; `lower`/`upper` are per-option bounds aligned with `c(correct_value, distractors)` (default NA = exact match), `answer_correct` defaults to `"1"` (pass e.g. `"1;2"` for multi-correct)
 - `fake_credentials(user)` — a logged-in `credentials()` reactive
 - `selector_cell_inputs(area_vals, type_vals, n_items, only_new)` — builds the `cell_i_j` input list `mod_selector_server` expects
 - `make_user_db(user, item_ids, correct, areas)` — writes a temp SQLite user DB pre-populated with response rows, returns its path
@@ -127,7 +128,7 @@ app_v3/
 │   ├── mod_selector.R     # module: item filter/selection UI
 │   ├── mod_practice.R     # module: item display + answer checking; dispatches to mod_mc_answer/mod_numeric_answer
 │   ├── mod_mc_answer.R    # module: MC answer widget (radios) — child of mod_practice.R
-│   ├── mod_numeric_answer.R  # module: numeric answer widget (typed value, tolerance match) — child of mod_practice.R
+│   ├── mod_numeric_answer.R  # module: numeric answer widget (typed value, per-option range match) — child of mod_practice.R
 │   ├── mod_inspect.R      # module: read-only item overview (direct ID lookup)
 │   └── mod_dashboard.R    # module: progress dashboard
 │
@@ -136,8 +137,9 @@ app_v3/
 │   ├── seed_db.R                 # creates db_credentials.sqlite + empty db_user.sqlite; copies db_item_sample.sqlite in if db_item.sqlite is missing
 │   ├── make_sample_items.R       # regenerates dev/db_item_sample.sqlite from the full local db_item.sqlite (maintainers only)
 │   ├── migrate_answer_mode.R     # production-safe: idempotently adds answer_mode column + backfills to 'mc'. No sample items — run this before deploying
-│   ├── add_numeric_samples.R     # dev-only: sources migrate_answer_mode.R, then adds 3 numeric sample items — never run against production
-│   └── db_item_sample.sqlite     # committed sample pool (17 items: 14 mc + 3 num)
+│   ├── migrate_numeric_bounds.R  # production-safe: idempotently adds lower_/upper_answeroption_0X columns (table rebuild, after if_answeroption_06) + makes answer_correct TEXT. No items — run this before deploying
+│   ├── add_numeric_samples.R     # dev-only: sources both migrations, then (re)writes 4 numeric sample items — never run against production
+│   └── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │
 ├── inst/app/
 │   ├── app.R              # loaded by runApp(); skips library() if already loaded via load_all()
@@ -227,7 +229,7 @@ All three module **servers** are registered once at login time and remain active
 
 ### Answer-mode dispatch inside `mod_practice.R`
 
-Items are answered one of two ways, controlled by `db_item.sqlite`'s `answer_mode` column (`"mc"` or `"num"`): a multiple-choice radio group, or a typed numeric value matched against distractor values with a tolerance. `mod_practice.R` doesn't render either directly — it composes two child modules, **`mod_mc_answer.R`** and **`mod_numeric_answer.R`**, following the same "register once, toggle visibility" pattern as the top-level modules above (see `R/mod_practice.R` below for why visibility, not remounting, and why the very first item of a session needed special handling to avoid a race).
+Items are answered one of two ways, controlled by `db_item.sqlite`'s `answer_mode` column (`"mc"` or `"num"`): a multiple-choice radio group, or a typed numeric value matched against per-option value ranges (see "Numeric item rules" under Databases). `mod_practice.R` doesn't render either directly — it composes two child modules, **`mod_mc_answer.R`** and **`mod_numeric_answer.R`**, following the same "register once, toggle visibility" pattern as the top-level modules above (see `R/mod_practice.R` below for why visibility, not remounting, and why the very first item of a session needed special handling to avoid a race).
 
 ---
 
@@ -247,7 +249,6 @@ Single source of truth for:
 | `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` | functions | Return full paths to the three SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
 | `REG_USERNAME_PATTERN` / `REG_PW_MIN_LENGTH` / `REG_MAX_ATTEMPTS` / `REG_ATTEMPT_DELAY_S` | validation constants | Used by `mod_register.R` — see that section below |
-| `NUM_MATCH_REL_TOL` / `NUM_MATCH_ABS_FLOOR` | `numeric` | Numeric-item answer matching: a typed value matches a distractor if within `max(distractor * NUM_MATCH_REL_TOL, NUM_MATCH_ABS_FLOOR)` of it. Global, not per-item — see `evaluate_numeric_answer()` in `R/utils.R` |
 
 > **Important:** `ITEM_TYPE_LABELS` values (`"content"`, `"coding"`) must exactly match the `type_item` column in `db_item.sqlite`. If item types change in the DB, update this constant.
 
@@ -301,9 +302,11 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 |---|---|
 | `get_answeroptions(item)` | Extracts non-NA values from `answeroption_01`…`answeroption_06` |
 | `get_feedbackoptions(item)` | Extracts non-NA values from `if_answeroption_01`…`if_answeroption_06` |
+| `parse_answer_correct(x)` | Parses the text `answer_correct` (`"2"`, `"1;3"`, or a legacy integer) into an integer vector of option indices; empty for NA. Use this everywhere instead of `as.integer(item$answer_correct)` |
 | `evaluate_answer(item, answer_idx)` | MC only. Returns `"correct"`, `"incorrect"`, or `"skip"` (last option is always the skip option) |
 | `parse_numeric_input(x)` | Numeric items only. Parses a typed string to a number, accepting both `.` and `,` as the decimal separator (`gsub(",", ".", ...)` before `as.numeric()`); returns `NA_real_` for empty/unparseable input |
-| `evaluate_numeric_answer(item, typed_value, rel_tol, abs_floor)` | Numeric items only. Matches `typed_value` against the item's distractor values (reused `answeroption_0X` columns, parsed as numbers — no trailing skip slot). Ties within tolerance resolve to the *closest* distractor. Returns `list(matched_idx, result)` where `result` is `"correct"` / `"incorrect"` / `"unmatched"` (never `"skip"` — that's the caller's dedicated skip action, not a matching outcome) |
+| `get_numeric_options(item)` | Numeric items only. One row per non-empty option: `idx` (the option's **column position** 1–6, not a compacted index — unlike `get_answeroptions()`, a gap in the option columns doesn't shift later options), `value`, `lower`, `upper`, `feedback`, `is_correct`. Bound columns missing from an unmigrated DB read as NA (= exact match) |
+| `evaluate_numeric_answer(item, typed_value)` | Numeric items only. Implements "Numeric item rules" (see Databases): an option matches if `lower ≤ typed ≤ upper`, or exactly its value if either bound is NA (a ~1e-9 relative epsilon only absorbs float noise). Overlapping ranges shouldn't exist in validated items; if they do, the lowest-numbered option wins. Returns `list(matched_idx, result)` where `matched_idx` is the column position and `result` is `"correct"` (option listed in `answer_correct`) / `"incorrect"` / `"unmatched"` (never `"skip"` — that's the caller's dedicated skip action, not a matching outcome) |
 | `build_response_row(item, answer_idx, user_id, session_token, typed_value = NA_real_, skipped = NULL)` | Constructs the `data.frame` row written to `db_user.sqlite`. `answer_idx` is `NA` for an unmatched numeric answer or an explicit skip; `typed_value` is numeric-only (`NA` for MC rows); `skipped` defaults to the MC last-option convention (`answer_idx == n`) when `NULL`, but numeric callers pass it explicitly since there's no last-option slot to compare against. `bool_correct` is `NA` whenever `skipped` or `is.na(answer_idx)` — i.e. skip and unmatched are both excluded from IRT scoring the same way |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
@@ -380,7 +383,7 @@ The stimulus and all answer options render immediately, but the correct answer a
 `output$item_answers` branches on `item$answer_mode`:
 
 - **MC** (unchanged): every option shown; once revealed, the correct option is highlighted using the same `correct_answer_txt`/`correct_answer_img` classes `mod_practice.R` uses (suffix chosen from `item$type_answer`, same as practice — don't hardcode `_txt`), and *every* option with feedback text gets its own `.feedback-card`.
-- **Numeric**: before reveal, a placeholder message ("Numerische Aufgabe — Antwort ausgeblendet") is shown instead of any option list. After reveal, only the *correct* value and its own feedback are shown — the other distractor values/feedback stay hidden even after reveal, deliberately unlike MC. Distractor feedback for numeric items is meant to be discovered by actually typing that value in practice mode, not read off the inspect view.
+- **Numeric**: before reveal, a placeholder message ("Numerische Aufgabe — Antwort ausgeblendet") is shown instead of any option list. After reveal, only the *correct* value(s) — every option listed in `answer_correct`, each with its accepted range ("akzeptiert: X bis Y") if bounds are set — and their own feedback are shown; the other distractor values/feedback stay hidden even after reveal, deliberately unlike MC. Distractor feedback for numeric items is meant to be discovered by actually typing that value in practice mode, not read off the inspect view.
 
 ### `R/mod_dashboard.R`
 
@@ -433,11 +436,36 @@ Table: `item_db`
 | `stimulus_image` | text | Path like `www/img_item/foo.png` (stripped to `img_item/foo.png` at load) |
 | `answeroption_01`…`answeroption_06` | text | Answer choices. For MC (`answer_mode = "mc"`) rows, last non-NA is always "Überspringen". For numeric (`answer_mode = "num"`) rows, these are distractor *values* as numeric strings (e.g. `"4.5"`) — reused rather than adding a parallel set of columns, and with no trailing skip slot (numeric items skip via a dedicated button, not a last option) |
 | `if_answeroption_01`…`if_answeroption_06` | text | Per-answer feedback text (Markdown + LaTeX); same reuse for numeric distractor feedback |
-| `answer_correct` | integer | 1-based index of the correct answer/distractor value |
+| `lower_answeroption_01`…`lower_answeroption_06` | real | Numeric only: inclusive lower bound of the range that matches this option. See "Numeric item rules" below |
+| `upper_answeroption_01`…`upper_answeroption_06` | real | Numeric only: inclusive upper bound. See "Numeric item rules" below |
+| `answer_correct` | text | 1-based index of the correct option. Numeric items may list several, `;`-separated (e.g. `"1;3"`); MC items always exactly one |
 | `type_answer` | text | `"text"` or `"image"` — MC only, not read for numeric rows |
 | `answer_mode` | text | `"mc"` or `"num"` — controls whether `mod_practice.R`/`mod_inspect.R` dispatch to the MC or numeric rendering path. **Not** the same as `type_item` (`"content"`/`"coding"`), which is an orthogonal axis — the two are easy to confuse by name |
 | `irt_discr` | real | IRT discrimination parameter *a* |
 | `irt_diff` | real | IRT difficulty parameter *b* |
+
+#### Numeric item rules (`answer_mode = "num"`)
+
+> Implemented by `evaluate_numeric_answer()`/`get_numeric_options()` in `R/utils.R`; the columns are added by `dev/migrate_numeric_bounds.R`. Item **validation** (rules 2–5) is deliberately **not** done in this app — it lives in the separate item-generation/validation R package, which must enforce these same rules. At runtime the app never rejects an item: an invalid half-set range is treated as exact match, and overlapping ranges resolve to the lowest-numbered option.
+
+Each answer option `0X` of a numeric item is described by four columns: its value `answeroption_0X`, its range `lower_answeroption_0X`/`upper_answeroption_0X`, and its feedback `if_answeroption_0X`. The item's `answer_correct` says which options are correct.
+
+1. **Both bounds empty (NA)** → exact match only (typed value must equal the option's value). Intended for integer results (counts, df, …).
+2. **Both bounds set** → the option matches iff `lower ≤ typed ≤ upper` (inclusive). The range must contain the option's own value; asymmetric ranges are allowed (e.g. `2.58`–`2.59` for 2.5820 to cover both truncating and rounding).
+3. **Exactly one bound set** → invalid item.
+4. **Ranges of different options within one item must not overlap** (an exact-match option counts as the point range `[value, value]`). So every typed value matches at most one option — no "closest wins" tie-breaking.
+5. **`answer_correct`** lists 1-based option indices separated by `;` (no spaces needed; indices only, never values — so no clash with decimal commas). Every index must point to a non-empty option; a numeric item needs ≥ 1 correct index. Each correct option has its own feedback, so e.g. "n − 1" vs. "n" variance can both be correct with different explanations.
+6. A typed value that matches no option's range → `"unmatched"` ("Antwort nicht erkannt"); matches a correct option → `"correct"`; matches any other option → `"incorrect"` with that option's feedback.
+7. **MC items** (`answer_mode = "mc"`): all `lower_`/`upper_` columns stay NA and are ignored; `answer_correct` is exactly one index.
+
+Example (*"Varianz von 2, 4, 6, 8, auf zwei Nachkommastellen"*, `answer_correct = "1;2"`):
+
+| # | `answeroption` | `lower` | `upper` | correct | feedback (abridged) |
+|---|---|---|---|---|---|
+| 01 | `6.67` | 6.66 | 6.67 | ✓ | Stichprobenvarianz (n − 1) |
+| 02 | `5` | 5 | 5 | ✓ | Populationsvarianz (n) |
+| 03 | `20` | – | – | ✗ | Quadratsumme, nicht geteilt |
+| 04 | `2.58` | 2.58 | 2.59 | ✗ | Standardabweichung statt Varianz |
 
 ### `db_user.sqlite` — response log (read-write at runtime)
 
@@ -452,7 +480,7 @@ One table per user, named by `id_user`. Each row is one response:
 | `id_item` | integer | Foreign key to `db_item.sqlite` |
 | `learning_area` | text | Denormalized from item (for fast dashboard queries) |
 | `selected_option` | integer | 1-based index of chosen answer/matched distractor. `NA` for a skipped or unmatched-numeric response |
-| `answer_correct` | integer | Correct answer index (denormalized) |
+| `answer_correct` | text | The item's `answer_correct` at answer time, as-is (`"2"`, or `"1;3"` for a multi-correct numeric item) — denormalized, not used for scoring (`bool_correct` is). Tables created before multi-correct items declare this column INTEGER; `db_get_userdata()` reads it with `CAST(... AS TEXT)` so a `"1;3"` row isn't coerced to `1` |
 | `bool_correct` | logical | `TRUE`/`FALSE`/`NA` (`NA` = skipped **or** an unmatched numeric answer — both excluded from IRT scoring the same way) |
 | `skipped` | logical | `TRUE` if last option was selected (MC) or the skip button was clicked (numeric) |
 | `typed_value` | real | Numeric items only; `NA` for MC rows. The raw number the student typed, preserved even when it didn't match any distractor — otherwise that signal would be unrecoverable once discarded, and it's useful input for the kiwi project's item-generation/feedback work later. Added via `db_write_response()`'s auto-migrate-on-write (see `R/db.R` above), so pre-existing per-user tables don't need a manual migration |
@@ -562,6 +590,8 @@ The container exposes port 3838. ShinyProxy should mount the three SQLite databa
 ShinyProxy's app config must also set **`TIGER_REG_CODE`** (the semester code — see `R/mod_register.R` above) as a container env var. It is **not** baked into `deploy/Dockerfile` (that would ship a secret in the image); without it set at runtime, self-registration is disabled with an error pointing students to `CONTACT_EMAIL`.
 
 > **Required one-time migration before deploying any build that includes numeric items:** the production `db_item.sqlite` needs the `answer_mode` column added and backfilled to `'mc'` before this code runs against it — run `TIGER_DB_DIR=<mount path> rv run dev/migrate_answer_mode.R` against it first (idempotent, safe to re-run, inserts no items). **Skipping this doesn't crash the app** — `item$answer_mode` on a column that doesn't exist yet resolves to `NULL`, not an error, and both `mod_mc_answer.R`'s and `mod_numeric_answer.R`'s dispatch checks (`identical(item$answer_mode[1], "mc"/"num")`) are `FALSE` for `NULL` either way. The practice view's answer area just renders blank and "Antwort prüfen" never enables — for *every* item, MC included, with no error shown anywhere. Do **not** use `dev/add_numeric_samples.R` for this — it also inserts fake sample items, which don't belong in the real student-facing pool.
+>
+> **Also run `TIGER_DB_DIR=<mount path> rv run dev/migrate_numeric_bounds.R`** (same properties: idempotent, inserts no items). It rebuilds `item_db` in one transaction to add the `lower_`/`upper_answeroption_0X` columns after `if_answeroption_06` and make `answer_correct` TEXT; existing data is copied unchanged (verified row-for-row against the local pool). Skipping it doesn't break the app either — missing bound columns read as NA, so every numeric option just falls back to exact match.
 
 The `CMD` starts the app as:
 ```

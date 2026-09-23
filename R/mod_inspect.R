@@ -100,8 +100,9 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
     # db_user.sqlite: this is inspection, not an attempt.
     # MC: every option shown; correct one highlighted + every option's own
     #     feedback revealed (unchanged behaviour).
-    # Numeric: only the correct value + its feedback are ever shown — the
-    #     other distractor values/feedback stay hidden even after reveal, per
+    # Numeric: only the correct value(s) — with their accepted range, if set —
+    #     and their feedback are ever shown; the other distractor values/
+    #     feedback stay hidden even after reveal, per
     #     the numeric-item restriction (distractor feedback is only meant to
     #     be seen by actually answering with that value in practice mode).
     output$item_answers <- renderUI({
@@ -116,42 +117,43 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
       )
 
       if (identical(item$answer_mode, "num")) {
-        choices <- get_answeroptions(item)
-        feedbacks <- get_feedbackoptions(item)
-        correct_idx <- as.integer(item$answer_correct)
-        correct_value <- if (correct_idx <= length(choices)) choices[correct_idx] else NA_character_
-        correct_fb <- if (show_answers && correct_idx <= length(feedbacks)) {
-          feedbacks[[correct_idx]]
-        } else {
-          ""
-        }
+        opts <- get_numeric_options(item)
+        correct_opts <- opts[opts$is_correct, , drop = FALSE]
+        label <- if (nrow(correct_opts) > 1L) "Richtige Antworten" else "Richtige Antwort"
+        rows <- lapply(seq_len(nrow(correct_opts)), function(i) {
+          o <- correct_opts[i, ]
+          raw_value <- item[[sprintf("answeroption_%02d", o$idx)]]
+          range_txt <- if (!is.na(o$lower) && !is.na(o$upper)) {
+            sprintf(" (akzeptiert: %s bis %s)", o$lower, o$upper)
+          } else {
+            ""
+          }
+          tagList(
+            div(
+              class = "answer-option is-static mb-2 correct_answer_txt",
+              div(class = "answer-label", paste0(raw_value, range_txt))
+            ),
+            if (!is.na(o$feedback) && nzchar(o$feedback)) {
+              div(
+                class = "feedback-card mt-1 mb-3",
+                style = "border-left: 4px solid var(--tiger-correct);",
+                div(class = "feedback-body", shiny::HTML(render_md(o$feedback)))
+              )
+            }
+          )
+        })
         div(
           class = "answer-options",
           if (!show_answers) {
             div(class = "text-muted", "Numerische Aufgabe — Antwort ausgeblendet.")
           } else {
-            tagList(
-              div(
-                class = "answer-option is-static mb-2 correct_answer_txt",
-                div(
-                  class = "answer-label",
-                  sprintf("Richtige Antwort: %s", correct_value)
-                )
-              ),
-              if (nzchar(correct_fb)) {
-                div(
-                  class = "feedback-card mt-1 mb-3",
-                  style = "border-left: 4px solid var(--tiger-correct);",
-                  div(class = "feedback-body", shiny::HTML(render_md(correct_fb)))
-                )
-              }
-            )
+            tagList(tags$p(class = "fw-semibold mb-2", paste0(label, ":")), rows)
           }
         )
       } else {
         choices <- get_answeroptions(item)
         feedbacks <- get_feedbackoptions(item)
-        correct_idx <- as.integer(item$answer_correct)
+        correct_idx <- parse_answer_correct(item$answer_correct)[1]
 
         # Last option is always "Frage überspringen" (see get_answeroptions) —
         # skipping isn't a meaningful choice in a read-only overview.

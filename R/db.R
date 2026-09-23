@@ -31,7 +31,20 @@ db_get_userdata <- function(user_id, path = DB_USERS()) {
       if (!DBI::dbExistsTable(con, user_id)) {
         return(data.frame())
       }
-      DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', user_id))
+      # answer_correct is read as text: tables created before multi-correct
+      # numeric items declare it INTEGER, so a "1;3" row sits next to integer
+      # rows and RSQLite would coerce it to 1 (with a warning) on a plain
+      # SELECT *. The stored value itself is intact; the cast just reads it so.
+      cols <- DBI::dbListFields(con, user_id)
+      sel <- ifelse(
+        cols == "answer_correct",
+        "CAST(answer_correct AS TEXT) AS answer_correct",
+        sprintf('"%s"', cols)
+      )
+      DBI::dbGetQuery(
+        con,
+        sprintf('SELECT %s FROM "%s"', paste(sel, collapse = ", "), user_id)
+      )
     },
     wal = TRUE
   )
