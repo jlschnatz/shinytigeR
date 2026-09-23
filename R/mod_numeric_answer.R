@@ -7,7 +7,9 @@
 #   - The input is a plain text field (not type="number") so both "3.5" and
 #     "3,5" are typeable; parsing/locale normalization is parse_numeric_input().
 #   - There is a dedicated "Überspringen" button, reported via skip_requested,
-#     since there's no last-radio-option slot to select instead.
+#     since there's no last-radio-option slot to select instead. Its UI is a
+#     separate function, mod_numeric_answer_skip_ui(), which the parent places
+#     in its action-button row next to "Antwort prüfen".
 #   - `result()$category` can additionally be "unmatched" — the typed number
 #     didn't land within tolerance of any distractor — which renders a fixed
 #     fallback message rather than any if_answeroption_0X feedback text.
@@ -36,14 +38,24 @@ mod_numeric_answer_ui <- function(id) {
         placeholder = "",
         autocomplete = "off"
       ),
-      div(class = "numeric-answer-hint", "Punkt oder Komma als Dezimaltrennzeichen"),
-      actionButton(
-        ns("skip"),
-        "Aufgabe überspringen",
-        class = "numeric-answer-skip"
-      )
+      div(class = "numeric-answer-hint", "Punkt oder Komma als Dezimaltrennzeichen")
     ),
     uiOutput(ns("feedback_ui"))
+  )
+}
+
+# The skip button lives in mod_practice.R's action-button row (left of
+# "Antwort prüfen"), not inside the answer card — so it's a separate UI
+# function the parent places itself, called with the same namespaced id as
+# mod_numeric_answer_ui(). Still owned by this module: input$skip is read
+# here, and its visibility is toggled by mod_numeric_answer_server(). Same
+# static-DOM-node rule as the input field applies (see comment above).
+mod_numeric_answer_skip_ui <- function(id) {
+  ns <- NS(id)
+  actionButton(
+    ns("skip"),
+    div(bsicons::bs_icon("skip-forward"), "Aufgabe überspringen"),
+    class = "btn btn-outline-secondary"
   )
 }
 
@@ -51,20 +63,54 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Fresh (unchecked) numeric item — clear the field and re-show the
-    # input/skip row. Runs whenever the active item changes, including the
-    # first time a numeric item becomes current.
+    result_classes <- paste(
+      "numeric-result-correct",
+      "numeric-result-incorrect",
+      "numeric-result-skip"
+    )
+
+    # Fresh (unchecked) numeric item — clear the field and reset it to its
+    # editable, uncolored state. Runs whenever the active item changes,
+    # including the first time a numeric item becomes current.
     observeEvent(item(), {
       it <- item()
       req(nrow(it) == 1L, identical(it$answer_mode[1], "num"))
       shiny::updateTextInput(session, "num_value", value = "")
-      shinyjs::show("input_row")
+      shinyjs::enable("num_value")
+      shinyjs::removeClass("num_value", result_classes)
     })
 
+    # Post-check, the input row stays visible (like MC's radios) with the
+    # typed value locked in and its border colored by result; the feedback
+    # card renders below it via output$feedback_ui.
     observeEvent(checked(), {
       it <- item()
       req(nrow(it) == 1L, identical(it$answer_mode[1], "num"))
-      if (isTRUE(checked())) shinyjs::hide("input_row") else shinyjs::show("input_row")
+      shinyjs::removeClass("num_value", result_classes)
+      if (isTRUE(checked())) {
+        shinyjs::disable("num_value")
+        res <- result()
+        if (!is.null(res)) {
+          suffix <- if (res$category %in% c("unmatched", "skip")) "skip" else res$category
+          shinyjs::addClass("num_value", paste0("numeric-result-", suffix))
+        }
+      } else {
+        shinyjs::enable("num_value")
+      }
+    })
+
+    # The skip button sits outside num_wrap (in the parent's action row), so
+    # it isn't hidden along with it for MC items — toggle it explicitly.
+    # Deliberately no req() on answer_mode here, unlike the observers above:
+    # the num -> MC transition must hide it too.
+    observe({
+      it <- item()
+      shinyjs::toggle(
+        "skip",
+        condition = nrow(it) == 1L &&
+          identical(it$answer_mode[1], "num") &&
+          !isTRUE(checked())
+      )
     })
 
     output$feedback_ui <- renderUI({
@@ -118,26 +164,14 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
         once = TRUE
       )
 
-      typed_str <- if (!is.na(res$typed_value)) {
-        format(res$typed_value, decimal.mark = ",", trim = TRUE)
-      } else {
-        NA_character_
-      }
-
       div(
-        class = "feedback-card",
+        class = "feedback-card mt-4",
         style = sprintf("border-left: 4px solid %s;", color_var),
         div(
           class = "feedback-header",
           style = sprintf("color: %s;", color_var),
           bsicons::bs_icon(icon_name),
-          tags$b(title_str),
-          if (!is.na(typed_str)) {
-            tags$span(
-              class = "numeric-answer-value",
-              sprintf("Deine Eingabe: %s", typed_str)
-            )
-          }
+          tags$b(title_str)
         ),
         if (nzchar(body_text)) {
           div(class = "feedback-body mt-1", shiny::HTML(render_md(body_text)))

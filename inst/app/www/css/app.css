@@ -320,31 +320,24 @@
   margin-top: 8px;
 }
 
-.numeric-answer-skip.btn {
-  background: none !important;
-  border: none !important;
-  color: #6c7a89;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  padding: 4px 0;
-  margin-top: 10px;
-  box-shadow: none !important;
+/* Post-check: the (disabled) input keeps the typed value, its border colored
+   by result — the numeric counterpart of MC's .radio-result-* fills. Set by
+   mod_numeric_answer_server(); "skip" also covers the unmatched case. */
+.numeric-answer-input:disabled {
+  background-color: #fff;
+  opacity: 1;
 }
-
-.numeric-answer-skip.btn:hover,
-.numeric-answer-skip.btn:focus-visible {
-  color: var(--tiger-primary);
+.numeric-answer-input.numeric-result-correct {
+  border-color: var(--tiger-correct);
+  box-shadow: 0 0 0 3px rgba(0, 97, 143, 0.15);
 }
-
-/* Post-check: the typed value shown inline as the feedback card's own
-   sub-heading, instead of a separate floating box above it — one cohesive
-   result, matching how MC's feedback-card already reads after check. */
-.numeric-answer-value {
-  font-size: 0.85rem;
-  font-weight: 400;
-  opacity: 0.75;
-  margin-left: 6px;
+.numeric-answer-input.numeric-result-incorrect {
+  border-color: var(--tiger-incorrect);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.15);
+}
+.numeric-answer-input.numeric-result-skip {
+  border-color: var(--tiger-skip);
+  box-shadow: 0 0 0 3px rgba(255, 160, 0, 0.15);
 }
 
 /* ── Checked radio color overrides (post-check) ────────────────────────────── */

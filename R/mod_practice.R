@@ -21,10 +21,14 @@ mod_practice_ui <- function(id, data_item, practice_ids) {
   }
   mc_ui <- div(id = ns("mc_wrap"), mod_mc_answer_ui(ns("answer_mc")))
   num_ui <- div(id = ns("num_wrap"), mod_numeric_answer_ui(ns("answer_num")))
+  # The numeric skip button lives in the action row below, outside num_wrap,
+  # so it needs the same first-item pre-hiding treatment on its own.
+  skip_ui <- mod_numeric_answer_skip_ui(ns("answer_num"))
   if (first_is_num) {
     mc_ui <- shinyjs::hidden(mc_ui)
   } else {
     num_ui <- shinyjs::hidden(num_ui)
+    skip_ui <- shinyjs::hidden(skip_ui)
   }
 
   div(
@@ -59,6 +63,7 @@ mod_practice_ui <- function(id, data_item, practice_ids) {
       ),
       div(
         class = "d-flex gap-2",
+        skip_ui,
         shinyjs::disabled(
           actionButton(
             ns("check"),

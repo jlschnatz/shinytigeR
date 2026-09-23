@@ -52,6 +52,16 @@ rv run dev/run.R
 
 Log in and either select the matching learning area (Deskriptivstatistik/Wahrscheinlichkeit/Regression) in the selector, or use "Spezifische Aufgabe auswählen" to jump straight to `90001`/`90002`/`90003` — the direct-ID lookup goes to `mod_inspect.R`, not the practice queue, so to exercise the practice flow (typing an answer, matching/unmatched/skip, the check button) use the selector. `dev/db_item_sample.sqlite` (what a fresh clone gets via `dev/seed_db.R`) already has these three items baked in too.
 
+The three sample items (all `type_item = "content"`, `answer_correct = 1`):
+
+| `id_item` | Learning area | Question (abridged) | Distractor values (`answeroption_01`…`04`) | Correct |
+|---|---|---|---|---|
+| `90001` | Deskriptivstatistik | Mean of 2, 4, 6, 8 | `5` / `4.5` / `6` / `20` | `5` |
+| `90002` | Wahrscheinlichkeit | P(two heads in two fair coin flips), as a decimal | `0.25` / `0.5` / `0.75` / `1` | `0.25` |
+| `90003` | Regression | ŷ for x = 4 given y = 2x + 3 | `11` / `9` / `8` / `24` | `11` |
+
+Useful manual cases against the current tolerance (`max(value × NUM_MATCH_REL_TOL, NUM_MATCH_ABS_FLOOR)`, i.e. ±1 % with a 0.01 floor): exact match (`5`), comma decimal (`0,25`), in-tolerance near-miss (`5.04`), matched distractor (`4.5` → incorrect + its feedback), unmatched (`7` → no distractor hit), and the skip button.
+
 `dev/add_numeric_samples.R` is dev/local-only (it inserts fake practice items) — **never** run it against a production DB. For just the schema migration (`answer_mode` column + backfill, no sample items — safe against production), use `dev/migrate_answer_mode.R` directly; see the Deployment section below for when that has to run.
 
 ### Dependency management (rv)
@@ -356,8 +366,8 @@ Child modules of `mod_practice.R` (see above for the contract and dispatch patte
 `mod_numeric_answer.R` is different in three ways:
 
 - The input is a plain **text** field (not `type="number"`), so both `"3.5"` and `"3,5"` are typeable; `parse_numeric_input()` normalizes the locale.
-- It has a dedicated **skip button** (`skip_requested` in the return contract), since there's no last-radio-option slot.
-- **Its input field and skip button are static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — only its post-check feedback panel (`output$feedback_ui`) re-renders. A freshly recreated `actionButton` resends its client-side reset value (`0`) on the next real render, which Shiny then treats as a genuine click if the server's last remembered value was nonzero — the same quirk documented on `item_id_badge()` in `utils.R`. Keeping the skip button's DOM node stable across item changes (clearing the text field and toggling visibility instead of remounting) avoids that entirely.
+- It has a dedicated **skip button** (`skip_requested` in the return contract), since there's no last-radio-option slot. The button's UI is a separate function, `mod_numeric_answer_skip_ui(id)`, which `mod_practice_ui()` places in its action-button row left of "Antwort prüfen" (called with the same `ns("answer_num")` id, so `input$skip` still belongs to the numeric module). Because it sits outside `num_wrap`, it gets its own first-item pre-hiding in `mod_practice_ui()` and its own `shinyjs::toggle()` observer in `mod_numeric_answer_server()` (visible only for an unchecked numeric item).
+- **Its input field and skip button are static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — only its post-check feedback panel (`output$feedback_ui`) re-renders. After check, the input row stays visible (like MC's radios): the field is `shinyjs::disable()`d with the typed value kept, gets a `.numeric-result-*` border class, and the feedback card renders below it; all of that is reset on the next item. A freshly recreated `actionButton` resends its client-side reset value (`0`) on the next real render, which Shiny then treats as a genuine click if the server's last remembered value was nonzero — the same quirk documented on `item_id_badge()` in `utils.R`. Keeping the skip button's DOM node stable across item changes (clearing the text field and toggling visibility instead of remounting) avoids that entirely.
 
 The **UI itself** is a purpose-built `.numeric-answer-card` (see CSS table below) — deliberately not styled to reuse MC's `.answer-option` list-row classes, since a single numeric field isn't a list of choices and looked like a bolted-on afterthought when it borrowed that styling.
 
@@ -486,8 +496,7 @@ Key CSS classes to be aware of when changing layout:
 | `.answer-option.is-static` | Non-interactive variant used by `mod_inspect.R` — kills hover affordance only, must **not** set `background-color` in the base state or it silently overrides `.correct_answer_txt`/`.incorrect_answer_txt` (equal-or-higher specificity beats source order) |
 | `.radio-result-correct/incorrect/skip` | Post-check radio fill color (requires `!important`) |
 | `.numeric-answer-card` / `.numeric-answer-label` / `.numeric-answer-input` / `.numeric-answer-hint` | Numeric item's pre-check answer widget — a bordered "answer card" purpose-built for a single field, not borrowed MC list-row styling |
-| `.numeric-answer-skip` | De-emphasized (underlined text, not a bordered button) skip action, `.btn` chrome stripped with `!important` overrides |
-| `.numeric-answer-value` | The "Deine Eingabe: X" sub-heading inline in the post-check `.feedback-card` header, not a separate box |
+| `.numeric-result-correct/incorrect/skip` | Post-check border color on the (disabled, still-visible) numeric input — numeric counterpart of `.radio-result-*`; `skip` also covers the unmatched case |
 | `.feedback-card` | Per-answer feedback block with colored left border and shadow |
 | `.practice-stat` / `.practice-stat-val` / `.practice-stat-lbl` | Dashboard practice behaviour grid cells |
 | `.dashboard-comp-table` | Competency map table in dashboard |
