@@ -279,6 +279,67 @@
   line-height: 1.4;
 }
 
+/* ── Numeric-item input ────────────────────────────────────────────────────── */
+/* Purpose-built for a single numeric field, not a borrowed MC option row —
+   a bordered "answer card" with a big centered field, its own label/hint,
+   and a de-emphasized skip action, so it reads as its own kind of question
+   rather than a stray input squeezed into MC's list styling. */
+.numeric-answer-card {
+  border: 1.5px solid #e1e7ee;
+  border-radius: 10px;
+  padding: 20px 20px 16px;
+  background: #fbfcfe;
+}
+
+.numeric-answer-label {
+  font-size: 0.85rem;
+  color: #6c7a89;
+  margin-bottom: 8px;
+}
+
+.numeric-answer-input {
+  max-width: 260px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 14px;
+  border: 1.5px solid #c7d2e0;
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.numeric-answer-input:focus {
+  border-color: var(--tiger-primary);
+  box-shadow: 0 0 0 3px rgba(40, 95, 138, 0.15);
+  outline: none;
+}
+
+.numeric-answer-hint {
+  font-size: 0.8rem;
+  color: #9aa5b1;
+  margin-top: 8px;
+}
+
+/* Post-check: the (disabled) input keeps the typed value, its border colored
+   by result — the numeric counterpart of MC's .radio-result-* fills. Set by
+   mod_numeric_answer_server(); "skip" also covers the unmatched case. */
+.numeric-answer-input:disabled {
+  background-color: #fff;
+  opacity: 1;
+}
+.numeric-answer-input.numeric-result-correct {
+  border-color: var(--tiger-correct);
+  box-shadow: 0 0 0 3px rgba(0, 97, 143, 0.15);
+}
+.numeric-answer-input.numeric-result-incorrect {
+  border-color: var(--tiger-incorrect);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.15);
+}
+.numeric-answer-input.numeric-result-skip {
+  border-color: var(--tiger-skip);
+  box-shadow: 0 0 0 3px rgba(255, 160, 0, 0.15);
+}
+
 /* ── Checked radio color overrides (post-check) ────────────────────────────── */
 .form-check-input.radio-result-correct:checked {
   background-color: var(--tiger-correct)   !important;

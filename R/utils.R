@@ -102,9 +102,21 @@ get_feedbackoptions <- function(item) {
   vals[!is.na(vals) & nzchar(vals)]
 }
 
+# answer_correct is stored as text: one 1-based option index for MC items,
+# one or more ";"-separated indices for numeric items (e.g. "1;3"). Returns an
+# integer vector (empty if NA/unparseable).
+parse_answer_correct <- function(x) {
+  if (is.null(x) || length(x) == 0L || is.na(x[1])) {
+    return(integer(0))
+  }
+  parts <- trimws(strsplit(as.character(x[1]), ";", fixed = TRUE)[[1]])
+  idx <- suppressWarnings(as.integer(parts[nzchar(parts)]))
+  idx[!is.na(idx)]
+}
+
 evaluate_answer <- function(item, answer_idx) {
   n <- length(get_answeroptions(item))
-  if (answer_idx == item$answer_correct) {
+  if (answer_idx %in% parse_answer_correct(item$answer_correct)) {
     "correct"
   } else if (answer_idx == n) {
     "skip"
@@ -113,9 +125,28 @@ evaluate_answer <- function(item, answer_idx) {
   }
 }
 
-build_response_row <- function(item, answer_idx, user_id, session_token) {
+# `answer_idx` is the matched distractor index — NA for a numeric item whose
+# typed value matched nothing, or for an explicit skip. `typed_value` is only
+# meaningful for numeric items (NA for MC rows and for MC-style skips).
+# `skipped` defaults to the MC last-option convention (answer_idx == n); numeric
+# callers pass it explicitly since there's no last-option slot to compare against.
+build_response_row <- function(
+  item,
+  answer_idx,
+  user_id,
+  session_token,
+  typed_value = NA_real_,
+  skipped = NULL
+) {
   n <- length(get_answeroptions(item))
-  skipped <- answer_idx == n
+  if (is.null(skipped)) {
+    skipped <- answer_idx == n
+  }
+  bool_correct <- if (skipped || is.na(answer_idx)) {
+    NA
+  } else {
+    answer_idx %in% parse_answer_correct(item$answer_correct)
+  }
   data.frame(
     id_user = as.character(user_id),
     id_session = as.character(session_token),
@@ -123,11 +154,92 @@ build_response_row <- function(item, answer_idx, user_id, session_token) {
     id_datetime = as.integer(Sys.time()),
     id_item = as.integer(item$id_item),
     learning_area = as.character(item$learning_area),
-    selected_option = as.integer(answer_idx),
-    answer_correct = as.integer(item$answer_correct),
-    bool_correct = if (skipped) NA else (item$answer_correct == answer_idx),
+    selected_option = if (is.na(answer_idx)) NA_integer_ else as.integer(answer_idx),
+    # Stored as the item's text as-is ("2", or "1;3" for a multi-correct
+    # numeric item) — bool_correct is what scoring reads, not this column.
+    answer_correct = as.character(item$answer_correct),
+    bool_correct = bool_correct,
     skipped = skipped,
+    typed_value = as.numeric(typed_value),
     stringsAsFactors = FALSE
+  )
+}
+
+# Numeric-item input parsing: accept both "3.5" and "3,5" (German locale).
+# Returns NA_real_ for empty/unparseable input.
+parse_numeric_input <- function(x) {
+  if (is.null(x) || length(x) == 0L || is.na(x) || !nzchar(trimws(x))) {
+    return(NA_real_)
+  }
+  x <- gsub(",", ".", trimws(x), fixed = TRUE)
+  suppressWarnings(as.numeric(x))
+}
+
+# A numeric item's answer options, by column position (1..6) — NOT compacted
+# like get_answeroptions(), so row i always is option i even if an earlier
+# option column is empty. Returns a data.frame with one row per non-empty
+# option: idx, value, lower, upper, feedback, is_correct. Bound columns that
+# don't exist yet (DB not migrated — see dev/migrate_numeric_bounds.R) read as
+# NA, i.e. exact match.
+get_numeric_options <- function(item) {
+  col <- function(prefix, i) {
+    v <- item[[sprintf("%sansweroption_%02d", prefix, i)]]
+    if (is.null(v) || length(v) == 0L) NA else v[[1]]
+  }
+  opts <- lapply(1:6, function(i) {
+    raw <- col("", i)
+    if (is.na(raw) || !nzchar(trimws(raw))) {
+      return(NULL)
+    }
+    data.frame(
+      idx = i,
+      value = parse_numeric_input(as.character(raw)),
+      lower = suppressWarnings(as.numeric(col("lower_", i))),
+      upper = suppressWarnings(as.numeric(col("upper_", i))),
+      feedback = as.character(col("if_", i)),
+      stringsAsFactors = FALSE
+    )
+  })
+  opts <- do.call(rbind, opts)
+  if (is.null(opts)) {
+    return(data.frame(
+      idx = integer(0), value = numeric(0), lower = numeric(0),
+      upper = numeric(0), feedback = character(0), is_correct = logical(0)
+    ))
+  }
+  opts$is_correct <- opts$idx %in% parse_answer_correct(item$answer_correct)
+  opts
+}
+
+# Matches a numeric answer against an item's answer options (see "Numeric item
+# rules" in CLAUDE.md). Each option matches a closed range [lower, upper]; if
+# either bound is NA, it matches its own value exactly (a tiny epsilon absorbs
+# floating-point noise only). Validated items never have overlapping ranges,
+# so at most one option matches — should an unvalidated item overlap anyway,
+# the lowest-numbered matching option wins. Returns list(matched_idx, result),
+# where result is "correct" (matched an option listed in answer_correct) /
+# "incorrect" (matched any other option) / "unmatched" (matched_idx NA) —
+# never "skip", which is handled by the caller's dedicated skip action.
+evaluate_numeric_answer <- function(item, typed_value) {
+  opts <- get_numeric_options(item)
+  if (is.na(typed_value) || nrow(opts) == 0L) {
+    return(list(matched_idx = NA_integer_, result = "unmatched"))
+  }
+  has_range <- !is.na(opts$lower) & !is.na(opts$upper)
+  eps <- 1e-9 * pmax(1, abs(opts$value))
+  hit <- ifelse(
+    has_range,
+    typed_value >= opts$lower - eps & typed_value <= opts$upper + eps,
+    !is.na(opts$value) & abs(typed_value - opts$value) <= eps
+  )
+  hit[is.na(hit)] <- FALSE
+  if (!any(hit)) {
+    return(list(matched_idx = NA_integer_, result = "unmatched"))
+  }
+  m <- which(hit)[1]
+  list(
+    matched_idx = as.integer(opts$idx[m]),
+    result = if (opts$is_correct[m]) "correct" else "incorrect"
   )
 }
 

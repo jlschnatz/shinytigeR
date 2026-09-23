@@ -67,7 +67,7 @@ app_server <- function(input, output, session) {
       } else if (is.null(practice_ids())) {
         mod_selector_ui("selector_1", data_item)
       } else {
-        mod_practice_ui("practice_1")
+        mod_practice_ui("practice_1", data_item, practice_ids)
       }
     })
 
