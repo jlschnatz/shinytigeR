@@ -446,7 +446,7 @@ Table: `item_db`
 
 #### Numeric item rules (`answer_mode = "num"`)
 
-> Implemented by `evaluate_numeric_answer()`/`get_numeric_options()` in `R/utils.R`; the columns are added by `dev/migrate_numeric_bounds.R`. Item **validation** (rules 2–5) is deliberately **not** done in this app — it lives in the separate item-generation/validation R package, which must enforce these same rules. At runtime the app never rejects an item: an invalid half-set range is treated as exact match, and overlapping ranges resolve to the lowest-numbered option.
+> Implemented by `evaluate_numeric_answer()`/`get_numeric_options()` in `R/utils.R`; the columns are added by `dev/migrate_numeric_bounds.R`. Item **validation** (rules 2–5) is deliberately **not** done in this app — it lives in the separate item-authoring package **`tigertools`** (`../tigertools`, github.com/jlschnatz/tigertools: `create(answer_mode = "num")` template, `validate_item()`, `push()`), which enforces these same rules — keep the two in sync when a rule changes. At runtime the app never rejects an item: an invalid half-set range is treated as exact match, and overlapping ranges resolve to the lowest-numbered option.
 
 Each answer option `0X` of a numeric item is described by four columns: its value `answeroption_0X`, its range `lower_answeroption_0X`/`upper_answeroption_0X`, and its feedback `if_answeroption_0X`. The item's `answer_correct` says which options are correct.
 
