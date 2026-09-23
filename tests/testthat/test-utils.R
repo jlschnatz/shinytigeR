@@ -38,6 +38,37 @@ test_that("protect_math_delimiters leaves inline code spans untouched", {
   expect_false(grepl("\\\\(", result, fixed = TRUE))
 })
 
+test_that("protect_math_delimiters leaves fenced code blocks untouched, incl. backticks and ~~~", {
+  block1 <- "```\nt.test(income$salary, income$sex)\ndf$`weird name`\n```"
+  block2 <- "~~~\nx$a + y$b\n~~~"
+  input <- paste(
+    "Code:", block1, "Und $x^2$ danach, `a$b` inline.", block2, "Ende $y$.",
+    sep = "\n"
+  )
+  result <- protect_math_delimiters(input)
+  expect_match(result, block1, fixed = TRUE)
+  expect_match(result, block2, fixed = TRUE)
+  expect_match(result, "`a$b`", fixed = TRUE)
+  # math outside the code is still converted
+  expect_match(result, "\\\\(x^2\\\\)", fixed = TRUE)
+  expect_match(result, "\\\\(y\\\\)", fixed = TRUE)
+  expect_false(grepl("CODEBLOCK|CODESPAN", result))
+})
+
+test_that("render_md keeps text after fenced code blocks and renders them as <pre>", {
+  html <- render_md("Vorher:\n```\nincome$salary\n```\nNachher **fett**.")
+  expect_match(html, "<pre><code>income$salary", fixed = TRUE)
+  expect_match(html, "Nachher <strong>fett</strong>.", fixed = TRUE)
+  expect_false(grepl("\\(salary", html, fixed = TRUE))
+})
+
+test_that("protect_math_delimiters treats an unclosed fence as code to the end", {
+  input <- "Text $a$\n```\nx$y$z"
+  result <- protect_math_delimiters(input)
+  expect_match(result, "```\nx$y$z", fixed = TRUE)
+  expect_match(result, "\\\\(a\\\\)", fixed = TRUE)
+})
+
 test_that("protect_math_delimiters handles text with no math unchanged (no $ signs)", {
   input <- "Just plain text with no math."
   result <- protect_math_delimiters(input)

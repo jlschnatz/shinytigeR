@@ -251,7 +251,7 @@ Parameters `a` (discrimination) and `b` (difficulty) come from `irt_discr` and `
 Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$...$$` (display). The rendering pipeline:
 
 1. **`protect_math_delimiters(text)`** — pre-processes text before passing to `markdownToHTML`:
-   - Protects inline code spans (`` `...` ``) from math detection
+   - Protects fenced code blocks (```` ``` ```` / `~~~`, e.g. R code or error output containing `$`) as a whole, then inline code spans (`` `...` ``), from math detection; both are restored verbatim afterwards
    - Escapes `*` and `_` inside math regions (prevents `<em>` injection by commonmark)
    - Converts `$$...$$` → `\\[...\\]` and `$...$` → `\\(...\\)` (double backslashes because commonmark strips one layer during the markdown pass)
 2. **`render_md(text)`** — calls `protect_math_delimiters` then `markdown::markdownToHTML(fragment.only=TRUE)`

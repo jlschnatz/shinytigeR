@@ -1,8 +1,27 @@
-# Protect inline code spans, then convert $...$ / $$...$$ to MathJax delimiters
-# \(...\) / \[...\] before markdownToHTML sees the text.
+# Protect fenced code blocks and inline code spans, then convert $...$ / $$...$$
+# to MathJax delimiters \(...\) / \[...\] before markdownToHTML sees the text.
 # Backslashes are doubled because commonmark strips one layer during the markdown pass,
 # leaving the correct single-backslash MathJax delimiters in the final HTML.
 protect_math_delimiters <- function(text) {
+  # Step 0 — protect fenced code blocks (``` or ~~~, e.g. R code with
+  # `income$salary` or an error message) as a whole. Without this, the inline
+  # code-span pairing in step 1 only happens to cover a ``` block's content,
+  # and breaks as soon as the code itself contains a backtick (or with ~~~),
+  # letting `$...$` inside the code be converted to math. An unclosed fence
+  # runs to the end of the text, as in commonmark.
+  code_blocks <- regmatches(
+    text,
+    gregexpr(
+      "(?ms)^[ \\t]*(`{3,}|~{3,})[^\\n]*\\n.*?(?:^[ \\t]*\\1[ \\t]*$|\\z)",
+      text,
+      perl = TRUE
+    )
+  )[[1]]
+  block_ph <- sprintf("CODEBLOCK%03d", seq_along(code_blocks))
+  for (i in seq_along(code_blocks)) {
+    text <- sub(code_blocks[i], block_ph[i], text, fixed = TRUE)
+  }
+
   # Step 1 — protect inline code spans (e.g. `income$salary`) from math detection
   code_spans <- regmatches(text, gregexpr("`[^`]*`", text, perl = TRUE))[[1]]
   code_ph <- character(0)
@@ -51,9 +70,12 @@ protect_math_delimiters <- function(text) {
   )
   text <- gsub("\\$([^$\n]+?)\\$", "\\\\\\\\(\\1\\\\\\\\)", text, perl = TRUE)
 
-  # Step 4 — restore code spans
+  # Step 4 — restore code spans, then code blocks
   for (i in seq_along(code_spans)) {
     text <- sub(code_ph[i], code_spans[i], text, fixed = TRUE)
+  }
+  for (i in seq_along(code_blocks)) {
+    text <- sub(block_ph[i], code_blocks[i], text, fixed = TRUE)
   }
   text
 }
