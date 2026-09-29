@@ -700,8 +700,8 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     # date, color-matched via hovertemplate) and a clickable legend to
     # declutter on demand (click hides a series, double-click isolates it —
     # plotly's default trace-click behavior, not custom code). No confidence
-    # band is drawn since estimate_theta() provides no standard error — a
-    # fabricated band would misrepresent precision that isn't there.
+    # band is drawn yet: snapshots now store a standard error (`se`, see
+    # sem_1pl() in R/irt.R), but ones saved before that change have none.
     #
     # Two layout details needed explicit tuning vs. plotly's defaults, found
     # by testing at a real 390px mobile viewport (not just a resized desktop

@@ -96,7 +96,8 @@ make_ability_db <- function(
   user = "testuser",
   computed_at = as.integer(Sys.time()),
   theta = setNames(rep(0.5, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS),
-  n_items = setNames(rep(3L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+  n_items = setNames(rep(3L, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS),
+  se = NULL
 ) {
   path <- tempfile(fileext = ".sqlite")
   con <- DBI::dbConnect(RSQLite::SQLite(), path)
@@ -110,6 +111,8 @@ make_ability_db <- function(
     n_items = unname(n_items[LEARNING_AREA_LEVELS]),
     stringsAsFactors = FALSE
   )
+  # Omitted by default to mimic snapshots saved before `se` existed
+  if (!is.null(se)) rows$se <- unname(se[LEARNING_AREA_LEVELS])
   DBI::dbWriteTable(con, user, rows)
   path
 }

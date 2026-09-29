@@ -248,3 +248,19 @@ test_that("DB path functions default to current directory when env var is unset"
     expect_match(DB_ITEMS(), "db_item.sqlite$")
   })
 })
+
+# ── db_write_ability: schema migration ────────────────────────────────────────
+
+test_that("db_write_ability adds a missing `se` column to a pre-existing table", {
+  path <- make_ability_db("olduser") # old schema, no `se`
+  new_rows <- data.frame(
+    id_user = "olduser", id_session = "s2", computed_at = 2e9,
+    learning_area = LEARNING_AREA_LEVELS, theta = 0, se = 0.4, n_items = 5L,
+    stringsAsFactors = FALSE
+  )
+  db_write_ability("olduser", new_rows, path = path)
+  ab <- db_get_ability("olduser", path = path)
+  expect_true("se" %in% names(ab))
+  expect_true(all(is.na(ab$se[ab$computed_at != 2e9])))
+  expect_true(all(ab$se[ab$computed_at == 2e9] == 0.4))
+})

@@ -129,6 +129,7 @@ build_ability_rows <- function(competency, user_id, session_token) {
     computed_at = as.integer(Sys.time()),
     learning_area = as.character(competency$learning_area),
     theta = competency$theta,
+    se = if (is.null(competency$se)) NA_real_ else competency$se,
     n_items = as.integer(competency$n_items),
     stringsAsFactors = FALSE
   )

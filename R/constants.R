@@ -69,6 +69,12 @@ DB_ABILITY <- function() file.path(.db_dir(), "db_ability.sqlite")
 
 CONTACT_EMAIL <- "tiger@psych.uni-frankfurt.de"
 
+# Range of the ability estimate (estimate_theta() is bounded to it). Also the
+# effective ends of COMPETENCY_SCALE when computing label certainty: the model
+# can't distinguish abilities beyond these bounds, so the open-ended outer
+# labels are evaluated as [-3, -1) and [2, 3] rather than out to +/- Inf.
+THETA_RANGE <- c(-3, 3)
+
 # IRT competency thresholds (theta)
 IRT_THETA_HIGH    <-  1.0
 IRT_THETA_MED     <-  0.0

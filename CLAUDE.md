@@ -75,7 +75,7 @@ If you have `devtools` available separately (e.g. in a personal, non-rv-managed 
 - `fake_credentials(user)` — a logged-in `credentials()` reactive
 - `selector_cell_inputs(area_vals, type_vals, n_items, only_new)` — builds the `cell_i_j` input list `mod_selector_server` expects
 - `make_user_db(user, item_ids, correct, areas)` — writes a temp SQLite user DB pre-populated with response rows, returns its path
-- `make_ability_db(user, computed_at, theta, n_items)` — writes a temp SQLite ability DB pre-populated with one saved snapshot (one row per learning area), returns its path
+- `make_ability_db(user, computed_at, theta, n_items, se = NULL)` — writes a temp SQLite ability DB pre-populated with one saved snapshot (one row per learning area), returns its path. Without `se` it mimics the old schema (no `se` column)
 
 > **Known gap:** `mod_inspect.R` (read-only item-overview module) and the direct-ID-lookup addition to `mod_selector.R` were added after this suite was last updated and have **no `testthat` coverage yet** — only ad hoc verification during development. If you touch either, add `test_that()` cases to `test-modules.R` following the existing `mod_selector`/`mod_practice` pattern rather than leaving it untested.
 
@@ -96,7 +96,7 @@ app_v3/
 │   ├── shinytigeR-package.R  # package-level imports + globalVariables()
 │   ├── constants.R        # app-wide constants (see below)
 │   ├── db.R               # all SQLite access functions
-│   ├── irt.R              # IRT model (2PL) functions
+│   ├── irt.R              # IRT model (1PL/Rasch) functions
 │   ├── utils.R            # markdown/math rendering + answer helpers
 │   ├── ui.R               # app_ui() — top-level page_navbar layout
 │   ├── server.R           # app_server() — wires auth + all modules
@@ -210,6 +210,7 @@ Single source of truth for:
 | `ITEM_TYPE_LABELS` | named `character` | `"Inhaltlich" = "content"`, `"R-Code" = "coding"` — these must match `type_item` values in `db_item.sqlite` |
 | `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
+| `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: bounds of `estimate_theta()`, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
 | `LEARNING_AREA_COLORS` | `character` vector | 7-color palette (matching `LEARNING_AREA_LEVELS` order) for the interactive ability-trajectory chart, derived from the official Goethe University 5-color palette — see `R/mod_dashboard.R` below |
 | `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` | functions | Return full paths to the four SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
@@ -231,7 +232,7 @@ All database access. Uses a simple open/close pattern (`db_with()`) — no conne
 | `db_user_exists(user_id)` | Returns `TRUE` if the user has any recorded responses |
 | `db_write_response(user_id, df)` | Appends one response row; creates the user table if it doesn't exist yet |
 | `db_get_ability(user_id)` | Returns all saved ability (θ) snapshot rows for a user from `db_ability.sqlite`, or an empty `data.frame` if none |
-| `db_write_ability(user_id, df)` | Appends one batch of ability rows (one row per learning area, sharing a `computed_at`); creates the user table if it doesn't exist yet |
+| `db_write_ability(user_id, df)` | Appends one batch of ability rows (one row per learning area, sharing a `computed_at`); creates the user table if it doesn't exist yet, and adds any columns missing from an older table (e.g. `se`) via `ALTER TABLE` |
 | `ability_needs_update(user_id)` | `TRUE` if the user has a response newer than their most recently saved ability snapshot (or has responses but no snapshot yet); `FALSE` if there's nothing new, or no responses at all |
 | `db_get_credentials()` | Returns the credentials table for `shinyauthr` |
 | `db_username_exists(username)` | `TRUE`/`FALSE`; case-sensitive. Used by `mod_register.R` |
@@ -241,16 +242,19 @@ All database access. Uses a simple open/close pattern (`db_with()`) — no conne
 
 ### `R/irt.R`
 
-Two-parameter logistic (2PL) IRT model for estimating student ability.
+One-parameter logistic (1PL / Rasch) IRT model for estimating student ability. Switched from 2PL: every item is treated as equally discriminating (a = 1), so only the difficulty `irt_diff` is used and `irt_discr` is ignored (the column stays in `db_item.sqlite`).
 
 | Function | Description |
 |---|---|
-| `prob_2pl(theta, a, b)` | Item response probability: `1 / (1 + exp(-a*(theta-b)))` |
-| `estimate_theta(responses, a, b)` | MLE via L-BFGS-B (`optim`), bounded to `[-3, 3]`. Returns `NA` on error |
-| `estimate_competency(responses, items)` | Runs `estimate_theta` per learning area. Returns a `data.frame` with columns `learning_area`, `theta`, `n_items` |
+| `irf_1pl(theta, b)` | Item response probability: `plogis(theta - b)` |
+| `iteminfo_1pl(theta, b)` | Item information `P * (1 - P)` (max 0.25 at θ = b) |
+| `estimate_theta(responses, a, b)` | MLE via L-BFGS-B (`optim`), bounded to `THETA_RANGE` (`[-3, 3]`). Returns `NA` on error |
+| `sem_1pl(theta, b)` | Standard error of the estimate: `1 / sqrt(sum(iteminfo_1pl(θ̂, b)))` |
+| `prob_in_interval(theta, se, lower, upper)` | P(true θ ∈ [lower, upper)) under the normal approximation N(θ̂, SE²); drives the dashboard's certainty dots |
+| `estimate_competency(responses, items)` | Runs `estimate_theta` per learning area. Returns a `data.frame` with columns `learning_area`, `theta`, `se`, `n_items` |
 | `compute_and_save_ability(user_id, session_token, items)` | Pulls the user's full response history, dedupes to the **latest attempt per item** via `latest_attempts()` (`R/utils.R`), runs `estimate_competency()`, and persists the result to `db_ability.sqlite` via `db_write_ability()`. The single call site both the login-time auto-check (`R/server.R`) and the dashboard's refresh button (`R/mod_dashboard.R`) use — see that module's section below for the full trigger/persistence design |
 
-Parameters `a` (discrimination) and `b` (difficulty) come from `irt_discr` and `irt_diff` columns in `db_item.sqlite`. Items with missing IRT parameters are silently excluded from estimation.
+The difficulty `b` comes from the `irt_diff` column in `db_item.sqlite`. Items with a missing `irt_diff` are silently excluded from estimation. If the difficulties were calibrated under a 2PL model, they are not exactly Rasch difficulties; recalibrating them under 1PL (item authoring lives in `../tigertools`) would make the estimates consistent.
 
 ### `R/utils.R`
 
@@ -331,7 +335,7 @@ The stimulus and all answer options render immediately, but the correct answer a
 
 ### `R/mod_dashboard.R`
 
-> **Status: mockup.** The 2PL IRT competency estimate and its thresholds/labels below are a placeholder to demonstrate the dashboard concept, not an empirically validated model. Replacing it with an AI-assisted, empirically derived competency dashboard is the scope of the follow-up **"kiwi"** project — don't treat the current θ cutoffs or recommendation logic as settled design worth preserving during that work.
+> **Status: mockup.** The 1PL IRT competency estimate and its thresholds/labels below are a placeholder to demonstrate the dashboard concept, not an empirically validated model. Replacing it with an AI-assisted, empirically derived competency dashboard is the scope of the follow-up **"kiwi"** project — don't treat the current θ cutoffs or recommendation logic as settled design worth preserving during that work.
 
 **Descriptive stats** (accuracy %, days practiced, etc.) still use `user_data` (all attempts) and `first_attempts` (deduped to the first attempt per item) exactly as before — this reactive chain is unchanged:
 ```
@@ -359,7 +363,7 @@ This also seeds a **history** in `db_ability.sqlite` (one batch per `computed_at
 
 **Why `plotly` and not a static `ggplot2` chart:** `renderPlot` produces a server-rendered raster image that does not reflow — on a phone-width viewport it doesn't resize sensibly, it just scales the same fixed image down. `plotly` renders a real responsive HTML widget instead. Two layout details needed explicit tuning beyond `plotly`'s defaults, found by testing at a real emulated 390px mobile viewport (`chromote::ChromoteSession$new()$Emulation$setDeviceMetricsOverride(...)` — a resized desktop browser window does **not** reproduce the same layout, only real device-metrics emulation does): the default top margin clips the θ=3 tick (fixed via `plotly::layout(margin = list(t = 30, ...))`), and a 7-entry horizontal legend wraps onto multiple lines on a narrow screen, so `plotlyOutput(..., height = "440px")` is sized with room for that rather than fighting for a compact legend. See the comment above `output$ability_trajectory_chart` in `R/mod_dashboard.R`.
 
-**Why one overlaid panel instead of facets, given 7 crossing lines is a real readability risk:** color alone cannot safely disambiguate 7 series that can be adjacent/crossing anywhere (a categorical palette is only reliably colorblind-safe for ~3 series under that "all-pairs" condition). This is only viable because the interactive chart ships two secondary encodings a static image can't: a unified hover (`hovermode = "x unified"`) showing the exact θ for every visible area at that date, color-matched via `hovertemplate`; and a clickable legend (click hides a series, double-click isolates it — `plotly`'s default trace-click behavior) to declutter on demand. Don't strip either out if you touch this chart — they're load-bearing for the color choice, not decoration. No confidence band is drawn since `estimate_theta()` has no standard error to show — fabricating one would misrepresent precision that isn't there.
+**Why one overlaid panel instead of facets, given 7 crossing lines is a real readability risk:** color alone cannot safely disambiguate 7 series that can be adjacent/crossing anywhere (a categorical palette is only reliably colorblind-safe for ~3 series under that "all-pairs" condition). This is only viable because the interactive chart ships two secondary encodings a static image can't: a unified hover (`hovermode = "x unified"`) showing the exact θ for every visible area at that date, color-matched via `hovertemplate`; and a clickable legend (click hides a series, double-click isolates it — `plotly`'s default trace-click behavior) to declutter on demand. Don't strip either out if you touch this chart — they're load-bearing for the color choice, not decoration. No confidence band is drawn yet. Saved snapshots now carry a standard error (`se`), so a band could be added, but estimates saved before that change have none.
 
 **`LEARNING_AREA_COLORS`** (`constants.R`) is the official 5-color Goethe University palette (blue/yellow/magenta/green/orange), extended to 7 by lightening two of the five hues rather than interpolating across all five — `colorRampPalette()` across non-adjacent brand hues (blue↔yellow, magenta↔green, ...) produces muddy near-identical browns/olives regardless of color space (tried both sRGB and Lab interpolation before rejecting this approach), because those pairs are colour-opponent. See the comment on the constant for which two hues were tinted and why.
 
@@ -406,7 +410,7 @@ Table: `item_db`
 | `if_answeroption_01`…`if_answeroption_06` | text | Per-answer feedback text (Markdown + LaTeX) |
 | `answer_correct` | integer | 1-based index of the correct answer |
 | `type_answer` | text | `"text"` or `"image"` |
-| `irt_discr` | real | IRT discrimination parameter *a* |
+| `irt_discr` | real | IRT discrimination parameter *a* — unused since the switch to 1PL |
 | `irt_diff` | real | IRT difficulty parameter *b* |
 
 ### `db_user.sqlite` — response log (read-write at runtime)
@@ -437,6 +441,7 @@ One table per user, named by `id_user`. Each row is one learning area's estimate
 | `computed_at` | integer | `as.integer(Sys.time())` at compute time — shared by every row of one batch; used both to find the "current" snapshot (max `computed_at`) and to detect whether newer response data exists (`ability_needs_update()`) |
 | `learning_area` | text | One of `LEARNING_AREA_LEVELS` — a batch always writes all 7, even if `theta` is `NA` for areas with no data |
 | `theta` | real | Estimated ability, or `NA` if the area had no usable data in that batch |
+| `se` | real | Standard error of `theta` (`sem_1pl()`), or `NA`. Added later: tables created before it get the column on their next write, and their older rows keep `NULL` |
 | `n_items` | integer | Number of items (latest-attempt-deduped) feeding that area's estimate |
 
 ### `db_credentials.sqlite` — authentication

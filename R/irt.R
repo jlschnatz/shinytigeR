@@ -1,23 +1,44 @@
-prob_2pl <- function(theta, a, b) {
-  1 / (1 + exp(-a * (theta - b)))
+# 1PL (Rasch) model: every item discriminates equally (a = 1), so only the
+# difficulty b (`irt_diff` in db_item.sqlite) is used; `irt_discr` is ignored.
+
+# Item response function: P(correct | theta, b)
+irf_1pl <- function(theta, b) {
+  stats::plogis(theta - b)
 }
 
-neg_log_lik <- function(theta, responses, a, b) {
-  p <- prob_2pl(theta, a, b)
+# Item information at theta: P * (1 - P)
+iteminfo_1pl <- function(theta, b) {
+  p <- irf_1pl(theta, b)
+  p * (1 - p)
+}
+
+# Standard error of an ability estimate: 1 / sqrt(test information) at theta
+sem_1pl <- function(theta, b) {
+  1 / sqrt(sum(iteminfo_1pl(theta, b)))
+}
+
+# Probability that the true theta lies in [lower, upper), using the normal
+# approximation theta_true ~ N(theta_hat, se^2). Drives the certainty dots of
+# the dashboard's "Dein Lernstand" card (interval = the assigned label's).
+prob_in_interval <- function(theta, se, lower, upper) {
+  stats::pnorm((upper - theta) / se) - stats::pnorm((lower - theta) / se)
+}
+
+neg_log_lik <- function(theta, responses, b) {
+  p <- irf_1pl(theta, b)
   p <- pmax(pmin(p, 1 - 1e-9), 1e-9)
   -sum(responses * log(p) + (1 - responses) * log(1 - p))
 }
 
-estimate_theta <- function(responses, a, b) {
+estimate_theta <- function(responses, b) {
   fit <- tryCatch(
     optim(
       0,
       neg_log_lik,
       method = "L-BFGS-B",
-      lower = -3,
-      upper = 3,
+      lower = THETA_RANGE[1],
+      upper = THETA_RANGE[2],
       responses = responses,
-      a = a,
       b = b
     ),
     error = function(e) list(par = NA_real_)
@@ -35,28 +56,25 @@ estimate_competency <- function(responses, items) {
       drop = FALSE
     ]
     if (nrow(rows) < 1L) {
-      return(list(theta = NA_real_, n = 0L))
+      return(list(theta = NA_real_, se = NA_real_, n = 0L))
     }
     idx <- match(rows$id_item, items$id_item)
-    ok <- !is.na(idx) &
-      !is.na(items$irt_discr[idx]) &
-      !is.na(items$irt_diff[idx])
+    ok <- !is.na(idx) & !is.na(items$irt_diff[idx])
     rows <- rows[ok, , drop = FALSE]
     idx <- idx[ok]
     if (nrow(rows) < 1L) {
-      return(list(theta = NA_real_, n = 0L))
+      return(list(theta = NA_real_, se = NA_real_, n = 0L))
     }
-    theta <- estimate_theta(
-      as.integer(rows$bool_correct),
-      items$irt_discr[idx],
-      items$irt_diff[idx]
-    )
-    list(theta = theta, n = nrow(rows))
+    b <- items$irt_diff[idx]
+    theta <- estimate_theta(as.integer(rows$bool_correct), b)
+    se <- if (is.na(theta)) NA_real_ else sem_1pl(theta, b)
+    list(theta = theta, se = se, n = nrow(rows))
   })
 
   data.frame(
     learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
     theta = vapply(result, `[[`, numeric(1), "theta"),
+    se = vapply(result, `[[`, numeric(1), "se"),
     n_items = vapply(result, function(x) as.integer(x$n), integer(1)),
     stringsAsFactors = FALSE
   )

@@ -79,6 +79,16 @@ db_write_ability <- function(user_id, df, path = DB_ABILITY()) {
     function(con) {
       if (!DBI::dbExistsTable(con, user_id)) {
         DBI::dbCreateTable(con, user_id, df)
+      } else {
+        # Tables created before a column existed (e.g. `se`) get it added on
+        # the next write; older rows keep NULL there.
+        missing <- setdiff(names(df), DBI::dbListFields(con, user_id))
+        for (col in missing) {
+          DBI::dbExecute(con, sprintf(
+            'ALTER TABLE "%s" ADD COLUMN "%s" %s',
+            user_id, col, DBI::dbDataType(con, df[[col]])
+          ))
+        }
       }
       DBI::dbAppendTable(con, user_id, df)
     },
