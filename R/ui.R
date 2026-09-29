@@ -28,7 +28,11 @@ app_ui <- function() {
       shinyjs::useShinyjs(),
       rclipboard::rclipboardSetup(),
       tags$head(
-        tags$link(rel = "stylesheet", href = "css/app.css"),
+        # Cache-busting query: without it browsers keep serving a stale
+        # app.css after it changes, so new markup renders unstyled. runApp()
+        # sets the working directory to the app dir (inst/app, or the
+        # installed copy via run_app()), so this path resolves in both.
+        tags$link(rel = "stylesheet", href = css_href("www/css/app.css", "css/app.css")),
         tags$link(rel = "icon", type = "image/png", href = "img_app/favicon.png"),
         tags$script(shiny::HTML(
           "Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {",

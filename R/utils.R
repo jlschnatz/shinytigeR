@@ -174,3 +174,15 @@ item_id_badge <- function(id_item, input_id, class = NULL) {
     tooltip = "Aufgaben-ID kopieren"
   )
 }
+
+# Appends the file's modification time as a version query (`?v=...`) so a
+# changed stylesheet is re-fetched instead of served from browser cache.
+# Falls back to the bare href if the file isn't found (e.g. app_ui() called
+# outside runApp(), as in tests).
+css_href <- function(path, href) {
+  mtime <- file.mtime(path)
+  if (is.na(mtime)) {
+    return(href)
+  }
+  paste0(href, "?v=", as.integer(mtime))
+}

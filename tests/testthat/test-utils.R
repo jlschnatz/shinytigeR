@@ -234,3 +234,15 @@ test_that("is_img_path detects common image extensions", {
   expect_false(is_img_path("answer text"))
   expect_false(is_img_path(NA_character_))
 })
+
+# ── css_href ──────────────────────────────────────────────────────────────────
+
+test_that("css_href appends the file's mtime as a version query", {
+  f <- withr::local_tempfile(fileext = ".css")
+  writeLines("body{}", f)
+  expect_equal(css_href(f, "css/app.css"), paste0("css/app.css?v=", as.integer(file.mtime(f))))
+})
+
+test_that("css_href falls back to the bare href when the file is missing", {
+  expect_equal(css_href("does/not/exist.css", "css/app.css"), "css/app.css")
+})
