@@ -143,6 +143,51 @@ test_that("compute_and_save_ability writes one persisted snapshot from the user'
   expect_equal(area1_n, 2L)
 })
 
+test_that("compute_and_save_ability uses the latest non-skipped attempt when the latest is a skip", {
+  user_path <- tempfile(fileext = ".sqlite")
+  ability_path <- tempfile(fileext = ".sqlite")
+  items <- data.frame(id_item = 1:2, irt_discr = 1, irt_diff = c(0, 0.5))
+
+  row <- function(item_id, correct, dt) {
+    data.frame(
+      id_user = "bob", id_session = "s", id_date = as.integer(Sys.Date()),
+      id_datetime = dt, id_item = item_id,
+      learning_area = LEARNING_AREA_LEVELS[1], selected_option = 1L,
+      answer_correct = 1L, bool_correct = correct, skipped = is.na(correct),
+      stringsAsFactors = FALSE
+    )
+  }
+  # item 1: wrong, then right, then skipped -> the "right" answer should count
+  db_write_response("bob", row(1L, FALSE, 100L), user_path)
+  db_write_response("bob", row(1L, TRUE, 200L), user_path)
+  db_write_response("bob", row(1L, NA, 300L), user_path)
+  # item 2: only ever skipped -> contributes nothing
+  db_write_response("bob", row(2L, NA, 150L), user_path)
+
+  compute_and_save_ability("bob", "tok", items, user_path, ability_path)
+  saved <- db_get_ability("bob", ability_path)
+  area1 <- saved[saved$learning_area == LEARNING_AREA_LEVELS[1], ]
+  expect_equal(area1$n_items, 1L)
+  expect_equal(area1$theta, estimate_theta(1L, b = 0))
+})
+
+test_that("compute_and_save_ability saves an all-NA batch when every response is a skip", {
+  user_path <- tempfile(fileext = ".sqlite")
+  ability_path <- tempfile(fileext = ".sqlite")
+  items <- data.frame(id_item = 1L, irt_discr = 1, irt_diff = 0)
+  db_write_response("carl", data.frame(
+    id_user = "carl", id_session = "s", id_date = 1L, id_datetime = 1L,
+    id_item = 1L, learning_area = LEARNING_AREA_LEVELS[1], selected_option = 4L,
+    answer_correct = 1L, bool_correct = NA, skipped = TRUE
+  ), user_path)
+  compute_and_save_ability("carl", "tok", items, user_path, ability_path)
+  saved <- db_get_ability("carl", ability_path)
+  expect_equal(nrow(saved), length(LEARNING_AREA_LEVELS))
+  expect_true(all(is.na(saved$theta)))
+  expect_true(all(saved$n_items == 0L))
+  expect_false(ability_needs_update("carl", user_path, ability_path))
+})
+
 test_that("compute_and_save_ability is a no-op for a user with no responses", {
   user_path <- tempfile(fileext = ".sqlite")
   ability_path <- tempfile(fileext = ".sqlite")

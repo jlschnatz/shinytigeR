@@ -92,6 +92,12 @@ compute_and_save_ability <- function(user_id, session_token, items,
     return(invisible(NULL))
   }
   ud$bool_correct <- as.logical(ud$bool_correct)
+  # Drop skips *before* picking the latest attempt: a skip carries no ability
+  # information, so an item answered earlier and skipped on a repeat should
+  # count with its latest real answer instead of dropping out entirely.
+  # A user who only ever skipped still gets a batch (all areas NA), so the
+  # dashboard shows "Keine Daten" and ability_needs_update() settles.
+  ud <- ud[!is.na(ud$bool_correct), , drop = FALSE]
   la <- latest_attempts(ud)
   la$learning_area <- factor(la$learning_area, levels = LEARNING_AREA_LEVELS)
   comp <- estimate_competency(la, items)
