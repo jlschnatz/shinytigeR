@@ -11,33 +11,64 @@ test_that("competency_label returns 'Keine Daten' when theta is NA", {
   expect_equal(cl$label, "Keine Daten")
 })
 
-test_that("competency_label maps theta correctly to all four levels", {
-  expect_equal(competency_label(1.5, 5L)$label, "Stark")
-  expect_equal(competency_label(0.5, 5L)$label, "Gut entwickelt")
-  expect_equal(competency_label(-0.3, 5L)$label, "Entwickelt sich")
-  expect_equal(competency_label(-1.0, 5L)$label, "Übungsbedarf")
+test_that("competency_label maps theta to every COMPETENCY_SCALE label", {
+  mids <- c(-2, -0.5, 0, 0.75, 1.25, 1.75, 2.5)
+  labels <- vapply(mids, function(t) competency_label(t, 5L)$label, character(1))
+  expect_equal(labels, COMPETENCY_SCALE$label)
 })
 
 test_that("competency_label levels are strictly ordered", {
   lvl <- function(theta) competency_label(theta, n_unique = 5L)$level
-  expect_gt(lvl(1.5), lvl(0.5))
-  expect_gt(lvl(0.5), lvl(-0.3))
-  expect_gt(lvl(-0.3), lvl(-1.0))
+  expect_true(all(diff(vapply(c(-3, -0.5, 0, 0.75, 1.25, 1.75, 3), lvl, integer(1))) > 0))
 })
 
-test_that("competency_label thresholds are exact (boundary values)", {
-  # theta == 1.0 → NOT "Stark" (strict >)
-  expect_equal(competency_label(1.0, 5L)$label, "Gut entwickelt")
-  # theta == 0.0 → NOT "Gut entwickelt" (strict >)
-  expect_equal(competency_label(0.0, 5L)$label, "Entwickelt sich")
-  # theta == -0.5 → NOT "Entwickelt sich" (strict >)
-  expect_equal(competency_label(-0.5, 5L)$label, "Übungsbedarf")
+test_that("competency_label intervals are left-closed [lower, upper)", {
+  inner <- COMPETENCY_SCALE$lower[-1]
+  got <- vapply(inner, function(t) competency_label(t, 5L)$label, character(1))
+  expect_equal(got, COMPETENCY_SCALE$label[-1])
+})
+
+test_that("competency_label covers the full estimate_theta range [-3, 3]", {
+  expect_equal(competency_label(-3, 5L)$label, COMPETENCY_SCALE$label[1])
+  expect_equal(competency_label(3, 5L)$label, COMPETENCY_SCALE$label[nrow(COMPETENCY_SCALE)])
+})
+
+test_that("COMPETENCY_SCALE is ordered and contiguous", {
+  sc <- COMPETENCY_SCALE
+  expect_true(all(diff(sc$lower) > 0))
+  expect_equal(sc$upper[-nrow(sc)], sc$lower[-1])
+  expect_equal(sc$lower[1], -Inf)
+  expect_equal(sc$upper[nrow(sc)], Inf)
+  expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", sc$color_hex)))
+})
+
+test_that("competency_scale_bar fills segments up to the level and marks the current one", {
+  html <- as.character(competency_scale_bar(competency_label(0.75, 5L)))
+  n_seg <- nrow(COMPETENCY_SCALE)
+  expect_equal(lengths(regmatches(html, gregexpr("comp-seg", html))), n_seg)
+  expect_equal(lengths(regmatches(html, gregexpr("is-filled", html))), 4L)
+  expect_equal(lengths(regmatches(html, gregexpr("is-current", html))), 1L)
+  expect_match(html, COMPETENCY_SCALE$color_hex[4], fixed = TRUE)
+  expect_no_match(html, COMPETENCY_SCALE$color_hex[5], fixed = TRUE)
+})
+
+test_that("competency_scale_bar shows an empty scale when there is no data", {
+  html <- as.character(competency_scale_bar(competency_label(NA_real_, 0L)))
+  expect_match(html, "is-empty", fixed = TRUE)
+  expect_no_match(html, "is-filled", fixed = TRUE)
+})
+
+test_that("format_date_de uses German month abbreviations regardless of locale", {
+  expect_equal(format_date_de(as.Date("2026-08-24")), "24. Aug 2026")
+  expect_equal(format_date_de(as.Date("2026-03-05")), "5. Mär 2026")
+  expect_equal(format_date_de(as.Date("2026-12-31")), "31. Dez 2026")
 })
 
 # ── evidence_label ────────────────────────────────────────────────────────────
 
 test_that("evidence_label maps n_unique to correct tiers", {
-  expect_equal(evidence_label(0L)$label, "–")
+  expect_equal(evidence_label(0L)$label, "Keine")
+  expect_equal(evidence_label(NA_integer_)$dots, 0L)
   expect_equal(evidence_label(1L)$label, "Niedrig")
   expect_equal(evidence_label(2L)$label, "Niedrig")
   expect_equal(evidence_label(3L)$label, "Mittel")
@@ -96,6 +127,55 @@ test_that("ability_trajectory_data handles an all-NA input", {
   )
   result <- ability_trajectory_data(ab)
   expect_equal(nrow(result), 0L)
+})
+
+# ── certainty (label probability → dots) ──────────────────────────────────────
+
+test_that("certainty_label maps probabilities to dots at the 1/3 and 2/3 cutoffs", {
+  expect_equal(certainty_label(0.9)$dots, 3L)
+  expect_equal(certainty_label(CERTAINTY_HIGH)$dots, 3L)
+  expect_equal(certainty_label(0.5)$dots, 2L)
+  expect_equal(certainty_label(CERTAINTY_MED)$dots, 2L)
+  expect_equal(certainty_label(0.1)$dots, 1L)
+})
+
+test_that("label_certainty is P(theta in the assigned label's interval)", {
+  cl <- competency_label(0.125, 5L) # Solide [-0.25, 0.5)
+  expect_equal(label_certainty(0.125, 0.5, cl), prob_in_interval(0.125, 0.5, -0.25, 0.5))
+  expect_true(is.na(label_certainty(0.125, NA_real_, cl)))
+  expect_true(is.na(label_certainty(NA_real_, 0.5, competency_label(NA_real_, 0L))))
+})
+
+test_that("label_certainty clips the open-ended outer labels to THETA_RANGE", {
+  # 4 items all wrong: theta stuck at the lower bound with a huge SE
+  cl <- competency_label(-3, 4L)
+  expect_equal(cl$label, "Aufbau")
+  p <- label_certainty(-3, 2.46, cl)
+  expect_equal(p, prob_in_interval(-3, 2.46, -3, -1))
+  expect_lt(p, CERTAINTY_MED) # "unsicher", not "wahrscheinlich"
+  # with real precision the outer label can still be likely
+  expect_gt(label_certainty(-1.5, 0.4, competency_label(-1.5, 25L)), CERTAINTY_HIGH)
+})
+
+test_that("certainty_dots uses the probability when an SE is available", {
+  cl <- competency_label(0.125, 20L)
+  html <- as.character(certainty_dots(0.125, 0.2, 20L, cl)) # P ~ 0.94
+  expect_equal(lengths(regmatches(html, gregexpr("is-filled", html))), 3L)
+  expect_match(html, "Solide", fixed = TRUE)
+  expect_match(html, "etwa 95 %", fixed = TRUE)
+})
+
+test_that("certainty_dots falls back to the item count for snapshots without an SE", {
+  cl <- competency_label(0.125, 9L)
+  html <- as.character(certainty_dots(0.125, NA_real_, 9L, cl))
+  expect_equal(lengths(regmatches(html, gregexpr("is-filled", html))), 3L)
+  expect_match(html, "Evidenz: Hoch", fixed = TRUE)
+})
+
+test_that("format_prob_de rounds to 5 % steps and clamps the extremes", {
+  expect_equal(format_prob_de(0.72), "etwa 70 %")
+  expect_equal(format_prob_de(0.01), "unter 5 %")
+  expect_equal(format_prob_de(0.99), "über 95 %")
 })
 
 # ── recommend_next ────────────────────────────────────────────────────────────

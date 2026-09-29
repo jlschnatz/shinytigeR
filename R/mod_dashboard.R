@@ -1,62 +1,134 @@
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 competency_label <- function(theta, n_unique) {
-  if (n_unique == 0L || is.na(theta)) {
-    return(list(
-      label = "Keine Daten",
-      bg = "#e9ecef",
-      fg = "#6c757d",
-      level = 0L
-    ))
+  if (is.na(n_unique) || n_unique == 0L || is.na(theta)) {
+    return(list(label = "Keine Daten", color = NA_character_, level = 0L))
   }
-  if (theta > IRT_THETA_HIGH) {
-    list(label = "Stark", bg = "#d1ecf1", fg = "#00618f", level = 4L)
-  } else if (theta > IRT_THETA_MED) {
-    list(label = "Gut entwickelt", bg = "#d4edda", fg = "#1a6b3c", level = 3L)
-  } else if (theta > IRT_THETA_LOW) {
-    list(label = "Entwickelt sich", bg = "#fff3cd", fg = "#856404", level = 2L)
-  } else {
-    list(label = "Übungsbedarf", bg = "#fce4ec", fg = "#D81B60", level = 1L)
-  }
-}
-
-evidence_label <- function(n_unique) {
-  if (n_unique >= EVIDENCE_HIGH) {
-    list(label = "Hoch", dots = 3L, color = "#198754")
-  } else if (n_unique >= EVIDENCE_MED) {
-    list(label = "Mittel", dots = 2L, color = "#fd7e14")
-  } else if (n_unique >= 1L) {
-    list(label = "Niedrig", dots = 1L, color = "#dc3545")
-  } else {
-    list(label = "–", dots = 0L, color = "#adb5bd")
-  }
-}
-
-evidence_dots <- function(n_unique) {
-  ev <- evidence_label(n_unique)
-  filled <- strrep("●", ev$dots)
-  empty <- strrep("○", 3L - ev$dots)
-  tags$span(
-    style = sprintf("color:%s; font-size:0.8em; letter-spacing:2px;", ev$color),
-    paste0(filled, empty)
+  i <- findInterval(theta, COMPETENCY_SCALE$lower)
+  list(
+    label = COMPETENCY_SCALE$label[i],
+    color = COMPETENCY_SCALE$color_hex[i],
+    level = i
   )
 }
 
-pct_bar <- function(pct, color = PRIMARY_COLOR) {
-  if (is.na(pct)) {
-    return(tags$span(class = "text-muted small", "–"))
+# Label plus a segmented strip of the whole COMPETENCY_SCALE: segments up to
+# the student's level are filled in their scale color, the current one is
+# raised, the rest stay gray — so the label reads as a position on the scale,
+# not an isolated verdict.
+competency_scale_bar <- function(cl) {
+  n <- nrow(COMPETENCY_SCALE)
+  desc <- if (cl$level == 0L) {
+    "Keine Daten"
+  } else {
+    sprintf("Kompetenz: %s (Stufe %d von %d)", cl$label, cl$level, n)
   }
-  tags$div(
-    class = "d-flex align-items-center gap-2",
-    tags$div(
-      class = "progress flex-grow-1",
-      style = "height:6px;",
-      tags$div(
-        class = "progress-bar",
-        style = sprintf("width:%d%%;background:%s;", round(pct * 100), color)
-      )
-    ),
-    tags$span(class = "small text-muted", sprintf("%d%%", round(pct * 100)))
+  div(
+    class = if (cl$level == 0L) "comp-level is-empty" else "comp-level",
+    title = desc,
+    tags$span(class = "comp-level-label", cl$label),
+    tags$span(
+      class = "comp-scale",
+      role = "img",
+      `aria-label` = desc,
+      lapply(seq_len(n), function(k) {
+        tags$span(
+          class = paste(
+            "comp-seg",
+            if (k <= cl$level) "is-filled",
+            if (k == cl$level) "is-current"
+          ),
+          style = if (k <= cl$level) sprintf("--seg:%s;", COMPETENCY_SCALE$color_hex[k])
+        )
+      })
+    )
+  )
+}
+
+# Certainty of the competency label: P(true theta lies in the label's
+# interval), from prob_in_interval() (R/irt.R), simplified to three dots and
+# a plain-language hover text. Snapshots saved before the standard error was
+# stored (se = NA) fall back to the item count via evidence_label().
+label_certainty <- function(theta, se, cl) {
+  if (cl$level == 0L || is.na(se) || !is.finite(se)) {
+    return(NA_real_)
+  }
+  # Outer labels are clipped to THETA_RANGE: otherwise an all-correct or
+  # all-wrong start (theta stuck at +/-3, huge SE) would put most of its
+  # probability mass in the open-ended Aufbau/Souverän interval and show
+  # "wahrscheinlich" after only a handful of items.
+  prob_in_interval(
+    theta,
+    se,
+    max(COMPETENCY_SCALE$lower[cl$level], THETA_RANGE[1]),
+    min(COMPETENCY_SCALE$upper[cl$level], THETA_RANGE[2])
+  )
+}
+
+certainty_label <- function(p) {
+  if (p >= CERTAINTY_HIGH) {
+    list(label = "Wahrscheinlich", dots = 3L)
+  } else if (p >= CERTAINTY_MED) {
+    list(label = "Etwa so wahrscheinlich wie nicht", dots = 2L)
+  } else {
+    list(label = "Unsicher", dots = 1L)
+  }
+}
+
+# Probability as a rounded, student-facing phrase ("etwa 70 %")
+format_prob_de <- function(p) {
+  pct <- 5L * round(100 * p / 5)
+  if (pct < 5L) "unter 5 %" else if (pct > 95L) "über 95 %" else sprintf("etwa %d %%", pct)
+}
+
+evidence_label <- function(n_unique) {
+  if (is.na(n_unique) || n_unique < 1L) {
+    list(label = "Keine", dots = 0L)
+  } else if (n_unique >= EVIDENCE_HIGH) {
+    list(label = "Hoch", dots = 3L)
+  } else if (n_unique >= EVIDENCE_MED) {
+    list(label = "Mittel", dots = 2L)
+  } else {
+    list(label = "Niedrig", dots = 1L)
+  }
+}
+
+certainty_dots <- function(theta, se, n_items, cl) {
+  n <- if (is.na(n_items)) 0L else as.integer(n_items)
+  aufgaben <- sprintf("%d Aufgabe%s", n, if (n == 1L) "" else "n")
+  p <- label_certainty(theta, se, cl)
+  if (!is.na(p)) {
+    ct <- certainty_label(p)
+    dots <- ct$dots
+    desc <- sprintf(
+      "%s: Mit %s Wahrscheinlichkeit liegt dein Stand im Bereich \u201e%s\u201c (%s).",
+      ct$label, format_prob_de(p), cl$label, aufgaben
+    )
+  } else {
+    ev <- evidence_label(n)
+    dots <- ev$dots
+    desc <- if (n == 0L) "Noch keine Daten" else sprintf("Evidenz: %s (%s)", ev$label, aufgaben)
+  }
+  tags$span(
+    class = "ev-dots",
+    title = desc,
+    role = "img",
+    `aria-label` = desc,
+    lapply(seq_len(3L), function(k) {
+      tags$span(class = if (k <= dots) "ev-dot is-filled" else "ev-dot")
+    })
+  )
+}
+
+# Locale-independent "24. Aug 2026" — format(..., "%b") depends on the
+# server's locale, which is not German in the Docker image.
+format_date_de <- function(date) {
+  months <- c("Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez")
+  sprintf(
+    "%d. %s %s",
+    as.integer(format(date, "%d")),
+    months[as.integer(format(date, "%m"))],
+    format(date, "%Y")
   )
 }
 
@@ -180,7 +252,10 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       data.frame(
         learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
         theta = ab$theta[idx],
+        # NA for snapshots saved before the standard error was stored
+        se = if ("se" %in% names(ab)) as.numeric(ab$se[idx]) else NA_real_,
         n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
+        computed_at = latest_batch,
         stringsAsFactors = FALSE
       )
     })
@@ -251,37 +326,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
         ),
         LEARNING_AREA_LEVELS
       )
-
-      # Per-area accuracy split by item type
-      area_type_acc <- lapply(LEARNING_AREA_LEVELS, function(a) {
-        rows <- merge(
-          fa[
-            !is.na(fa$learning_area) &
-              fa$learning_area == a &
-              !is.na(fa$bool_correct),
-          ],
-          data_item[, c("id_item", "type_item")],
-          by = "id_item",
-          all.x = TRUE
-        )
-        content <- rows[!is.na(rows$type_item) & rows$type_item == "content", ]
-        coding <- rows[!is.na(rows$type_item) & rows$type_item == "coding", ]
-        list(
-          content_acc = if (nrow(content) > 0L) {
-            mean(content$bool_correct, na.rm = TRUE)
-          } else {
-            NA_real_
-          },
-          coding_acc = if (nrow(coding) > 0L) {
-            mean(coding$bool_correct, na.rm = TRUE)
-          } else {
-            NA_real_
-          },
-          n_content = nrow(content),
-          n_coding = nrow(coding)
-        )
-      })
-      names(area_type_acc) <- LEARNING_AREA_LEVELS
 
       # Bloom accuracy
       bloom_lvls <- c("knowledge", "comprehension", "application")
@@ -357,94 +401,75 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
         div(
           class = "row g-3 mb-4",
 
-          # Competency map
+          # Competency map ("Dein Lernstand")
           div(
             class = "col-lg-7",
             bslib::card(
               height = "100%",
               bslib::card_header(
-                div(
-                  class = "d-flex align-items-center gap-2",
-                  bsicons::bs_icon("map"),
-                  tags$b("Kompetenzprofil"),
+                class = "d-flex justify-content-between align-items-center",
+                tags$b("Dein Lernstand"),
+                if (!is.null(comp)) {
                   tags$span(
-                    class = "text-muted small ms-1",
-                    "(●●● = hohe Evidenz)"
+                    class = "text-muted small",
+                    format_date_de(as.Date(as.POSIXct(comp$computed_at[1], origin = "1970-01-01")))
                   )
-                )
+                }
               ),
               bslib::card_body(
                 class = "p-0",
-                div(
-                  class = "d-flex justify-content-between align-items-center p-2 border-bottom gap-2",
-                  tags$span(
-                    class = "text-muted small",
-                    if (is.null(comp)) {
-                      "Noch keine Fähigkeitsschätzung vorhanden."
-                    } else if (can_refresh) {
-                      NULL
-                    } else if (isTRUE(ability_computed_this_session())) {
-                      "In dieser Sitzung bereits aktualisiert."
-                    } else {
-                      "Keine neuen Daten seit der letzten Schätzung."
-                    }
-                  ),
-                  actionButton(
-                    session$ns("refresh_ability"),
-                    "Fähigkeitsverlauf aktualisieren",
-                    icon = shiny::icon("rotate"),
-                    class = "btn-sm btn-outline-primary",
-                    disabled = if (!can_refresh) "disabled" else NULL
-                  )
-                ),
                 tags$table(
-                  class = "table table-sm table-hover mb-0 dashboard-comp-table",
+                  class = "table mb-0 dashboard-comp-table",
                   tags$thead(
                     tags$tr(
-                      tags$th("Themenbereich"),
-                      tags$th("Kompetenz"),
-                      tags$th("Evidenz"),
-                      tags$th("Inhaltlich"),
-                      tags$th("R-Code")
+                      tags$th(tags$span(class = "visually-hidden", "Themenbereich")),
+                      tags$th(
+                        title = "Wie sicher die Einstufung ist (●●● = wahrscheinlich zutreffend)",
+                        "Evidenz"
+                      ),
+                      tags$th("Kompetenz")
                     )
                   ),
                   tags$tbody(
                     lapply(LEARNING_AREA_LEVELS, function(area) {
-                      n_a <- n_unique_area[[area]]
-                      theta <- if (!is.null(comp)) {
-                        comp$theta[comp$learning_area == area]
-                      } else {
-                        NA_real_
-                      }
+                      # Both columns come from the saved snapshot, so the
+                      # certainty always describes the label shown next to it
+                      # (not practice done since the last estimate).
+                      row <- if (!is.null(comp)) comp[comp$learning_area == area, ]
+                      theta <- if (!is.null(row)) row$theta else NA_real_
+                      n_a <- if (!is.null(row)) row$n_items else 0L
+                      se <- if (!is.null(row)) row$se else NA_real_
                       cl <- competency_label(theta, n_a)
-                      at <- area_type_acc[[area]]
-
-                      short_area <- names(LEARNING_AREA_LABELS)[
-                        LEARNING_AREA_LABELS == area
-                      ]
-                      if (length(short_area) == 0L) {
-                        short_area <- area
-                      }
 
                       tags$tr(
-                        tags$td(class = "fw-semibold", short_area),
-                        tags$td(
-                          tags$span(
-                            class = "badge rounded-pill",
-                            style = sprintf(
-                              "background:%s;color:%s;font-weight:500;",
-                              cl$bg,
-                              cl$fg
-                            ),
-                            cl$label
-                          )
-                        ),
-                        tags$td(evidence_dots(n_a)),
-                        tags$td(pct_bar(at$content_acc, "#285f8a")),
-                        tags$td(pct_bar(at$coding_acc, "#5a3e8a"))
+                        tags$td(class = "comp-area", area),
+                        tags$td(certainty_dots(theta, se, n_a, cl)),
+                        tags$td(competency_scale_bar(cl))
                       )
                     })
                   )
+                )
+              ),
+              bslib::card_footer(
+                class = "d-flex justify-content-between align-items-center gap-2",
+                tags$span(
+                  class = "text-muted small",
+                  if (is.null(comp)) {
+                    "Noch keine Fähigkeitsschätzung vorhanden."
+                  } else if (can_refresh) {
+                    NULL
+                  } else if (isTRUE(ability_computed_this_session())) {
+                    "In dieser Sitzung bereits aktualisiert."
+                  } else {
+                    "Keine neuen Daten seit der letzten Schätzung."
+                  }
+                ),
+                actionButton(
+                  session$ns("refresh_ability"),
+                  "Fähigkeitsverlauf aktualisieren",
+                  icon = shiny::icon("rotate"),
+                  class = "btn-sm btn-outline-primary",
+                  disabled = if (!can_refresh) "disabled" else NULL
                 )
               )
             )

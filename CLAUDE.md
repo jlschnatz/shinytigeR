@@ -211,6 +211,8 @@ Single source of truth for:
 | `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
 | `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: bounds of `estimate_theta()`, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
+| `CERTAINTY_HIGH` / `CERTAINTY_MED` | `numeric` | 2/3 and 1/3: cutoffs mapping the label probability to 3/2/1 certainty dots (IPCC calibrated probability language) |
+| `COMPETENCY_SCALE` | `data.frame` | θ interval → competency label + color for the dashboard's "Dein Lernstand" card — see `R/mod_dashboard.R` below |
 | `LEARNING_AREA_COLORS` | `character` vector | 7-color palette (matching `LEARNING_AREA_LEVELS` order) for the interactive ability-trajectory chart, derived from the official Goethe University 5-color palette — see `R/mod_dashboard.R` below |
 | `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` | functions | Return full paths to the four SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
@@ -344,7 +346,7 @@ write_trigger → user_data → first_attempts
 
 **The ability (θ) estimate is persisted, not recomputed live.** It used to be computed straight from `first_attempts()` on every `write_trigger` tick — jittering after every single answered item, which isn't plausible (ability doesn't meaningfully shift within one sitting). It now works like this instead:
 
-- The `competency` reactive no longer calls `estimate_competency()` directly. It reads the **most recent saved batch** from `db_ability.sqlite` (`db_get_ability()`), reshaped to the same `learning_area`/`theta`/`n_items` shape `estimate_competency()` used to return — so `recommend_next()` and the competency table render are unchanged.
+- The `competency` reactive no longer calls `estimate_competency()` directly. It reads the **most recent saved batch** from `db_ability.sqlite` (`db_get_ability()`), reshaped to the same `learning_area`/`theta`/`n_items` shape `estimate_competency()` used to return — so `recommend_next()` and the "Dein Lernstand" card can use it directly.
 - A snapshot is written by `compute_and_save_ability()` (`R/irt.R`) — which itself dedupes to the **latest** attempt per item (`latest_attempts()`, `R/utils.R`), not the first — at two trigger points, both gated by `ability_needs_update()` (`R/db.R`: is there a response newer than the last saved snapshot?):
   1. **Silently at login** (`R/server.R`, right after `write_trigger`/`ability_computed_this_session` are declared) — catches up a student who practiced last session without ever visiting the dashboard. This one is gated **only** by `ability_needs_update()`.
   2. **On demand**, via the "Fähigkeitsverlauf aktualisieren" button in the competency card (`input$refresh_ability` → `can_refresh_ability()` gates both the button's enabled state and the `observeEvent` handler). This one is gated by `ability_needs_update()` **and** the per-login `ability_computed_this_session` flag (`R/server.R`), so the button can fire **at most once per login**.
@@ -367,26 +369,24 @@ This also seeds a **history** in `db_ability.sqlite` (one batch per `computed_at
 
 **`LEARNING_AREA_COLORS`** (`constants.R`) is the official 5-color Goethe University palette (blue/yellow/magenta/green/orange), extended to 7 by lightening two of the five hues rather than interpolating across all five — `colorRampPalette()` across non-adjacent brand hues (blue↔yellow, magenta↔green, ...) produces muddy near-identical browns/olives regardless of color space (tried both sRGB and Lab interpolation before rejecting this approach), because those pairs are colour-opponent. See the comment on the constant for which two hues were tinted and why.
 
-**Competency labels** (mapped from θ):
+**"Dein Lernstand" card** (top left) shows one row per learning area: a certainty indicator ("Evidenz", 3 dots) and the competency label with a segmented scale strip (`competency_scale_bar()`). Both read from the **saved snapshot** (`competency()`), including its `n_items` — not from live `first_attempts()` — so the certainty always describes the label next to it. The header shows the snapshot date via `format_date_de()` (locale-independent German month names, since the Docker image has no German locale).
 
-| θ range | Label | Color scheme |
+**Competency labels** come from `COMPETENCY_SCALE` (`constants.R`): 7 contiguous, left-closed θ intervals `[lower, upper)` (Aufbau < -1 ≤ Basis < -0.25 ≤ Solide < 0.5 ≤ Kompetent < 1 ≤ Fortgeschritten < 1.5 ≤ Versiert < 2 ≤ Souverän), each with a `color_hex`. `competency_label()` looks up via `findInterval()` on `lower`. `competency_scale_bar()` renders the label in neutral text above a strip of all 7 scale segments: those up to the student's level are filled in their `color_hex` (passed as a `--seg` CSS variable), the current one is raised, the rest stay gray. Solid-filled pills were tried first and rejected — the diverging palette's pale middle (`#FEE090`, `#ABD9E9`) looked washed out as full backgrounds next to the saturated ends. NA θ or 0 items → gray "Keine Daten". It's a package constant rather than a CSV on purpose: 7 rows, versioned with the code, testable, and no runtime file-path resolution (see the `addResourcePath()`/`system.file()` note below for why that matters here).
+
+**Certainty dots** ("Evidenz" column, `certainty_dots()`): the underlying quantity is the probability that the true θ lies in the interval of the label shown, `label_certainty()` → `prob_in_interval(θ̂, se, lower, upper)`. For students it's simplified to three dots, with the rounded probability in the hover text ("Mit etwa 55 % Wahrscheinlichkeit liegt dein Stand im Bereich „Solide“"):
+
+| P(label correct) | Dots | Wording |
 |---|---|---|
-| θ > 1.0 | Stark | Blue-teal |
-| 0 < θ ≤ 1.0 | Gut entwickelt | Green |
-| -0.5 < θ ≤ 0 | Entwickelt sich | Yellow |
-| θ ≤ -0.5 | Übungsbedarf | Red/Pink |
-| No data | Keine Daten | Gray |
+| ≥ 2/3 (`CERTAINTY_HIGH`) | ●●● | Wahrscheinlich |
+| 1/3 – 2/3 (`CERTAINTY_MED`) | ●●○ | Etwa so wahrscheinlich wie nicht |
+| < 1/3 | ●○○ | Unsicher |
 
-**Evidence strength** (from unique item count per area):
+The outer labels (Aufbau, Souverän) are evaluated as `[-3, -1)` and `[2, 3]` (clipped to `THETA_RANGE`), not out to ±∞. Without that, an all-wrong or all-right start (θ̂ stuck at ±3, SE of 2.5+) put most of its probability mass into the open interval and showed 3 dots after only 4 items. This was found by simulating a student against the real item pool. With the current pool, middle labels (0.5–0.75 wide) rarely reach 3 dots; that honestly reflects the pool's measurement precision (SE ≈ 0.5 even after 20 items), not a bug.
 
-| Unique items | Label | Dots |
-|---|---|---|
-| ≥ 8 | Hoch | ●●● |
-| 3–7 | Mittel | ●●○ |
-| 1–2 | Niedrig | ●○○ |
-| 0 | — | ○○○ |
+Snapshots saved before `se` was stored fall back to item-count dots (`evidence_label()`: ≥ `EVIDENCE_HIGH` = 8 items → 3, ≥ `EVIDENCE_MED` = 3 → 2, ≥ 1 → 1) until the next update.
 
 **Recommendations** are computed by `recommend_next()`: areas with no data rank first (priority 10), then low-evidence areas (priority 20), then low-θ areas (priority 30+, scaled by `-θ`). The top 3 are shown.
+
 
 ---
 
@@ -484,7 +484,10 @@ Key CSS classes to be aware of when changing layout:
 | `.radio-result-correct/incorrect/skip` | Post-check radio fill color (requires `!important`) |
 | `.feedback-card` | Per-answer feedback block with colored left border and shadow |
 | `.practice-stat` / `.practice-stat-val` / `.practice-stat-lbl` | Dashboard practice behaviour grid cells |
-| `.dashboard-comp-table` | Competency map table in dashboard |
+| `.dashboard-comp-table` | "Dein Lernstand" table in dashboard |
+| `.comp-area` / `.comp-level` / `.comp-level-label` | Area-name cell / competency label + scale strip wrapper in that table (`.is-empty` = no data) |
+| `.comp-scale` / `.comp-seg` / `.is-filled` / `.is-current` | Segmented competency scale strip; filled color comes from the `--seg` inline CSS variable |
+| `.ev-dots` / `.ev-dot` / `.is-filled` | Evidence (certainty) dot indicator |
 | `#refresh_ability` (button id, not a class) | "Fähigkeitsverlauf aktualisieren" — disabled via the `disabled` HTML attribute (not `shinyjs::disable`) driven by `can_refresh_ability()` in the `renderUI` |
 | `.rec-num` | Circular number badge in recommendations card |
 

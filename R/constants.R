@@ -69,18 +69,40 @@ DB_ABILITY <- function() file.path(.db_dir(), "db_ability.sqlite")
 
 CONTACT_EMAIL <- "tiger@psych.uni-frankfurt.de"
 
+# Competency scale: maps an ability estimate (theta) to a label shown in the
+# dashboard's "Dein Lernstand" card. Rows must be ordered and contiguous
+# (each `upper` equals the next row's `lower`); intervals are left-closed,
+# [lower, upper), so theta == -1 is "Basis", not "Aufbau". Only `lower` is
+# used for the lookup (findInterval); `upper` is kept for readability and
+# checked for contiguity in test-dashboard-helpers.R. Text color on each pill
+# is derived from `color_hex` for contrast, so a color can be changed here
+# without touching the UI code.
+COMPETENCY_SCALE <- data.frame(
+  label = c("Aufbau", "Basis", "Solide", "Kompetent", "Fortgeschritten", "Versiert", "Souverän"),
+  lower = c(-Inf, -1, -0.25, 0.5, 1, 1.5, 2),
+  upper = c(-1, -0.25, 0.5, 1, 1.5, 2, Inf),
+  color_hex = c("#D73027", "#F46D43", "#FDAE61", "#FEE090", "#ABD9E9", "#74ADD1", "#4575B4"),
+  stringsAsFactors = FALSE
+)
+
 # Range of the ability estimate (estimate_theta() is bounded to it). Also the
 # effective ends of COMPETENCY_SCALE when computing label certainty: the model
 # can't distinguish abilities beyond these bounds, so the open-ended outer
 # labels are evaluated as [-3, -1) and [2, 3] rather than out to +/- Inf.
 THETA_RANGE <- c(-3, 3)
 
-# IRT competency thresholds (theta)
-IRT_THETA_HIGH    <-  1.0
-IRT_THETA_MED     <-  0.0
+# Certainty of a competency label = P(true theta lies in the label's
+# interval), see prob_in_interval() in R/irt.R. Cutoffs follow the IPCC's
+# calibrated probability language: >= 2/3 "likely", 1/3-2/3 "about as likely
+# as not", < 1/3 "unlikely".
+CERTAINTY_HIGH    <- 2 / 3
+CERTAINTY_MED     <- 1 / 3
+
+# Theta below which recommend_next() suggests targeted practice
 IRT_THETA_LOW     <- -0.5
 
-# Evidence strength thresholds (unique items per area)
+# Evidence strength thresholds (unique items per area) — fallback for saved
+# snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L
 EVIDENCE_MED      <-  3L
 

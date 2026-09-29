@@ -589,14 +589,69 @@
 
 /* ── Dashboard — competency table ───────────────────────────────────────────── */
 .dashboard-comp-table th {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.85rem;
   color: #6c757d;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
+  padding: 0.6rem 1rem;
 }
-.dashboard-comp-table td { vertical-align: middle; font-size: 0.9rem; }
+.dashboard-comp-table th,
+.dashboard-comp-table td { border-bottom: 1px solid #e5e7eb; }
+.dashboard-comp-table td {
+  vertical-align: middle;
+  padding: 0.7rem 1rem;
+}
+.dashboard-comp-table > :not(caption) > * > * { border-top: 0; }
+.dashboard-comp-table > thead { border-bottom: 0; }
+.dashboard-comp-table > tbody { border-top: 0; }
+/* Evidence + label columns hug their content; the area name takes the rest */
+.dashboard-comp-table th:not(:first-child),
+.dashboard-comp-table td:not(:first-child) { width: 1%; white-space: nowrap; }
+.dashboard-comp-table tbody tr:last-child td { border-bottom: 0; }
+.dashboard-comp-table .comp-area { font-weight: 600; }
+
+.comp-level { display: inline-flex; flex-direction: column; gap: 0.35rem; }
+.comp-level-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  color: #1f2937;
+}
+.comp-level.is-empty .comp-level-label { color: #9aa1ab; font-weight: 500; }
+
+.comp-scale { display: inline-flex; align-items: center; gap: 3px; }
+.comp-seg {
+  width: 16px;
+  height: 6px;
+  border-radius: 3px;
+  background: #e6e9ee;
+}
+.comp-seg.is-filled { background: var(--seg); }
+.comp-seg.is-current {
+  height: 10px;
+  box-shadow: 0 0 0 2px #fff, 0 1px 3px 1px rgba(0, 0, 0, 0.18);
+}
+
+.ev-dots { display: inline-flex; gap: 0.3rem; }
+.ev-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1.5px solid #c3c8d0;
+}
+.ev-dot.is-filled { background: #5b6477; border-color: #5b6477; }
+
+/* Phone width: area names wrap, the two content-sized columns tighten */
+@media (max-width: 575.98px) {
+  .dashboard-comp-table th,
+  .dashboard-comp-table td { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .dashboard-comp-table .comp-area { font-size: 0.9rem; }
+  .comp-level-label { font-size: 0.82rem; }
+  .comp-seg { width: 11px; }
+  .comp-scale { gap: 2px; }
+  .ev-dots { gap: 0.2rem; }
+  .ev-dot { width: 0.6rem; height: 0.6rem; }
+}
 
 /* ── Dashboard — recommendations ────────────────────────────────────────────── */
 .rec-item { align-items: flex-start; }
