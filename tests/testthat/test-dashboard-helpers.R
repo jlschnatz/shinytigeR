@@ -178,75 +178,17 @@ test_that("format_prob_de rounds to 5 % steps and clamps the extremes", {
   expect_equal(format_prob_de(0.99), "über 95 %")
 })
 
-# ── recommend_next ────────────────────────────────────────────────────────────
+# ── ai_feedback_card ──────────────────────────────────────────────────────────
 
-make_comp <- function(thetas = rep(NA_real_, length(LEARNING_AREA_LEVELS))) {
-  data.frame(
-    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
-    theta = thetas,
-    n_items = rep(0L, length(LEARNING_AREA_LEVELS)),
-    stringsAsFactors = FALSE
-  )
-}
-
-test_that("recommend_next returns empty list when all areas are well-covered", {
-  comp <- make_comp(thetas = rep(1.0, length(LEARNING_AREA_LEVELS)))
-  n_unique <- setNames(
-    rep(10L, length(LEARNING_AREA_LEVELS)),
-    LEARNING_AREA_LEVELS
-  )
-  recs <- recommend_next(comp, n_unique)
-  expect_length(recs, 0L)
+test_that("ai_feedback_card shows the placeholder when there is no feedback", {
+  html <- as.character(ai_feedback_card(NULL))
+  expect_match(html, "Bald verfügbar", fixed = TRUE)
+  expect_match(html, "ai-feedback-skeleton", fixed = TRUE)
 })
 
-test_that("recommend_next puts no-data areas first", {
-  comp <- make_comp()
-  n_unique <- setNames(
-    rep(0L, length(LEARNING_AREA_LEVELS)),
-    LEARNING_AREA_LEVELS
-  )
-  # Give one area enough data and a good theta so it doesn't appear
-  n_unique[["Regression"]] <- 10L
-  comp$theta[comp$learning_area == "Regression"] <- 1.5
-
-  recs <- recommend_next(comp, n_unique)
-  # All recommendations should be for no-data areas (priority 10)
-  priorities <- vapply(recs, `[[`, integer(1), "priority")
-  expect_true(all(priorities == 10L))
-  areas <- vapply(recs, `[[`, character(1), "area")
-  expect_false("Regression" %in% areas)
-})
-
-test_that("recommend_next puts low-evidence areas before low-theta areas", {
-  comp <- make_comp(thetas = rep(0.0, length(LEARNING_AREA_LEVELS)))
-  n_unique <- setNames(
-    rep(10L, length(LEARNING_AREA_LEVELS)),
-    LEARNING_AREA_LEVELS
-  )
-
-  # One area has very low theta → should recommend
-  comp$theta[comp$learning_area == "Regression"] <- -2.0
-  # One area has low evidence
-  n_unique[["Poweranalyse"]] <- 2L
-
-  recs <- recommend_next(comp, n_unique)
-  areas <- vapply(recs, `[[`, character(1), "area")
-
-  power_pos <- which(areas == "Poweranalyse")
-  regression_pos <- which(areas == "Regression")
-
-  # Low evidence (priority 20) should rank above low theta (priority ~50)
-  expect_lt(power_pos, regression_pos)
-})
-
-test_that("recommend_next preserves ordering by priority", {
-  comp <- make_comp()
-  n_unique <- setNames(
-    rep(0L, length(LEARNING_AREA_LEVELS)),
-    LEARNING_AREA_LEVELS
-  )
-
-  recs <- recommend_next(comp, n_unique)
-  priorities <- vapply(recs, `[[`, integer(1), "priority")
-  expect_equal(priorities, sort(priorities))
+test_that("ai_feedback_card renders Markdown feedback instead of the placeholder", {
+  html <- as.character(ai_feedback_card("Du bist **stark** in Regression."))
+  expect_match(html, "<strong>stark</strong>", fixed = TRUE)
+  expect_no_match(html, "ai-feedback-skeleton", fixed = TRUE)
+  expect_no_match(html, "Bald verfügbar", fixed = TRUE)
 })

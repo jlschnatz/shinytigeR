@@ -132,6 +132,47 @@ format_date_de <- function(date) {
   )
 }
 
+# Right-hand card next to "Dein Lernstand". `feedback` is the generated text
+# (Markdown, rendered via render_md()); NULL shows the placeholder. This is
+# the hook for the personalized LLM feedback planned in the "kiwi" project —
+# the card chrome stays, only the source of `feedback` needs wiring up.
+ai_feedback_card <- function(feedback = NULL) {
+  bslib::card(
+    height = "100%",
+    class = "ai-feedback-card",
+    bslib::card_header(
+      class = "d-flex justify-content-between align-items-center",
+      div(
+        class = "d-flex align-items-center gap-2",
+        bsicons::bs_icon("stars"),
+        tags$b("Persönliches Feedback")
+      ),
+      if (is.null(feedback)) tags$span(class = "ai-feedback-badge", "Bald verfügbar")
+    ),
+    bslib::card_body(
+      if (is.null(feedback)) {
+        tagList(
+          tags$p(
+            class = "text-muted mb-4",
+            "Hier bekommst du bald eine KI-gestützte Rückmeldung zu deinem ",
+            "Lernstand: was dir schon gut gelingt, wo es noch hakt und welche ",
+            "Aufgaben dich als Nächstes weiterbringen."
+          ),
+          div(
+            class = "ai-feedback-skeleton",
+            `aria-hidden` = "true",
+            lapply(c(92, 78, 85, 60), function(w) {
+              div(class = "ai-skel-line", style = sprintf("width:%d%%;", w))
+            })
+          )
+        )
+      } else {
+        div(class = "ai-feedback-text", HTML(render_md(feedback)))
+      }
+    )
+  )
+}
+
 # Reshapes the raw db_ability.sqlite history (one row per learning area per
 # computed_at batch) into a plot-ready long data.frame: drops batches with no
 # usable theta for that area, adds a Date column and short area labels
@@ -150,40 +191,6 @@ ability_trajectory_data <- function(ability_raw) {
     levels = short_levels
   )
   ab[order(ab$learning_area, ab$computed_at), ]
-}
-
-recommend_next <- function(comp, n_unique_vec) {
-  recs <- lapply(LEARNING_AREA_LEVELS, function(area) {
-    n <- n_unique_vec[[area]]
-    theta <- comp$theta[comp$learning_area == area]
-    if (is.na(n) || n == 0L) {
-      list(
-        area = area,
-        priority = 10L,
-        reason = "Noch keine Aufgaben bearbeitet"
-      )
-    } else if (n < EVIDENCE_MED) {
-      list(
-        area = area,
-        priority = 20L,
-        reason = sprintf(
-          "Zu wenig Daten (%d Aufgabe%s) — mehr bearbeiten",
-          n,
-          if (n == 1L) "" else "n"
-        )
-      )
-    } else if (!is.na(theta) && theta < IRT_THETA_LOW) {
-      list(
-        area = area,
-        priority = as.integer(30L + round(theta * -10L)),
-        reason = "Gezielte Praxis empfohlen"
-      )
-    } else {
-      NULL
-    }
-  })
-  recs <- Filter(Negate(is.null), recs)
-  recs[order(vapply(recs, `[[`, integer(1), "priority"))]
 }
 
 # ── UI ────────────────────────────────────────────────────────────────────────
@@ -315,18 +322,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       n_this_week <- length(unique(ud$date[ud$date >= week_start]))
       n_repeated <- n_total - n_unique
 
-      # Unique items per learning area (for evidence strength + recommendations)
-      n_unique_area <- setNames(
-        vapply(
-          LEARNING_AREA_LEVELS,
-          function(a) {
-            sum(fa$learning_area == a, na.rm = TRUE)
-          },
-          integer(1)
-        ),
-        LEARNING_AREA_LEVELS
-      )
-
       # Bloom accuracy
       bloom_lvls <- c("knowledge", "comprehension", "application")
       bloom_acc <- setNames(
@@ -352,13 +347,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
         ),
         bloom_lvls
       )
-
-      # ── Recommendations ───────────────────────────────────────────────────────
-      recs <- if (!is.null(comp)) {
-        recommend_next(comp, n_unique_area)
-      } else {
-        list()
-      }
 
       tagList(
         # ── Value boxes ──────────────────────────────────────────────────────────
@@ -475,46 +463,10 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
             )
           ),
 
-          # Recommendations
+          # AI feedback (placeholder until the "kiwi" LLM feedback lands)
           div(
             class = "col-lg-5",
-            bslib::card(
-              height = "100%",
-              bslib::card_header(
-                div(
-                  class = "d-flex align-items-center gap-2",
-                  bsicons::bs_icon("arrow-right-circle-fill"),
-                  tags$b("Empfohlene nächste Schritte")
-                )
-              ),
-              bslib::card_body(
-                if (length(recs) == 0L) {
-                  div(
-                    class = "text-muted",
-                    bsicons::bs_icon("stars"),
-                    " Alle Bereiche gut abgedeckt — weiter so!"
-                  )
-                } else {
-                  tagList(lapply(seq_along(recs), function(i) {
-                    r <- recs[[i]]
-                    short <- names(LEARNING_AREA_LABELS)[
-                      LEARNING_AREA_LABELS == r$area
-                    ]
-                    if (length(short) == 0L) {
-                      short <- r$area
-                    }
-                    div(
-                      class = "rec-item d-flex gap-3 mb-3",
-                      div(class = "rec-num", i),
-                      div(
-                        div(class = "fw-semibold", short),
-                        div(class = "text-muted small", r$reason)
-                      )
-                    )
-                  }))
-                }
-              )
-            )
+            ai_feedback_card(feedback = NULL)
           )
         ),
 

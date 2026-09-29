@@ -98,9 +98,6 @@ THETA_RANGE <- c(-3, 3)
 CERTAINTY_HIGH    <- 2 / 3
 CERTAINTY_MED     <- 1 / 3
 
-# Theta below which recommend_next() suggests targeted practice
-IRT_THETA_LOW     <- -0.5
-
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L

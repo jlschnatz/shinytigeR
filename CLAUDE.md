@@ -346,7 +346,7 @@ write_trigger → user_data → first_attempts
 
 **The ability (θ) estimate is persisted, not recomputed live.** It used to be computed straight from `first_attempts()` on every `write_trigger` tick — jittering after every single answered item, which isn't plausible (ability doesn't meaningfully shift within one sitting). It now works like this instead:
 
-- The `competency` reactive no longer calls `estimate_competency()` directly. It reads the **most recent saved batch** from `db_ability.sqlite` (`db_get_ability()`), reshaped to the same `learning_area`/`theta`/`n_items` shape `estimate_competency()` used to return — so `recommend_next()` and the "Dein Lernstand" card can use it directly.
+- The `competency` reactive no longer calls `estimate_competency()` directly. It reads the **most recent saved batch** from `db_ability.sqlite` (`db_get_ability()`), reshaped to the same `learning_area`/`theta`/`n_items` shape `estimate_competency()` used to return — so the "Dein Lernstand" card can render it directly.
 - A snapshot is written by `compute_and_save_ability()` (`R/irt.R`) — which itself dedupes to the **latest** attempt per item (`latest_attempts()`, `R/utils.R`), not the first — at two trigger points, both gated by `ability_needs_update()` (`R/db.R`: is there a response newer than the last saved snapshot?):
   1. **Silently at login** (`R/server.R`, right after `write_trigger`/`ability_computed_this_session` are declared) — catches up a student who practiced last session without ever visiting the dashboard. This one is gated **only** by `ability_needs_update()`.
   2. **On demand**, via the "Fähigkeitsverlauf aktualisieren" button in the competency card (`input$refresh_ability` → `can_refresh_ability()` gates both the button's enabled state and the `observeEvent` handler). This one is gated by `ability_needs_update()` **and** the per-login `ability_computed_this_session` flag (`R/server.R`), so the button can fire **at most once per login**.
@@ -385,8 +385,9 @@ The outer labels (Aufbau, Souverän) are evaluated as `[-3, -1)` and `[2, 3]` (c
 
 Snapshots saved before `se` was stored fall back to item-count dots (`evidence_label()`: ≥ `EVIDENCE_HIGH` = 8 items → 3, ≥ `EVIDENCE_MED` = 3 → 2, ≥ 1 → 1) until the next update.
 
-**Recommendations** are computed by `recommend_next()`: areas with no data rank first (priority 10), then low-evidence areas (priority 20), then low-θ areas (priority 30+, scaled by `-θ`). The top 3 are shown.
+**"Persönliches Feedback" card** (top right, next to "Dein Lernstand") is rendered by `ai_feedback_card(feedback)`. It's currently a placeholder (`feedback = NULL`: explanatory text, a "Bald verfügbar" badge and shimmering skeleton lines, which stop animating under `prefers-reduced-motion`). Passing a Markdown string renders it via `render_md()` instead. Personalized LLM feedback is planned for the "kiwi" project, and this function is where it plugs in.
 
+There is no rule-based "Empfohlene nächste Schritte" card any more (`recommend_next()` was removed): the AI feedback card plus descriptive stats based on the items students did are meant to replace it.
 
 ---
 
@@ -489,7 +490,7 @@ Key CSS classes to be aware of when changing layout:
 | `.comp-scale` / `.comp-seg` / `.is-filled` / `.is-current` | Segmented competency scale strip; filled color comes from the `--seg` inline CSS variable |
 | `.ev-dots` / `.ev-dot` / `.is-filled` | Evidence (certainty) dot indicator |
 | `#refresh_ability` (button id, not a class) | "Fähigkeitsverlauf aktualisieren" — disabled via the `disabled` HTML attribute (not `shinyjs::disable`) driven by `can_refresh_ability()` in the `renderUI` |
-| `.rec-num` | Circular number badge in recommendations card |
+| `.ai-feedback-card` / `.ai-feedback-badge` / `.ai-feedback-skeleton` / `.ai-skel-line` / `.ai-feedback-text` | "Persönliches Feedback" card: placeholder badge + shimmer lines, and the container for real feedback text |
 
 ### Resource paths
 
