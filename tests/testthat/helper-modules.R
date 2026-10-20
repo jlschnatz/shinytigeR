@@ -14,13 +14,13 @@ make_data_item <- function() {
     stimulus_image = NA_character_,
     answeroption_01 = "Richtig",
     answeroption_02 = "Falsch",
-    answeroption_03 = "Überspringen",
+    answeroption_03 = "Auch falsch",
     answeroption_04 = NA_character_,
     answeroption_05 = NA_character_,
     answeroption_06 = NA_character_,
     if_answeroption_01 = "Super!",
     if_answeroption_02 = "Leider falsch.",
-    if_answeroption_03 = "Übersprungen.",
+    if_answeroption_03 = "Ebenfalls falsch.",
     if_answeroption_04 = NA_character_,
     if_answeroption_05 = NA_character_,
     if_answeroption_06 = NA_character_,
@@ -34,9 +34,7 @@ make_data_item <- function() {
 }
 
 # Single numeric-item row (answer_mode = "num") — distractor values live in
-# answeroption_0X same as MC, but as numeric strings and with no trailing
-# "Überspringen" slot (numeric items skip via a dedicated button, not a last
-# radio option). Correct value is answeroption_01 (answer_correct = "1") unless
+# answeroption_0X same as MC, but as numeric strings. Correct value is answeroption_01 (answer_correct = "1") unless
 # `answer_correct` says otherwise (e.g. "1;3"). `lower`/`upper` are per-option
 # range bounds, aligned with c(correct_value, distractors); NA = exact match.
 make_numeric_item <- function(

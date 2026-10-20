@@ -63,7 +63,7 @@ The four sample items (all `type_item = "content"`; see "Numeric item rules" und
 
 Useful manual cases: exact match (`5` on 90001), comma decimal (`0,25` on 90002), exact-only near-miss (`5.01` on 90001 → unmatched), matched distractor (`4.5` on 90001 → incorrect + its feedback), in-range value (`6,66` on 90004 → correct), second correct option (`5` on 90004 → correct, different feedback), ranged distractor (`2.59` on 90004 → incorrect), unmatched (`7`), and the skip button.
 
-`dev/add_numeric_samples.R` is dev/local-only (it inserts fake practice items) — **never** run it against a production DB. For just the schema migrations (no sample items — safe against production), use `dev/migrate_answer_mode.R` and `dev/migrate_numeric_bounds.R` directly; see the Deployment section below for when they have to run.
+`dev/add_numeric_samples.R` is dev/local-only (it inserts fake practice items) — **never** run it against a production DB. For just the item-DB migrations (no sample items — safe against production), use `dev/migrate_answer_mode.R`, `dev/migrate_numeric_bounds.R` and `dev/migrate_drop_mc_skip.R` directly; see the Deployment section below for when they have to run.
 
 ### Dependency management (rv)
 
@@ -100,7 +100,7 @@ If you have `devtools` available separately (e.g. in a personal, non-rv-managed 
 - `selector_cell_inputs(area_vals, type_vals, n_items, only_new)` — builds the `cell_i_j` input list `mod_selector_server` expects
 - `make_user_db(user, item_ids, correct, areas)` — writes a temp SQLite user DB pre-populated with response rows, returns its path
 
-> **Testing `mod_numeric_answer`'s skip button in `testServer()`:** call `session$flushReact()` once *before* the test's first `session$setInputs()`. Reason: `observeEvent(..., ignoreInit = TRUE)` swallows whatever the *first* reactive flush's action would have been — in a real browser session that first flush always happens before a user could possibly click anything, but in `testServer()`'s synchronous world, if the test's first `setInputs()` call *is* the click itself, `ignoreInit` swallows that legitimate first click too. See the `"practice: numeric item — explicit skip button..."` test in `test-modules.R` for the pattern.
+> **Testing the skip button in `testServer()`:** it's `mod_practice`'s own `input$skip` (not a child module's), so `session$setInputs(skip = 1L)` works as a test's first call. Its observer deliberately has no `ignoreInit = TRUE` — with `ignoreInit`, `testServer()`'s synchronous first flush would swallow a click sent as the very first `setInputs()`; the initial `0`/`NULL` is already ignored by `ignoreNULL`.
 
 ---
 
@@ -138,6 +138,7 @@ app_v3/
 │   ├── make_sample_items.R       # regenerates dev/db_item_sample.sqlite from the full local db_item.sqlite (maintainers only)
 │   ├── migrate_answer_mode.R     # production-safe: idempotently adds answer_mode column + backfills to 'mc'. No sample items — run this before deploying
 │   ├── migrate_numeric_bounds.R  # production-safe: idempotently adds lower_/upper_answeroption_0X columns (table rebuild, after if_answeroption_06) + makes answer_correct TEXT. No items — run this before deploying
+│   ├── migrate_drop_mc_skip.R    # production-safe: idempotently removes the old trailing skip option (+ its feedback) from MC items. No items — run this before deploying
 │   ├── add_numeric_samples.R     # dev-only: sources both migrations, then (re)writes 4 numeric sample items — never run against production
 │   └── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │
@@ -255,6 +256,7 @@ Single source of truth for:
 | `ITEM_TYPE_LABELS` | named `character` | `"Inhaltlich" = "content"`, `"R-Code" = "coding"` — these must match `type_item` values in `db_item.sqlite` |
 | `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
+| `SKIP_FEEDBACK` | `character` | Feedback text after the skip button, MC and numeric alike (skipping isn't stored in the item DB) |
 | `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` | functions | Return full paths to the three SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
 | `REG_USERNAME_PATTERN` / `REG_PW_MIN_LENGTH` / `REG_MAX_ATTEMPTS` / `REG_ATTEMPT_DELAY_S` | validation constants | Used by `mod_register.R` — see that section below |
@@ -312,11 +314,11 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `get_answeroptions(item)` | Extracts non-NA values from `answeroption_01`…`answeroption_06` |
 | `get_feedbackoptions(item)` | Extracts non-NA values from `if_answeroption_01`…`if_answeroption_06` |
 | `parse_answer_correct(x)` | Parses the text `answer_correct` (`"2"`, `"1;3"`, or a legacy integer) into an integer vector of option indices; empty for NA. Use this everywhere instead of `as.integer(item$answer_correct)` |
-| `evaluate_answer(item, answer_idx)` | MC only. Returns `"correct"`, `"incorrect"`, or `"skip"` (last option is always the skip option) |
+| `evaluate_answer(item, answer_idx)` | MC only. Returns `"correct"` or `"incorrect"` — never `"skip"`, which is the skip button in `mod_practice.R`, not an answer option |
 | `parse_numeric_input(x)` | Numeric items only. Parses a typed string to a number, accepting both `.` and `,` as the decimal separator (`gsub(",", ".", ...)` before `as.numeric()`); returns `NA_real_` for empty/unparseable input |
 | `get_numeric_options(item)` | Numeric items only. One row per non-empty option: `idx` (the option's **column position** 1–6, not a compacted index — unlike `get_answeroptions()`, a gap in the option columns doesn't shift later options), `value`, `lower`, `upper`, `feedback`, `is_correct`. Bound columns missing from an unmigrated DB read as NA (= exact match) |
 | `evaluate_numeric_answer(item, typed_value)` | Numeric items only. Implements "Numeric item rules" (see Databases): an option matches if `lower ≤ typed ≤ upper`, or exactly its value if either bound is NA (a ~1e-9 relative epsilon only absorbs float noise). Overlapping ranges shouldn't exist in validated items; if they do, the lowest-numbered option wins. Returns `list(matched_idx, result)` where `matched_idx` is the column position and `result` is `"correct"` (option listed in `answer_correct`) / `"incorrect"` / `"unmatched"` (never `"skip"` — that's the caller's dedicated skip action, not a matching outcome) |
-| `build_response_row(item, answer_idx, user_id, session_token, typed_value = NA_real_, skipped = NULL)` | Constructs the `data.frame` row written to `db_user.sqlite`. `answer_idx` is `NA` for an unmatched numeric answer or an explicit skip; `typed_value` is numeric-only (`NA` for MC rows); `skipped` defaults to the MC last-option convention (`answer_idx == n`) when `NULL`, but numeric callers pass it explicitly since there's no last-option slot to compare against. `bool_correct` is `NA` whenever `skipped` or `is.na(answer_idx)` — i.e. skip and unmatched are both excluded from IRT scoring the same way |
+| `build_response_row(item, answer_idx, user_id, session_token, typed_value = NA_real_, skipped = FALSE)` | Constructs the `data.frame` row written to `db_user.sqlite`. `answer_idx` is `NA` for an unmatched numeric answer or a skip; `typed_value` is numeric-only (`NA` for MC rows); `skipped` is passed as `TRUE` only for the skip button (MC and numeric alike) — never inferred from the selected option. `bool_correct` is `NA` whenever `skipped` or `is.na(answer_idx)` — i.e. skip and unmatched are both excluded from IRT scoring the same way |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
 | `item_id_badge(id_item, input_id, class)` | Click-to-copy item-ID badge shared by `mod_practice.R` and `mod_inspect.R`, built on `rclipboard::rclipButton()` for the `bslib::tooltip()` hover label. `input_id` must be the caller's `ns("copy_item_id")` — a fixed, namespaced ID, since each module is instantiated once. **Never observed server-side, on purpose** — confirmed against `shiny.js`: `unbindInputs()` (run before every `renderUI` re-render) tears down the JS binding but never calls the client's `InputNoResendDecorator.forget()`, so a freshly recreated `actionButton` resends its reset value (`0`), which differs from the cached post-click value and gets treated as a genuine change. Since both badges live inside a `renderUI` that reruns on every item change, a server `observeEvent` on this input would fire "copied" on every item advance, not just on real clicks — confirmed by testing this exact scenario with a debug observer before settling on the client-only approach. The "✓ Kopiert" confirmation is instead a single, page-lifetime `ClipboardJS('.practice-item-id-btn').on('success', …)` listener registered once in `ui.R`'s header script (`DOMContentLoaded`), never per-render. |
@@ -347,21 +349,21 @@ Below the area list, a second `bslib::card` (same `card_header` + `card_body` pa
 
 ### `R/mod_practice.R`
 
-`mod_practice_ui(id)` — mounted once at login and never remounted (see "Train panel view switching" above), so it holds no per-item or first-item state; it only sets the pre-first-item defaults (`num_wrap` and the skip button `shinyjs::hidden()`).
+`mod_practice_ui(id)` — mounted once at login and never remounted (see "Train panel view switching" above), so it holds no per-item or first-item state; it only sets the pre-first-item default (`num_wrap` `shinyjs::hidden()`).
 
 Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 
 - **`output$item_stimulus`** — only invalidates when `current_item()` changes (i.e., when moving to a new item). Never re-renders on check.
 - **`output$progress_bar`** — also shows the current item's `id_item` next to "Aufgabe X von Y", so a student stuck on a question can report its ID (e.g. to a lecturer) without needing the separate lookup flow in `mod_selector`. Built with `item_id_badge()` — same component and behaviour as `mod_inspect.R`'s.
 
-**Answer rendering is delegated**, not inline. `mod_practice_server` registers both `mod_mc_answer_server` and `mod_numeric_answer_server` as children — always both, regardless of the current item's mode, same "register once" pattern as the top-level modules — and the UI mounts both `mod_mc_answer_ui("answer_mc")`/`mod_numeric_answer_ui("answer_num")` inside `div(id=ns("mc_wrap"), ...)`/`div(id=ns("num_wrap"), ...)` wrappers. Only one is ever visible; `mod_practice_server` toggles that via `shinyjs::show()`/`hide()` on `mc_wrap`/`num_wrap` in an `observe()` keyed on the current item's `answer_mode`. Neither wrap is remounted per item — see `R/mod_numeric_answer.R` below for why that matters specifically for the numeric module's skip button.
+**Answer rendering is delegated**, not inline. `mod_practice_server` registers both `mod_mc_answer_server` and `mod_numeric_answer_server` as children — always both, regardless of the current item's mode, same "register once" pattern as the top-level modules — and the UI mounts both `mod_mc_answer_ui("answer_mc")`/`mod_numeric_answer_ui("answer_num")` inside `div(id=ns("mc_wrap"), ...)`/`div(id=ns("num_wrap"), ...)` wrappers. Only one is ever visible; `mod_practice_server` toggles that via `shinyjs::show()`/`hide()` on `mc_wrap`/`num_wrap` in an `observe()` keyed on the current item's `answer_mode`. Neither wrap is remounted per item — see `R/mod_numeric_answer.R` below for why that matters specifically for the numeric module's input field.
 
-**Child-module contract** (`mod_mc_answer_server`/`mod_numeric_answer_server`, see their own files): each takes `item` (reactive single-row item `data.frame`), `checked` (reactive logical), `result` (reactive list) from the parent, and returns `list(raw_answer, ready, skip_requested)`. The children are pure UI/input components — they render and report the raw input; `mod_practice.R` owns evaluation (`evaluate_answer()`/`evaluate_numeric_answer()`) and the DB write, so scoring logic lives in one place, not duplicated per answer mode.
+**Child-module contract** (`mod_mc_answer_server`/`mod_numeric_answer_server`, see their own files): each takes `item` (reactive single-row item `data.frame`), `checked` (reactive logical), `result` (reactive list) from the parent, and returns `list(raw_answer, ready)`. The children are pure UI/input components — they render and report the raw input; `mod_practice.R` owns evaluation (`evaluate_answer()`/`evaluate_numeric_answer()`) and the DB write, so scoring logic lives in one place, not duplicated per answer mode.
 
 **Answer coloring** is done via CSS classes:
 
 - `.radio-result-correct`, `.radio-result-incorrect`, `.radio-result-skip` — defined in `app.css`, MC only
-- MC's last answer option is always the skip option (equal to `length(get_answeroptions(item))`); numeric items have their own dedicated "Aufgabe überspringen" button instead (see `R/mod_numeric_answer.R`), since there's no last-option slot to select
+- **Skipping** is one "Aufgabe überspringen" button (`input$skip`) owned by `mod_practice` itself, in the action row left of "Antwort prüfen", for MC and numeric items alike — not an answer option in the item DB (the old trailing "Frage überspringen." / `www/skip.png` MC option was removed by `dev/migrate_drop_mc_skip.R`). It's shown/hidden together with "Antwort prüfen", calls `finish_check("skip")` (→ `skipped = TRUE`, `selected_option`/`bool_correct` NA), and the child modules render the "Übersprungen" card with `SKIP_FEEDBACK`. No option needs to be selected to skip
 
 **State** is managed by a `reactiveValues` object inside `mod_practice_server`:
 ```r
@@ -376,8 +378,8 @@ Child modules of `mod_practice.R` (see above for the contract and dispatch patte
 `mod_numeric_answer.R` is different in three ways:
 
 - The input is a plain **text** field (not `type="number"`), so both `"3.5"` and `"3,5"` are typeable; `parse_numeric_input()` normalizes the locale.
-- It has a dedicated **skip button** (`skip_requested` in the return contract), since there's no last-radio-option slot. The button's UI is a separate function, `mod_numeric_answer_skip_ui(id)`, which `mod_practice_ui()` places in its action-button row left of "Antwort prüfen" (called with the same `ns("answer_num")` id, so `input$skip` still belongs to the numeric module). Because it sits outside `num_wrap`, it gets its own `shinyjs::toggle()` observer in `mod_numeric_answer_server()` (visible only for an unchecked numeric item).
-- **Its input field and skip button are static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — only its post-check feedback panel (`output$feedback_ui`) re-renders. After check, the input row stays visible (like MC's radios): the field is `shinyjs::disable()`d with the typed value kept, gets a `.numeric-result-*` border class, and the feedback card renders below it; all of that is reset on the next item. A freshly recreated `actionButton` resends its client-side reset value (`0`) on the next real render, which Shiny then treats as a genuine click if the server's last remembered value was nonzero — the same quirk documented on `item_id_badge()` in `utils.R`. Keeping the skip button's DOM node stable across item changes (clearing the text field and toggling visibility instead of remounting) avoids that entirely.
+- Its result can additionally be `"unmatched"` (typed value in no option's range), rendered with a fixed fallback message.
+- **Its input field is static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — only its post-check feedback panel (`output$feedback_ui`) re-renders. After check, the input row stays visible (like MC's radios): the field is `shinyjs::disable()`d with the typed value kept, gets a `.numeric-result-*` border class, and the feedback card renders below it; all of that is reset (cleared, re-enabled, un-colored) on the next item.
 
 The **UI itself** is a purpose-built `.numeric-answer-card` (see CSS table below) — deliberately not styled to reuse MC's `.answer-option` list-row classes, since a single numeric field isn't a list of choices and looked like a bolted-on afterthought when it borrowed that styling.
 
@@ -441,7 +443,7 @@ Table: `item_db`
 | `bloom_taxonomy` | text | `"knowledge"`, `"comprehension"`, or `"application"` |
 | `stimulus_text` | text | Markdown + LaTeX preamble (nullable) |
 | `stimulus_image` | text | Path like `www/img_item/foo.png` (stripped to `img_item/foo.png` at load) |
-| `answeroption_01`…`answeroption_06` | text | Answer choices. For MC (`answer_mode = "mc"`) rows, last non-NA is always "Überspringen". For numeric (`answer_mode = "num"`) rows, these are distractor *values* as numeric strings (e.g. `"4.5"`) — reused rather than adding a parallel set of columns, and with no trailing skip slot (numeric items skip via a dedicated button, not a last option) |
+| `answeroption_01`…`answeroption_06` | text | Answer choices — real options only; skipping is the app's skip button, not a stored option (MC items used to end in "Frage überspringen." / `www/skip.png`, removed by `dev/migrate_drop_mc_skip.R`). For numeric (`answer_mode = "num"`) rows, these are distractor *values* as numeric strings (e.g. `"4.5"`) — reused rather than adding a parallel set of columns |
 | `if_answeroption_01`…`if_answeroption_06` | text | Per-answer feedback text (Markdown + LaTeX); same reuse for numeric distractor feedback |
 | `lower_answeroption_01`…`lower_answeroption_06` | real | Numeric only: inclusive lower bound of the range that matches this option. See "Numeric item rules" below |
 | `upper_answeroption_01`…`upper_answeroption_06` | real | Numeric only: inclusive upper bound. See "Numeric item rules" below |
@@ -486,10 +488,10 @@ One table per user, named by `id_user`. Each row is one response:
 | `id_datetime` | integer | `as.integer(Sys.time())` — used for ordering |
 | `id_item` | integer | Foreign key to `db_item.sqlite` |
 | `learning_area` | text | Denormalized from item (for fast dashboard queries) |
-| `selected_option` | integer | 1-based index of chosen answer/matched distractor. `NA` for a skipped or unmatched-numeric response |
+| `selected_option` | integer | 1-based index of chosen answer/matched distractor. `NA` for a skipped or unmatched-numeric response. **Legacy:** MC skips recorded before the skip button hold the index of the former skip option here instead of `NA` — always use `skipped`, never `selected_option`, to detect skips |
 | `answer_correct` | text | The item's `answer_correct` at answer time, as-is (`"2"`, or `"1;3"` for a multi-correct numeric item) — denormalized, not used for scoring (`bool_correct` is). Tables created before multi-correct items declare this column INTEGER; `db_get_userdata()` reads it with `CAST(... AS TEXT)` so a `"1;3"` row isn't coerced to `1` |
 | `bool_correct` | logical | `TRUE`/`FALSE`/`NA` (`NA` = skipped **or** an unmatched numeric answer — both excluded from IRT scoring the same way) |
-| `skipped` | logical | `TRUE` if last option was selected (MC) or the skip button was clicked (numeric) |
+| `skipped` | logical | `TRUE` if the skip button was clicked (MC or numeric; legacy MC rows: the old skip option was selected). The authoritative skip flag — the dashboard counts it |
 | `typed_value` | real | Numeric items only; `NA` for MC rows. The raw number the student typed, preserved even when it didn't match any distractor — otherwise that signal would be unrecoverable once discarded, and it's useful input for the kiwi project's item-generation/feedback work later. Added via `db_write_response()`'s auto-migrate-on-write (see `R/db.R` above), so pre-existing per-user tables don't need a manual migration |
 
 ### `db_credentials.sqlite` — authentication
@@ -599,6 +601,8 @@ ShinyProxy's app config must also set **`TIGER_REG_CODE`** (the semester code �
 > **Required one-time migration before deploying any build that includes numeric items:** the production `db_item.sqlite` needs the `answer_mode` column added and backfilled to `'mc'` before this code runs against it — run `TIGER_DB_DIR=<mount path> rv run dev/migrate_answer_mode.R` against it first (idempotent, safe to re-run, inserts no items). **Skipping this doesn't crash the app** — `item$answer_mode` on a column that doesn't exist yet resolves to `NULL`, not an error, and both `mod_mc_answer.R`'s and `mod_numeric_answer.R`'s dispatch checks (`identical(item$answer_mode[1], "mc"/"num")`) are `FALSE` for `NULL` either way. The practice view's answer area just renders blank and "Antwort prüfen" never enables — for *every* item, MC included, with no error shown anywhere. Do **not** use `dev/add_numeric_samples.R` for this — it also inserts fake sample items, which don't belong in the real student-facing pool.
 >
 > **Also run `TIGER_DB_DIR=<mount path> rv run dev/migrate_numeric_bounds.R`** (same properties: idempotent, inserts no items). It rebuilds `item_db` in one transaction to add the `lower_`/`upper_answeroption_0X` columns after `if_answeroption_06` and make `answer_correct` TEXT; existing data is copied unchanged (verified row-for-row against the local pool). Skipping it doesn't break the app either — missing bound columns read as NA, so every numeric option just falls back to exact match.
+>
+> **And run `TIGER_DB_DIR=<mount path> rv run dev/migrate_drop_mc_skip.R`** before deploying a build with the shared skip button (idempotent, inserts no items; also takes a file path as argument). It removes the old trailing skip option ("Frage überspringen." / `www/skip.png`) and its feedback from every MC item, aborting without changes if a skip option is ever marked correct. **Skipping this one *does* change behaviour:** the old skip option would show up as an ordinary answer option and be scored as incorrect. `db_user.sqlite` needs no migration — legacy skip rows already have `skipped = TRUE`.
 
 The `CMD` starts the app as:
 ```

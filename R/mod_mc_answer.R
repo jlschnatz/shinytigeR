@@ -9,15 +9,13 @@
 #                        NA_integer_ if nothing is selected yet
 #     - ready:          reactive() -> TRUE once an option is selected (gates
 #                        the caller's "check" button)
-#     - skip_requested: reactive() -> a click-counter reactive for a dedicated
-#                        skip action. MC has no such action (skipping is just
-#                        selecting the last radio option), so this is a
-#                        reactive that never changes.
 #
 #   `item` is a reactive single-row item data.frame, `checked` a reactive
 #   logical (TRUE after the caller has evaluated the answer), `result` a
 #   reactive list with `category` ("correct"/"incorrect"/"skip") and
-#   `answer_idx` (the evaluated index) — populated by the caller once checked.
+#   `answer_idx` (the evaluated index; NA for "skip") — populated by the caller
+#   once checked. Skipping is the caller's skip button (mod_practice.R), not an
+#   answer option, so after a skip no option is highlighted.
 mod_mc_answer_ui <- function(id) {
   ns <- NS(id)
   uiOutput(ns("answer_ui"))
@@ -85,7 +83,13 @@ mod_mc_answer_server <- function(id, item, checked, result) {
         req(!is.null(res))
         feedbacks <- get_feedbackoptions(it)
         sel <- res$answer_idx
-        fb_text <- if (!is.na(sel) && sel <= length(feedbacks)) feedbacks[[sel]] else ""
+        fb_text <- if (res$category == "skip") {
+          SKIP_FEEDBACK
+        } else if (!is.na(sel) && sel <= length(feedbacks)) {
+          feedbacks[[sel]]
+        } else {
+          ""
+        }
         suffix <- if (it$type_answer == "image") "img" else "txt"
         hi_class <- paste0(res$category, "_answer_", suffix)
         color_var <- switch(
@@ -189,8 +193,7 @@ mod_mc_answer_server <- function(id, item, checked, result) {
         idx <- suppressWarnings(as.integer(input$answer))
         if (length(idx) == 0L || is.na(idx)) NA_integer_ else idx
       }),
-      ready = reactive(!is.null(input$answer)),
-      skip_requested = reactive(0L)
+      ready = reactive(!is.null(input$answer))
     )
   })
 }

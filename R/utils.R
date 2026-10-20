@@ -114,34 +114,28 @@ parse_answer_correct <- function(x) {
   idx[!is.na(idx)]
 }
 
+# MC only. Skipping is not an answer option (see the skip button in
+# mod_practice.R), so this never returns "skip".
 evaluate_answer <- function(item, answer_idx) {
-  n <- length(get_answeroptions(item))
   if (answer_idx %in% parse_answer_correct(item$answer_correct)) {
     "correct"
-  } else if (answer_idx == n) {
-    "skip"
   } else {
     "incorrect"
   }
 }
 
-# `answer_idx` is the matched distractor index — NA for a numeric item whose
-# typed value matched nothing, or for an explicit skip. `typed_value` is only
-# meaningful for numeric items (NA for MC rows and for MC-style skips).
-# `skipped` defaults to the MC last-option convention (answer_idx == n); numeric
-# callers pass it explicitly since there's no last-option slot to compare against.
+# `answer_idx` is the selected/matched option index — NA for a skip or for a
+# numeric item whose typed value matched nothing. `typed_value` is only
+# meaningful for numeric items (NA for MC rows and for skips). `skipped` is
+# TRUE only for the skip button, for MC and numeric items alike.
 build_response_row <- function(
   item,
   answer_idx,
   user_id,
   session_token,
   typed_value = NA_real_,
-  skipped = NULL
+  skipped = FALSE
 ) {
-  n <- length(get_answeroptions(item))
-  if (is.null(skipped)) {
-    skipped <- answer_idx == n
-  }
   bool_correct <- if (skipped || is.na(answer_idx)) {
     NA
   } else {
