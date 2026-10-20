@@ -281,28 +281,33 @@
 
 /* ── Numeric-item input ────────────────────────────────────────────────────── */
 /* Purpose-built for a single numeric field, not a borrowed MC option row —
-   a bordered "answer card" with a big centered field, its own label/hint,
+   a compact one-row "answer card" (label, centered field, hint),
    and a de-emphasized skip action, so it reads as its own kind of question
    rather than a stray input squeezed into MC's list styling. */
 .numeric-answer-card {
   border: 1.5px solid #e1e7ee;
   border-radius: 10px;
-  padding: 20px 20px 16px;
-  background: #fbfcfe;
+  padding: 10px 16px;
+  background: #fff;
+  /* Label, field and hint on one row (wraps on narrow screens) */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
 }
 
 .numeric-answer-label {
   font-size: 0.85rem;
   color: #6c7a89;
-  margin-bottom: 8px;
 }
 
 .numeric-answer-input {
-  max-width: 260px;
-  font-size: 1.4rem;
+  width: 180px;
+  font-size: 1.1rem;
   font-weight: 600;
   text-align: center;
-  padding: 10px 14px;
+  padding: 4px 10px;
   border: 1.5px solid #c7d2e0;
   border-radius: 8px;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -317,7 +322,6 @@
 .numeric-answer-hint {
   font-size: 0.8rem;
   color: #9aa5b1;
-  margin-top: 8px;
 }
 
 /* Post-check: the (disabled) input keeps the typed value, its border colored
@@ -450,16 +454,11 @@
 
 .selector-wrap .card-header { font-size: 1.05rem; }
 
-.practice-wrap .card-body {
-  min-height: 300px;
-}
-
 .practice-answers-section {
   background-color: #f8f9fa;
   border-radius: 0 0 8px 8px;
   margin: 0.5rem -1rem -1rem -1rem;
   padding: 1rem 1rem 1rem;
-  min-height: 120px;
 }
 
 .practice-item-id {
