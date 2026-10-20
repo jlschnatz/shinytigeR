@@ -209,10 +209,10 @@ test_that("practice: checking an answer sets state$checked and writes to DB", {
         write_trigger = write_trigger
       ),
       {
-        session$setInputs(answer = "1", check = 1L)
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
 
         expect_true(state$checked)
-        expect_equal(state$answer_id, 1L)
+        expect_equal(state$result$answer_idx, 1L)
 
         # write_trigger should have incremented
         expect_equal(write_trigger(), 1L)
@@ -241,7 +241,7 @@ test_that("practice: next_item advances position", {
         write_trigger = write_trigger
       ),
       {
-        session$setInputs(answer = "1", check = 1L)
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
         session$setInputs(next_item = 1L)
 
         expect_equal(state$pos, 2L)
@@ -266,7 +266,7 @@ test_that("practice: finishing all items resets practice_ids to NULL", {
         write_trigger = write_trigger
       ),
       {
-        session$setInputs(answer = "1", check = 1L)
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
         session$setInputs(next_item = 1L)
 
         expect_null(practice_ids())
@@ -297,8 +297,8 @@ test_that("practice: back button resets practice_ids to NULL", {
   })
 })
 
-test_that("practice: skip answer (last option) records skipped = TRUE", {
-  data_item <- make_data_item() # 3 options per item; option 3 = skip
+test_that("practice: MC item — skip button records skipped = TRUE", {
+  data_item <- make_data_item()
   practice_ids <- reactiveVal(c(1L))
   write_trigger <- reactiveVal(0L)
   db_dir <- tempfile("tiger_test")
@@ -314,13 +314,127 @@ test_that("practice: skip answer (last option) records skipped = TRUE", {
         write_trigger = write_trigger
       ),
       {
-        session$setInputs(answer = "3", check = 1L) # option 3 = skip
+        # No option selected — skipping doesn't need one
+        session$setInputs(skip = 1L)
+
+        expect_true(state$checked)
+        expect_equal(state$result$category, "skip")
+        expect_equal(write_trigger(), 1L)
 
         ud <- db_get_userdata("testuser", DB_USERS())
-        expect_equal(as.logical(ud$skipped), TRUE)
+        expect_equal(nrow(ud), 1L)
+        expect_true(as.logical(ud$skipped))
+        expect_true(is.na(ud$selected_option))
         expect_true(is.na(ud$bool_correct))
       }
     )
+  })
+})
+
+test_that("practice: MC item — last option is an ordinary answer, not a skip", {
+  data_item <- make_data_item() # 3 options, option 1 correct
+  practice_ids <- reactiveVal(c(1L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_mc-answer` = "3", check = 1L)
+
+        expect_equal(state$result$category, "incorrect")
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_false(as.logical(ud$skipped))
+        expect_false(as.logical(ud$bool_correct))
+        expect_equal(ud$selected_option, 3L)
+      }
+    )
+  })
+})
+
+test_that("practice: skip button is ignored once the item is checked", {
+  data_item <- make_data_item()
+  practice_ids <- reactiveVal(c(1L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
+        session$setInputs(skip = 1L)
+
+        expect_equal(state$result$category, "correct")
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_equal(nrow(ud), 1L) # no second (skip) row
+      }
+    )
+  })
+})
+
+test_that("practice: legacy user table with an old MC skip row keeps working", {
+  # Old accounts have per-user tables from before the skip button: no
+  # typed_value column, answer_correct INTEGER, and MC skips recorded as
+  # selected_option = <index of the former skip option> with skipped = 1.
+  data_item <- make_data_item()
+  practice_ids <- reactiveVal(c(3L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    con <- DBI::dbConnect(RSQLite::SQLite(), DB_USERS())
+    DBI::dbExecute(con, paste(
+      "CREATE TABLE testuser (id_user TEXT, id_session TEXT, id_date INTEGER,",
+      "id_datetime INTEGER, id_item INTEGER, learning_area TEXT,",
+      "selected_option INTEGER, answer_correct INTEGER, bool_correct INTEGER,",
+      "skipped INTEGER)"
+    ))
+    DBI::dbExecute(con, paste(
+      "INSERT INTO testuser VALUES",
+      "('testuser', 's', 1, 1, 1, 'Regression', 1, 1, 1, 0),",
+      "('testuser', 's', 1, 2, 2, 'Regression', 3, 1, NULL, 1)"
+    ))
+    DBI::dbDisconnect(con)
+
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(skip = 1L) # new-style skip on item 3
+      }
+    )
+
+    ud <- db_get_userdata("testuser", DB_USERS())
+    expect_equal(nrow(ud), 3L)
+    # Old and new skips are both counted via `skipped` (as the dashboard does)
+    expect_equal(as.logical(ud$skipped), c(FALSE, TRUE, TRUE))
+    expect_equal(sum(ud$skipped == TRUE, na.rm = TRUE), 2L)
+    expect_equal(ud$selected_option, c(1L, 3L, NA))
+    # ...and both are excluded from IRT scoring
+    comp <- estimate_competency(ud, data_item)
+    expect_equal(comp$n_items[comp$learning_area == "Regression"], 1L)
   })
 })
 
@@ -342,7 +456,7 @@ test_that("practice: new practice_ids resets position to 1", {
         write_trigger = write_trigger
       ),
       {
-        session$setInputs(answer = "1", check = 1L)
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
         session$setInputs(next_item = 1L)
         expect_equal(state$pos, 2L)
 
@@ -355,10 +469,169 @@ test_that("practice: new practice_ids resets position to 1", {
   })
 })
 
+# ── mod_practice_server: numeric items ──────────────────────────────────────────
+
+test_that("practice: numeric item — exact match is scored correct and stores typed_value", {
+  data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
+  practice_ids <- reactiveVal(c(200L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_num-num_value` = "5", check = 1L)
+
+        expect_true(state$checked)
+        expect_equal(state$result$category, "correct")
+
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_equal(nrow(ud), 1L)
+        expect_equal(as.logical(ud$bool_correct), TRUE)
+        expect_equal(ud$typed_value, 5)
+      }
+    )
+  })
+})
+
+test_that("practice: numeric item — comma decimal is parsed and matched", {
+  data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
+  practice_ids <- reactiveVal(c(200L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_num-num_value` = "4,5", check = 1L)
+
+        expect_equal(state$result$category, "incorrect")
+        expect_equal(state$result$answer_idx, 2L)
+
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_equal(ud$typed_value, 4.5)
+        expect_false(isTRUE(as.logical(ud$bool_correct)))
+      }
+    )
+  })
+})
+
+test_that("practice: numeric item — unmatched value is NA-scored, not incorrect", {
+  data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
+  practice_ids <- reactiveVal(c(200L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_num-num_value` = "999", check = 1L)
+
+        expect_equal(state$result$category, "unmatched")
+
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_true(is.na(ud$bool_correct))
+        expect_false(as.logical(ud$skipped))
+        expect_equal(ud$typed_value, 999)
+      }
+    )
+  })
+})
+
+test_that("practice: numeric item — second correct option within its range is scored correct", {
+  data_item <- make_numeric_item(
+    id_item = 200L, correct_value = 6.67, distractors = c(5, 20),
+    lower = c(6.66, NA, NA), upper = c(6.67, NA, NA),
+    answer_correct = "1;2"
+  )
+  practice_ids <- reactiveVal(c(200L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(`answer_num-num_value` = "5", check = 1L)
+
+        expect_equal(state$result$category, "correct")
+        expect_equal(state$result$answer_idx, 2L)
+
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_true(as.logical(ud$bool_correct))
+        expect_equal(ud$selected_option, 2L)
+        expect_equal(ud$answer_correct, "1;2")
+      }
+    )
+  })
+})
+
+test_that("practice: numeric item — skip button records skipped = TRUE", {
+  data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
+  practice_ids <- reactiveVal(c(200L))
+  write_trigger <- reactiveVal(0L)
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = practice_ids,
+        credentials = fake_credentials(),
+        write_trigger = write_trigger
+      ),
+      {
+        session$setInputs(skip = 1L)
+
+        expect_true(state$checked)
+        expect_equal(state$result$category, "skip")
+
+        ud <- db_get_userdata("testuser", DB_USERS())
+        expect_true(as.logical(ud$skipped))
+        expect_true(is.na(ud$bool_correct))
+        expect_true(is.na(ud$typed_value))
+      }
+    )
+  })
+})
+
 # ── mod_inspect_server ────────────────────────────────────────────────────────
 
-test_that("inspect: skip option is excluded before and after reveal", {
-  data_item <- make_data_item() # 3 options per item; option 3 = skip
+test_that("inspect: MC item shows every option, feedback only after reveal", {
+  data_item <- make_data_item() # 3 options, option 1 correct
   inspect_id <- reactiveVal(NULL)
 
   testServer(
@@ -368,14 +641,66 @@ test_that("inspect: skip option is excluded before and after reveal", {
       inspect_id(1L)
       session$flushReact()
       html_before <- output$item_answers$html
-      expect_false(grepl("berspringen", html_before))
       expect_true(grepl("Richtig", html_before))
       expect_true(grepl("Falsch", html_before))
+      expect_true(grepl("Auch falsch", html_before)) # last option is not dropped
+      expect_false(grepl("Super!", html_before))
 
       session$setInputs(reveal = 1L)
       html_after <- output$item_answers$html
-      expect_false(grepl("berspringen", html_after))
       expect_true(grepl("Super!", html_after)) # feedback for the correct option
+      expect_true(grepl("Ebenfalls falsch.", html_after, fixed = TRUE))
+    }
+  )
+})
+
+test_that("inspect: numeric item hides the answer before reveal and shows only correct-value feedback after", {
+  data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
+  inspect_id <- reactiveVal(NULL)
+
+  testServer(
+    mod_inspect_server,
+    args = list(data_item = data_item, inspect_id = inspect_id),
+    {
+      inspect_id(200L)
+      session$flushReact()
+      html_before <- output$item_answers$html
+      expect_false(grepl("Feedback 1", html_before))
+      expect_false(grepl("Richtige Antwort", html_before))
+
+      session$setInputs(reveal = 1L)
+      html_after <- output$item_answers$html
+      expect_true(grepl("Richtige Antwort", html_after))
+      expect_true(grepl("Feedback 1", html_after)) # correct distractor's own feedback
+      # Distractor feedback for the other (incorrect) values must stay hidden
+      expect_false(grepl("Feedback 2", html_after))
+      expect_false(grepl("Feedback 3", html_after))
+      expect_false(grepl("Feedback 4", html_after))
+    }
+  )
+})
+
+test_that("inspect: numeric item with several correct options lists each, with its range", {
+  data_item <- make_numeric_item(
+    id_item = 200L, correct_value = 6.67, distractors = c(5, 20),
+    lower = c(6.66, NA, NA), upper = c(6.67, NA, NA),
+    answer_correct = "1;2"
+  )
+  inspect_id <- reactiveVal(NULL)
+
+  testServer(
+    mod_inspect_server,
+    args = list(data_item = data_item, inspect_id = inspect_id),
+    {
+      inspect_id(200L)
+      session$flushReact()
+      session$setInputs(reveal = 1L)
+      html <- output$item_answers$html
+      expect_true(grepl("Richtige Antworten", html))
+      expect_true(grepl("6.67 (akzeptiert: 6.66 bis 6.67)", html, fixed = TRUE))
+      expect_true(grepl("Feedback 1", html))
+      expect_true(grepl("Feedback 2", html))
+      expect_false(grepl("Feedback 3", html)) # the incorrect option stays hidden
     }
   )
 })

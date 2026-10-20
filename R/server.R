@@ -77,14 +77,36 @@ app_server <- function(input, output, session) {
     }
 
     # ── Train view — switches between selector, practice, and inspect ─────────
+    # All three views are rendered ONCE (this renderUI has no reactive
+    # dependencies) and then only switched via nav_select(), never remounted.
+    # Their DOM therefore always exists, so shinyjs show/hide/enable messages
+    # from the module servers can't arrive before their target elements do,
+    # and their actionButtons are never recreated (no resend-0 quirk, see
+    # item_id_badge() in utils.R). Rendered via the server (not statically in
+    # app_ui) only because mod_selector_ui() needs data_item.
     output$train_view <- renderUI({
-      if (!is.null(inspect_id())) {
-        mod_inspect_ui("inspect_1")
+      bslib::navset_hidden(
+        id = "train_nav",
+        selected = "selector",
+        bslib::nav_panel_hidden("selector", mod_selector_ui("selector_1", data_item)),
+        bslib::nav_panel_hidden("practice", mod_practice_ui("practice_1")),
+        bslib::nav_panel_hidden("inspect", mod_inspect_ui("inspect_1"))
+      )
+    })
+    # Mount at login even if the train tab hasn't been opened yet, so the
+    # module DOM exists before any module observer can target it.
+    outputOptions(output, "train_view", suspendWhenHidden = FALSE)
+
+    # inspect_id takes priority over practice_ids.
+    observe({
+      view <- if (!is.null(inspect_id())) {
+        "inspect"
       } else if (is.null(practice_ids())) {
-        mod_selector_ui("selector_1", data_item)
+        "selector"
       } else {
-        mod_practice_ui("practice_1")
+        "practice"
       }
+      bslib::nav_select("train_nav", view)
     })
 
     # ── Module wiring ─────────────────────────────────────────────────────────

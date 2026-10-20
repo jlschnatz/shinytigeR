@@ -38,6 +38,37 @@ test_that("protect_math_delimiters leaves inline code spans untouched", {
   expect_false(grepl("\\\\(", result, fixed = TRUE))
 })
 
+test_that("protect_math_delimiters leaves fenced code blocks untouched, incl. backticks and ~~~", {
+  block1 <- "```\nt.test(income$salary, income$sex)\ndf$`weird name`\n```"
+  block2 <- "~~~\nx$a + y$b\n~~~"
+  input <- paste(
+    "Code:", block1, "Und $x^2$ danach, `a$b` inline.", block2, "Ende $y$.",
+    sep = "\n"
+  )
+  result <- protect_math_delimiters(input)
+  expect_match(result, block1, fixed = TRUE)
+  expect_match(result, block2, fixed = TRUE)
+  expect_match(result, "`a$b`", fixed = TRUE)
+  # math outside the code is still converted
+  expect_match(result, "\\\\(x^2\\\\)", fixed = TRUE)
+  expect_match(result, "\\\\(y\\\\)", fixed = TRUE)
+  expect_false(grepl("CODEBLOCK|CODESPAN", result))
+})
+
+test_that("render_md keeps text after fenced code blocks and renders them as <pre>", {
+  html <- render_md("Vorher:\n```\nincome$salary\n```\nNachher **fett**.")
+  expect_match(html, "<pre><code>income$salary", fixed = TRUE)
+  expect_match(html, "Nachher <strong>fett</strong>.", fixed = TRUE)
+  expect_false(grepl("\\(salary", html, fixed = TRUE))
+})
+
+test_that("protect_math_delimiters treats an unclosed fence as code to the end", {
+  input <- "Text $a$\n```\nx$y$z"
+  result <- protect_math_delimiters(input)
+  expect_match(result, "```\nx$y$z", fixed = TRUE)
+  expect_match(result, "\\\\(a\\\\)", fixed = TRUE)
+})
+
 test_that("protect_math_delimiters handles text with no math unchanged (no $ signs)", {
   input <- "Just plain text with no math."
   result <- protect_math_delimiters(input)
@@ -95,16 +126,12 @@ test_that("evaluate_answer returns 'correct' for the correct option", {
   expect_equal(evaluate_answer(item, 2L), "correct")
 })
 
-test_that("evaluate_answer returns 'skip' for the last option", {
-  item <- make_item(n_options = 4, correct = 1L)
-  # Last option (index 4) is always skip
-  expect_equal(evaluate_answer(item, 4L), "skip")
-})
-
-test_that("evaluate_answer returns 'incorrect' for wrong non-skip options", {
+test_that("evaluate_answer treats every wrong option as incorrect, incl. the last", {
   item <- make_item(n_options = 4, correct = 1L)
   expect_equal(evaluate_answer(item, 2L), "incorrect")
   expect_equal(evaluate_answer(item, 3L), "incorrect")
+  # No skip pseudo-option anymore: the last option is an ordinary answer
+  expect_equal(evaluate_answer(item, 4L), "incorrect")
 })
 
 # ── build_response_row ────────────────────────────────────────────────────────
@@ -129,19 +156,32 @@ test_that("build_response_row produces correct columns and types", {
   expect_false(row$skipped)
 })
 
-test_that("build_response_row marks skipped correctly", {
+test_that("build_response_row records an explicit skip", {
   item <- make_item(n_options = 4, correct = 1L)
   item$id_item <- 1L
   item$learning_area <- "Regression"
 
   row <- build_response_row(
     item,
-    answer_idx = 4L,
+    answer_idx = NA_integer_,
     user_id = "u",
-    session_token = "s"
+    session_token = "s",
+    skipped = TRUE
   )
   expect_true(row$skipped)
+  expect_true(is.na(row$selected_option))
   expect_true(is.na(row$bool_correct))
+})
+
+test_that("build_response_row never infers a skip from the last option", {
+  item <- make_item(n_options = 4, correct = 1L)
+  item$id_item <- 1L
+  item$learning_area <- "Regression"
+
+  row <- build_response_row(item, answer_idx = 4L, user_id = "u", session_token = "s")
+  expect_false(row$skipped)
+  expect_false(row$bool_correct)
+  expect_equal(row$selected_option, 4L)
 })
 
 test_that("build_response_row marks incorrect correctly", {
@@ -157,6 +197,127 @@ test_that("build_response_row marks incorrect correctly", {
   )
   expect_false(row$skipped)
   expect_false(isTRUE(row$bool_correct))
+})
+
+# ── parse_numeric_input ────────────────────────────────────────────────────────
+
+test_that("parse_numeric_input accepts both decimal separators", {
+  expect_equal(parse_numeric_input("3.5"), 3.5)
+  expect_equal(parse_numeric_input("3,5"), 3.5)
+})
+
+test_that("parse_numeric_input returns NA for empty or unparseable input", {
+  expect_true(is.na(parse_numeric_input("")))
+  expect_true(is.na(parse_numeric_input("  ")))
+  expect_true(is.na(parse_numeric_input(NA_character_)))
+  expect_true(is.na(parse_numeric_input("abc")))
+})
+
+# ── evaluate_numeric_answer ─────────────────────────────────────────────────────
+
+test_that("evaluate_numeric_answer matches the correct value exactly", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  res <- evaluate_numeric_answer(item, 5)
+  expect_equal(res$matched_idx, 1L)
+  expect_equal(res$result, "correct")
+})
+
+test_that("evaluate_numeric_answer without bounds requires an exact match", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  expect_equal(evaluate_numeric_answer(item, 4.5)$matched_idx, 2L)
+  expect_equal(evaluate_numeric_answer(item, 4.5)$result, "incorrect")
+  # No global tolerance any more: a near-miss is unmatched
+  expect_equal(evaluate_numeric_answer(item, 5.01)$result, "unmatched")
+  expect_equal(evaluate_numeric_answer(item, 4.51)$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer matches a closed [lower, upper] range, inclusive", {
+  item <- make_numeric_item(
+    correct_value = 6.67, distractors = c(2.58, 20),
+    lower = c(6.66, 2.58, NA), upper = c(6.67, 2.59, NA)
+  )
+  expect_equal(evaluate_numeric_answer(item, 6.66)$result, "correct")
+  expect_equal(evaluate_numeric_answer(item, 6.67)$result, "correct")
+  expect_equal(evaluate_numeric_answer(item, 6.665)$result, "correct")
+  expect_equal(evaluate_numeric_answer(item, 6.68)$result, "unmatched")
+  expect_equal(evaluate_numeric_answer(item, 6.65)$result, "unmatched")
+  res <- evaluate_numeric_answer(item, 2.59)
+  expect_equal(res$matched_idx, 2L)
+  expect_equal(res$result, "incorrect")
+  # Option 3 has no bounds -> exact only
+  expect_equal(evaluate_numeric_answer(item, 20)$matched_idx, 3L)
+  expect_equal(evaluate_numeric_answer(item, 20.1)$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer treats a half-set range as exact match", {
+  item <- make_numeric_item(correct_value = 5, distractors = 20, lower = c(4, NA), upper = NA)
+  expect_equal(evaluate_numeric_answer(item, 5)$result, "correct")
+  expect_equal(evaluate_numeric_answer(item, 4.5)$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer supports several correct options", {
+  item <- make_numeric_item(
+    correct_value = 6.67, distractors = c(5, 20),
+    lower = c(6.66, NA, NA), upper = c(6.67, NA, NA),
+    answer_correct = "1;2"
+  )
+  expect_equal(evaluate_numeric_answer(item, 6.67), list(matched_idx = 1L, result = "correct"))
+  expect_equal(evaluate_numeric_answer(item, 5), list(matched_idx = 2L, result = "correct"))
+  expect_equal(evaluate_numeric_answer(item, 20), list(matched_idx = 3L, result = "incorrect"))
+})
+
+test_that("evaluate_numeric_answer indexes options by column, not compacted position", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6), answer_correct = "3")
+  item$answeroption_02 <- NA_character_ # gap before the correct option
+  res <- evaluate_numeric_answer(item, 6)
+  expect_equal(res$matched_idx, 3L)
+  expect_equal(res$result, "correct")
+})
+
+test_that("evaluate_numeric_answer works when bound columns don't exist (unmigrated DB)", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  item <- item[, !grepl("^(lower|upper)_", names(item))]
+  expect_equal(evaluate_numeric_answer(item, 5)$result, "correct")
+  expect_equal(evaluate_numeric_answer(item, 5.01)$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer returns unmatched when nothing is close", {
+  item <- make_numeric_item(correct_value = 5, distractors = c(4.5, 6, 20))
+  res <- evaluate_numeric_answer(item, 999)
+  expect_true(is.na(res$matched_idx))
+  expect_equal(res$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer returns unmatched for NA input", {
+  item <- make_numeric_item()
+  res <- evaluate_numeric_answer(item, NA_real_)
+  expect_equal(res$result, "unmatched")
+})
+
+test_that("evaluate_numeric_answer resolves (invalid) overlapping ranges to the lowest option", {
+  # Validated items never overlap; this only pins down the runtime fallback.
+  item <- make_numeric_item(correct_value = 5, distractors = 5.5, lower = c(4, 5), upper = c(6, 6))
+  expect_equal(evaluate_numeric_answer(item, 5.5)$matched_idx, 1L)
+})
+
+# ── parse_answer_correct ──────────────────────────────────────────────────────
+
+test_that("parse_answer_correct handles single, multiple, integer and NA input", {
+  expect_equal(parse_answer_correct("2"), 2L)
+  expect_equal(parse_answer_correct(2L), 2L)
+  expect_equal(parse_answer_correct("1;3"), c(1L, 3L))
+  expect_equal(parse_answer_correct(" 1 ; 3 "), c(1L, 3L))
+  expect_equal(parse_answer_correct(NA), integer(0))
+  expect_equal(parse_answer_correct(NULL), integer(0))
+})
+
+test_that("build_response_row scores any listed correct option as correct", {
+  item <- as.list(make_numeric_item(distractors = c(5.5, 20), answer_correct = "1;2")[1, ])
+  row2 <- build_response_row(item, 2L, "u", "s", typed_value = 5.5, skipped = FALSE)
+  row3 <- build_response_row(item, 3L, "u", "s", typed_value = 20, skipped = FALSE)
+  expect_true(row2$bool_correct)
+  expect_false(row3$bool_correct)
+  expect_equal(row2$answer_correct, "1;2")
 })
 
 # ── safe_sample ───────────────────────────────────────────────────────────────

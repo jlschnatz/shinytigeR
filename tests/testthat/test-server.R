@@ -101,7 +101,7 @@ test_that("login's silent ability catch-up does not block the dashboard button f
 
       click <- 1L
       for (i in 1:2) {
-        session$setInputs("practice_1-answer" = "1")
+        session$setInputs("practice_1-answer_mc-answer" = "1")
         session$setInputs("practice_1-check" = click)
         session$flushReact()
         click <- click + 1L

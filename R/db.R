@@ -31,7 +31,20 @@ db_get_userdata <- function(user_id, path = DB_USERS()) {
       if (!DBI::dbExistsTable(con, user_id)) {
         return(data.frame())
       }
-      DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', user_id))
+      # answer_correct is read as text: tables created before multi-correct
+      # numeric items declare it INTEGER, so a "1;3" row sits next to integer
+      # rows and RSQLite would coerce it to 1 (with a warning) on a plain
+      # SELECT *. The stored value itself is intact; the cast just reads it so.
+      cols <- DBI::dbListFields(con, user_id)
+      sel <- ifelse(
+        cols == "answer_correct",
+        "CAST(answer_correct AS TEXT) AS answer_correct",
+        sprintf('"%s"', cols)
+      )
+      DBI::dbGetQuery(
+        con,
+        sprintf('SELECT %s FROM "%s"', paste(sel, collapse = ", "), user_id)
+      )
     },
     wal = TRUE
   )
@@ -53,6 +66,21 @@ db_write_response <- function(user_id, df, path = DB_USERS()) {
     function(con) {
       if (!DBI::dbExistsTable(con, user_id)) {
         DBI::dbCreateTable(con, user_id, df)
+      } else {
+        # Per-user tables are created lazily from whatever build_response_row()
+        # produced on that user's first-ever write, so a table created before
+        # a new response column existed (e.g. typed_value, added for numeric
+        # items) won't have it. Add any missing columns before appending,
+        # rather than requiring a one-off migration of every existing table.
+        existing_cols <- DBI::dbListFields(con, user_id)
+        missing_cols <- setdiff(names(df), existing_cols)
+        for (col in missing_cols) {
+          sql_type <- if (is.numeric(df[[col]])) "REAL" else "TEXT"
+          DBI::dbExecute(
+            con,
+            sprintf('ALTER TABLE "%s" ADD COLUMN "%s" %s', user_id, col, sql_type)
+          )
+        }
       }
       DBI::dbAppendTable(con, user_id, df)
     },
