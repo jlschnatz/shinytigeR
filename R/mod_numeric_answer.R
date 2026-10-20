@@ -6,22 +6,16 @@
 # Differences from mod_mc_answer.R:
 #   - The input is a plain text field (not type="number") so both "3.5" and
 #     "3,5" are typeable; parsing/locale normalization is parse_numeric_input().
-#   - There is a dedicated "Überspringen" button, reported via skip_requested,
-#     since there's no last-radio-option slot to select instead. Its UI is a
-#     separate function, mod_numeric_answer_skip_ui(), which the parent places
-#     in its action-button row next to "Antwort prüfen".
 #   - `result()$category` can additionally be "unmatched" — the typed number
 #     didn't land in any option's range — which renders a fixed
 #     fallback message rather than any if_answeroption_0X feedback text.
-#   - Unlike mod_mc_answer's radio group, the input field and skip button are
-#     STATIC UI (not inside a renderUI keyed on the current item): a freshly
-#     recreated actionButton resends its client-side reset value (0) on the
-#     next real render, which Shiny then treats as a genuine click if the
-#     server's last remembered value was nonzero — the same quirk documented
-#     on item_id_badge() in utils.R. Keeping the button's DOM node stable
-#     across item changes (only toggling visibility, and clearing the text
-#     field's value) avoids that. Only the post-check feedback panel — which
-#     has no actionButton in it — re-renders via output$feedback_ui.
+#   - Unlike mod_mc_answer's radio group, the input field is STATIC UI (not
+#     inside a renderUI keyed on the current item): it is cleared, re-enabled
+#     and un-colored per item instead of remounted, so the typed value can stay
+#     visible (disabled) after check. Only the post-check feedback panel
+#     re-renders via output$feedback_ui.
+#   - Skipping is handled by the parent's skip button (mod_practice.R), as for
+#     MC items; this module only renders the "skip" result.
 mod_numeric_answer_ui <- function(id) {
   ns <- NS(id)
   div(
@@ -41,21 +35,6 @@ mod_numeric_answer_ui <- function(id) {
       div(class = "numeric-answer-hint", "Punkt oder Komma als Dezimaltrennzeichen")
     ),
     uiOutput(ns("feedback_ui"))
-  )
-}
-
-# The skip button lives in mod_practice.R's action-button row (left of
-# "Antwort prüfen"), not inside the answer card — so it's a separate UI
-# function the parent places itself, called with the same namespaced id as
-# mod_numeric_answer_ui(). Still owned by this module: input$skip is read
-# here, and its visibility is toggled by mod_numeric_answer_server(). Same
-# static-DOM-node rule as the input field applies (see comment above).
-mod_numeric_answer_skip_ui <- function(id) {
-  ns <- NS(id)
-  actionButton(
-    ns("skip"),
-    div(bsicons::bs_icon("skip-forward"), "Aufgabe überspringen"),
-    class = "btn btn-outline-secondary"
   )
 }
 
@@ -99,20 +78,6 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
       }
     })
 
-    # The skip button sits outside num_wrap (in the parent's action row), so
-    # it isn't hidden along with it for MC items — toggle it explicitly.
-    # Deliberately no req() on answer_mode here, unlike the observers above:
-    # the num -> MC transition must hide it too.
-    observe({
-      it <- item()
-      shinyjs::toggle(
-        "skip",
-        condition = nrow(it) == 1L &&
-          identical(it$answer_mode[1], "num") &&
-          !isTRUE(checked())
-      )
-    })
-
     output$feedback_ui <- renderUI({
       it <- item()
       req(nrow(it) == 1L, identical(it$answer_mode[1], "num"), isTRUE(checked()))
@@ -154,7 +119,7 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
       body_text <- if (res$category == "unmatched") {
         "Wir können anhand deiner Eingabe leider nicht nachvollziehen, wie du auf diese Zahl gekommen bist. Schau dir die Aufgabe noch einmal in Ruhe an oder sprich sie ggf. mit einer Betreuungsperson durch."
       } else if (res$category == "skip") {
-        "Aufgabe übersprungen."
+        SKIP_FEEDBACK
       } else {
         fb_text
       }
@@ -181,8 +146,7 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
 
     list(
       raw_answer = reactive(parse_numeric_input(input$num_value)),
-      ready = reactive(!is.na(parse_numeric_input(input$num_value))),
-      skip_requested = reactive(input$skip)
+      ready = reactive(!is.na(parse_numeric_input(input$num_value)))
     )
   })
 }

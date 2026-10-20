@@ -126,16 +126,12 @@ test_that("evaluate_answer returns 'correct' for the correct option", {
   expect_equal(evaluate_answer(item, 2L), "correct")
 })
 
-test_that("evaluate_answer returns 'skip' for the last option", {
-  item <- make_item(n_options = 4, correct = 1L)
-  # Last option (index 4) is always skip
-  expect_equal(evaluate_answer(item, 4L), "skip")
-})
-
-test_that("evaluate_answer returns 'incorrect' for wrong non-skip options", {
+test_that("evaluate_answer treats every wrong option as incorrect, incl. the last", {
   item <- make_item(n_options = 4, correct = 1L)
   expect_equal(evaluate_answer(item, 2L), "incorrect")
   expect_equal(evaluate_answer(item, 3L), "incorrect")
+  # No skip pseudo-option anymore: the last option is an ordinary answer
+  expect_equal(evaluate_answer(item, 4L), "incorrect")
 })
 
 # ── build_response_row ────────────────────────────────────────────────────────
@@ -160,19 +156,32 @@ test_that("build_response_row produces correct columns and types", {
   expect_false(row$skipped)
 })
 
-test_that("build_response_row marks skipped correctly", {
+test_that("build_response_row records an explicit skip", {
   item <- make_item(n_options = 4, correct = 1L)
   item$id_item <- 1L
   item$learning_area <- "Regression"
 
   row <- build_response_row(
     item,
-    answer_idx = 4L,
+    answer_idx = NA_integer_,
     user_id = "u",
-    session_token = "s"
+    session_token = "s",
+    skipped = TRUE
   )
   expect_true(row$skipped)
+  expect_true(is.na(row$selected_option))
   expect_true(is.na(row$bool_correct))
+})
+
+test_that("build_response_row never infers a skip from the last option", {
+  item <- make_item(n_options = 4, correct = 1L)
+  item$id_item <- 1L
+  item$learning_area <- "Regression"
+
+  row <- build_response_row(item, answer_idx = 4L, user_id = "u", session_token = "s")
+  expect_false(row$skipped)
+  expect_false(row$bool_correct)
+  expect_equal(row$selected_option, 4L)
 })
 
 test_that("build_response_row marks incorrect correctly", {

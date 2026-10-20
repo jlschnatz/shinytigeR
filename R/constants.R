@@ -31,6 +31,10 @@ ANSWER_COLORS <- list(
   skip = "#FFA000"
 )
 
+# Feedback shown after the "Aufgabe überspringen" button (MC and numeric items
+# alike). Skipping is an app action, not an answer option stored in the item DB.
+SKIP_FEEDBACK <- "Alles klar! Du hast die Aufgabe übersprungen."
+
 .db_dir <- function() {
   d <- Sys.getenv("TIGER_DB_DIR", unset = ".")
   normalizePath(d, mustWork = FALSE)

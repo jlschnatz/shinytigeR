@@ -2,16 +2,13 @@ mod_practice_ui <- function(id) {
   ns <- NS(id)
 
   # This UI is mounted once at login and never remounted (see train_view in
-  # server.R), so the server's observers always find mc_wrap/num_wrap/skip in
-  # the DOM and set the right visibility per item. The hidden() defaults here
-  # are only the pre-first-item state.
+  # server.R), so the server's observers always find mc_wrap/num_wrap in the
+  # DOM and set the right visibility per item. The hidden() default here is
+  # only the pre-first-item state.
   mc_ui <- div(id = ns("mc_wrap"), mod_mc_answer_ui(ns("answer_mc")))
   num_ui <- shinyjs::hidden(
     div(id = ns("num_wrap"), mod_numeric_answer_ui(ns("answer_num")))
   )
-  # The numeric skip button lives in the action row below, outside num_wrap;
-  # mod_numeric_answer_server() toggles it on its own.
-  skip_ui <- shinyjs::hidden(mod_numeric_answer_skip_ui(ns("answer_num")))
 
   div(
     class = "practice-wrap",
@@ -26,7 +23,7 @@ mod_practice_ui <- function(id) {
         # statically (never remounted per item); only their visibility is
         # toggled, and only the numeric module's post-check panel re-renders
         # via its own uiOutput. See mod_numeric_answer.R for why the numeric
-        # module's input/skip button specifically must stay a stable DOM node.
+        # module's input field specifically must stay a stable DOM node.
         div(
           class = "practice-answers-section",
           shiny::withMathJax(
@@ -45,7 +42,13 @@ mod_practice_ui <- function(id) {
       ),
       div(
         class = "d-flex gap-2",
-        skip_ui,
+        # Skipping is an app action for every item, not an answer option
+        # stored in the item DB. Shown/hidden together with "check".
+        actionButton(
+          ns("skip"),
+          div(bsicons::bs_icon("skip-forward"), "Aufgabe überspringen"),
+          class = "btn btn-outline-secondary"
+        ),
         shinyjs::disabled(
           actionButton(
             ns("check"),
@@ -220,6 +223,7 @@ mod_practice_server <- function(
         shinyjs::disable("check")
         shinyjs::hide("next_item")
         shinyjs::show("check")
+        shinyjs::show("skip")
       },
       ignoreInit = TRUE
     )
@@ -232,6 +236,7 @@ mod_practice_server <- function(
         shinyjs::disable("check")
         shinyjs::hide("next_item")
         shinyjs::show("check")
+        shinyjs::show("skip")
       },
       ignoreNULL = TRUE,
       ignoreInit = TRUE
@@ -247,6 +252,7 @@ mod_practice_server <- function(
       state$checked <- TRUE
 
       shinyjs::hide("check")
+      shinyjs::hide("skip")
       shinyjs::show("next_item")
 
       item <- as.list(current_item()[1, ])
@@ -298,15 +304,13 @@ mod_practice_server <- function(
       }
     })
 
-    # ── Explicit skip (numeric items only) ────────────────────────────────────
-    observeEvent(
-      num_answer$skip_requested(),
-      {
-        req(is_numeric_item(), !isTRUE(state$checked))
-        finish_check("skip")
-      },
-      ignoreInit = TRUE
-    )
+    # ── Skip (MC and numeric items) ───────────────────────────────────────────
+    # No ignoreInit needed: the button is never remounted (see train_view in
+    # server.R), and its initial value 0 is already ignored by ignoreNULL.
+    observeEvent(input$skip, {
+      req(nrow(current_item()) == 1L, !isTRUE(state$checked))
+      finish_check("skip")
+    })
 
     # ── Next item ─────────────────────────────────────────────────────────────
     observeEvent(input$next_item, {

@@ -155,11 +155,7 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
         feedbacks <- get_feedbackoptions(item)
         correct_idx <- parse_answer_correct(item$answer_correct)[1]
 
-        # Last option is always "Frage überspringen" (see get_answeroptions) —
-        # skipping isn't a meaningful choice in a read-only overview.
-        skip_idx <- length(choices)
-
-        rows <- lapply(seq_len(skip_idx - 1L), function(i) {
+        rows <- lapply(seq_along(choices), function(i) {
           is_correct <- show_answers && i == correct_idx
           suffix <- if (item$type_answer == "image") "img" else "txt"
           hi_class <- if (is_correct) paste0("correct_answer_", suffix) else ""
