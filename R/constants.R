@@ -31,31 +31,10 @@ ANSWER_COLORS <- list(
   skip = "#FFA000"
 )
 
-# Categorical palette for the interactive ability-trajectory chart (one color
-# per learning area, matching LEARNING_AREA_LEVELS order). Built from the
-# official 5-color Goethe University palette (blue/yellow/magenta/green/
-# orange) — but NOT via colorRampPalette() across all 5: interpolating
-# between non-adjacent hues (blue<->yellow, magenta<->green, ...) produces
-# muddy near-identical browns/olives regardless of color space (tried both
-# sRGB and Lab), because those pairs are colour-opponent. There are only 5
-# official hues for 7 areas, so slots 6-7 are lighter TINTS (same hue, higher
-# value/lower saturation via HSV) of two of the five, not new hues and not
-# blends. Blue and magenta were tinted specifically because they're the most
-# hue-isolated of the five (each ~130 degrees from its nearest neighbor,
-# vs. orange/yellow/green clustering within ~22 degrees of each other) — a
-# tint of an already-isolated hue is least likely to drift into that
-# crowded neighborhood. Kept viable at 7 series (beyond the CVD-safe cap of
-# ~3 for charts where any two lines can be adjacent) because the chart also
-# ships hover tooltips and a clickable legend as secondary encoding.
-LEARNING_AREA_COLORS <- c(
-  "#00618F", # blue          (official)
-  "#E3BA0F", # yellow        (official)
-  "#AD3B76", # magenta       (official)
-  "#737C45", # green         (official)
-  "#C96215", # orange        (official)
-  "#70BDE0", # light blue    (tint of blue)
-  "#E08BB7" # light magenta (tint of magenta)
-)
+# Line and marker color of the "Fähigkeitsverlauf" panels: a dark neutral that
+# stays readable on every COMPETENCY_SCALE background band (the primary blue
+# would vanish on the blue bands at the top of the scale).
+TRAJECTORY_COLOR <- "#2b3a4a"
 
 # Feedback shown after the "Aufgabe überspringen" button (MC and numeric items
 # alike). Skipping is an app action, not an answer option stored in the item DB.

@@ -888,6 +888,45 @@ test_that("dashboard: competency reads from the persisted ability snapshot", {
   })
 })
 
+test_that("dashboard: renders a trajectory panel for each area with saved estimates", {
+  data_item <- make_data_item()
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    user_path <- make_user_db("testuser", item_ids = 1:2, areas = c("Regression", "Regression"))
+    file.copy(user_path, DB_USERS())
+    theta <- setNames(rep(NA_real_, length(LEARNING_AREA_LEVELS)), LEARNING_AREA_LEVELS)
+    theta["Regression"] <- 0.4
+    ability_path <- make_ability_db("testuser", computed_at = 1700000000L, theta = theta)
+    con <- DBI::dbConnect(RSQLite::SQLite(), ability_path)
+    theta["Regression"] <- 0.9
+    DBI::dbAppendTable(con, "testuser", data.frame(
+      id_user = "testuser", id_session = "sess", computed_at = 1700086400L,
+      learning_area = LEARNING_AREA_LEVELS, theta = unname(theta), n_items = 3L
+    ))
+    DBI::dbDisconnect(con)
+    file.copy(ability_path, DB_ABILITY())
+
+    testServer(
+      mod_dashboard_server,
+      args = list(
+        data_item = data_item,
+        credentials = fake_credentials(),
+        write_trigger = reactiveVal(0L),
+        ability_computed_this_session = reactiveVal(FALSE)
+      ),
+      {
+        k <- match("Regression", LEARNING_AREA_LEVELS)
+        expect_match(output$dash_content$html, sprintf('id="%s"', session$ns(paste0("traj_", k))), fixed = TRUE)
+        widget <- jsonlite::fromJSON(output[[paste0("traj_", k)]], simplifyVector = FALSE)
+        ys <- unlist(lapply(widget$x$data, function(tr) if (identical(tr$mode, "markers")) tr$y))
+        expect_equal(ys, c(0.4, 0.9))
+      }
+    )
+  })
+})
+
 test_that("dashboard: refresh button is blocked once already computed this session", {
   data_item <- make_data_item()
   write_trigger <- reactiveVal(0L)

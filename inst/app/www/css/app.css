@@ -740,6 +740,77 @@
 }
 .ai-feedback-text p:last-child { margin-bottom: 0; }
 
+/* ── Dashboard — ability trajectory (small multiples) ───────────────────────── */
+/* The legend is the grid's 8th tile (.traj-legend-panel). Below 532px (two
+   260px columns + the 12px gap) the grid has one column and the tile would
+   land under all 7 charts, so the row above the grid (.traj-legend-top)
+   takes over. A container query, not a media query, so the swap happens
+   exactly when the grid itself drops to one column. */
+.traj-wrap { container-type: inline-size; }
+/* Columns of at least 260px and at least a quarter of the width, so there are
+   never more than 4: with 7 charts + the legend tile that gives 4 + 4 on wide
+   screens instead of 5 + 3. Below 4 * 260px + 3 gaps it drops to 3, 2, 1. */
+.traj-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(max(min(260px, 100%), calc((100% - 2.25rem) / 4)), 1fr));
+}
+.traj-legend-top { display: none; margin-bottom: 0.85rem; }
+@container (max-width: 531.98px) {
+  .traj-legend-top { display: block; }
+  .traj-wrap .traj-legend-panel { display: none; }
+}
+.traj-legend { font-size: 0.8rem; color: #5b6477; }
+.traj-legend-items { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; }
+.traj-legend-panel {
+  padding: 0.5rem 0.5rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+}
+/* In the tile: one level per line, spread like the bands of a chart */
+.traj-legend-panel .traj-legend-items {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  flex: 1;
+  max-height: 170px;
+  padding: 0.25rem 0 0.25rem 0.15rem;
+}
+.traj-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+/* Same tint as the panels' background bands (competency_band_shapes()) */
+.traj-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 3px;
+  border: 1px solid var(--seg);
+  background: color-mix(in srgb, var(--seg) 25%, white);
+}
+.traj-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.5rem 0.35rem;
+  background: #fff;
+  min-width: 0;
+}
+.traj-panel-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.traj-empty {
+  height: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
+  background: #f8f9fa;
+  color: #9aa1ab;
+  font-size: 0.85rem;
+}
+
 /* ── Dashboard — practice-behaviour stats ───────────────────────────────────── */
 .practice-stat {
   background: #f8f9fa;

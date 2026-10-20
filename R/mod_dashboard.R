@@ -175,22 +175,153 @@ ai_feedback_card <- function(feedback = NULL) {
 
 # Reshapes the raw db_ability.sqlite history (one row per learning area per
 # computed_at batch) into a plot-ready long data.frame: drops batches with no
-# usable theta for that area, adds a Date column and short area labels
-# ordered to match LEARNING_AREA_LEVELS (so facets render in canonical order).
+# usable theta for that area and adds POSIXct `time` and Date `date` columns.
+# The x axis uses `time`, not `date`: the login catch-up and the refresh button
+# often save two batches on the same day.
 ability_trajectory_data <- function(ability_raw) {
   ab <- ability_raw[!is.na(ability_raw$theta), ]
   if (nrow(ab) == 0L) {
     return(ab)
   }
-  ab$date <- as.Date(as.POSIXct(ab$computed_at, origin = "1970-01-01"))
-  short_levels <- names(LEARNING_AREA_LABELS)[
-    match(LEARNING_AREA_LEVELS, LEARNING_AREA_LABELS)
-  ]
-  ab$area_short <- factor(
-    names(LEARNING_AREA_LABELS)[match(ab$learning_area, LEARNING_AREA_LABELS)],
-    levels = short_levels
-  )
+  ab$time <- as.POSIXct(ab$computed_at, origin = "1970-01-01")
+  ab$date <- as.Date(ab$time)
   ab[order(ab$learning_area, ab$computed_at), ]
+}
+
+# y range of the trajectory panels: THETA_RANGE plus a little room, so markers
+# at the bounds (an all-correct or all-wrong start) aren't cut in half
+TRAJECTORY_Y_RANGE <- THETA_RANGE + c(-0.25, 0.25)
+
+# Background of every trajectory panel: one band per COMPETENCY_SCALE level
+# (the outer ones run to the panel edge) in its scale color, so a point reads
+# as "in which competency zone", the same scale as the strips in "Dein
+# Lernstand".
+competency_band_shapes <- function(opacity = 0.25) {
+  lapply(seq_len(nrow(COMPETENCY_SCALE)), function(k) {
+    list(
+      type = "rect", layer = "below", xref = "paper", x0 = 0, x1 = 1, yref = "y",
+      y0 = max(COMPETENCY_SCALE$lower[k], TRAJECTORY_Y_RANGE[1]),
+      y1 = min(COMPETENCY_SCALE$upper[k], TRAJECTORY_Y_RANGE[2]),
+      fillcolor = COMPETENCY_SCALE$color_hex[k], opacity = opacity,
+      line = list(width = 0)
+    )
+  })
+}
+
+# Shared time axis for all trajectory panels (so they line up), padded so the
+# first and last points aren't cut off at the panel edge.
+trajectory_x_range <- function(hist) {
+  r <- range(hist$time)
+  pad <- max(as.numeric(diff(r), units = "secs") * 0.06, 12 * 3600)
+  r + c(-pad, pad)
+}
+
+# One small-multiples panel: the trajectory of a single learning area (`d`,
+# rows of ability_trajectory_data() for that area) on the full theta range.
+# Markers show the saved estimates (hover: date + competency label), joined by
+# a plain line. Not smoothed: a lowess line visibly missed some of the points,
+# which read as an error; damping the jumps is the job of the displayed
+# estimate itself, not of the plot. No uncertainty is drawn here on purpose;
+# intervals belong to the detailed explanation of the current estimate.
+trajectory_panel_fig <- function(d, x_range) {
+  d <- d[order(d$time), ]
+  lbl <- COMPETENCY_SCALE$label[findInterval(d$theta, COMPETENCY_SCALE$lower)]
+  hover <- sprintf(
+    "%s<br><b>%s</b> (\u03b8 = %s)",
+    format_date_de(d$date), lbl,
+    formatC(d$theta, format = "f", digits = 2, decimal.mark = ",")
+  )
+  axis <- list(
+    title = "", fixedrange = TRUE, showgrid = FALSE, zeroline = FALSE,
+    showline = TRUE, linecolor = "#c8ccd1", mirror = TRUE
+  )
+  plotly::plot_ly() |>
+    plotly::add_lines(
+      x = d$time, y = d$theta, hoverinfo = "skip",
+      line = list(color = TRAJECTORY_COLOR, width = 2)
+    ) |>
+    plotly::add_markers(
+      x = d$time, y = d$theta, text = hover, hovertemplate = "%{text}<extra></extra>",
+      marker = list(color = TRAJECTORY_COLOR, size = 7, line = list(color = "white", width = 1))
+    ) |>
+    plotly::layout(
+      shapes = competency_band_shapes(),
+      showlegend = FALSE,
+      xaxis = c(axis, list(type = "date", range = x_range, tickformat = "%d.%m.", nticks = 4)),
+      yaxis = c(axis, list(range = TRAJECTORY_Y_RANGE, showticklabels = FALSE, ticks = "")),
+      margin = list(l = 4, r = 4, t = 4, b = 4),
+      dragmode = FALSE,
+      plot_bgcolor = "white",
+      paper_bgcolor = "rgba(0,0,0,0)"
+    ) |>
+    plotly::config(displayModeBar = FALSE, scrollZoom = FALSE)
+}
+
+# Legend of the competency zones (the panels' background bands), highest
+# level first so it lines up with the bands. `class` picks the variant: a row
+# above the grid ("traj-legend-top", only on screens too narrow for 2 columns)
+# or the tile that fills the free 8th grid cell ("traj-legend-panel").
+trajectory_legend <- function(class) {
+  ks <- rev(seq_len(nrow(COMPETENCY_SCALE)))
+  div(
+    class = paste("traj-legend", class),
+    `aria-hidden` = "true",
+    if (class == "traj-legend-panel") div(class = "traj-panel-title", "Kompetenzstufen"),
+    div(
+      class = "traj-legend-items",
+      lapply(ks, function(k) {
+        tags$span(
+          class = "traj-legend-item",
+          tags$span(class = "traj-swatch", style = sprintf("--seg:%s;", COMPETENCY_SCALE$color_hex[k])),
+          COMPETENCY_SCALE$label[k]
+        )
+      })
+    )
+  )
+}
+
+# The "Fähigkeitsverlauf" accordion panel: one small chart per learning area
+# in a wrapping grid of at most 4 columns (see .traj-grid in app.css: 4 on a
+# laptop, 2 on a tablet, 1 on a phone).
+# The legend is the grid's 8th tile, so with 7 areas it fills the otherwise
+# empty last cell at 4 and 2 columns; when the grid is down to 1 column it
+# would end up below all charts, so a CSS container query swaps it for a row
+# above the grid instead. `hist` is ability_trajectory_data().
+trajectory_section <- function(hist, ns) {
+  n_batches <- length(unique(hist$computed_at))
+  body <- if (n_batches < 2L) {
+    tags$p(
+      class = "text-muted mb-0",
+      "Dein Verlauf erscheint hier, sobald es mindestens zwei Schätzungen deines ",
+      "Lernstands gibt (höchstens eine neue pro Sitzung)."
+    )
+  } else {
+    panels <- lapply(seq_along(LEARNING_AREA_LEVELS), function(k) {
+      area <- LEARNING_AREA_LEVELS[k]
+      short <- names(LEARNING_AREA_LABELS)[match(area, LEARNING_AREA_LABELS)]
+      has_data <- any(hist$learning_area == area)
+      div(
+        class = "traj-panel",
+        div(class = "traj-panel-title", title = area, short),
+        if (has_data) {
+          plotly::plotlyOutput(ns(paste0("traj_", k)), height = "170px")
+        } else {
+          div(class = "traj-empty", "Noch keine Schätzung")
+        }
+      )
+    })
+    div(
+      class = "traj-wrap",
+      trajectory_legend("traj-legend-top"),
+      div(class = "traj-grid", panels, trajectory_legend("traj-legend-panel"))
+    )
+  }
+  bslib::accordion_panel(
+    title = "Fähigkeitsverlauf",
+    value = "trajectory",
+    icon = bsicons::bs_icon("graph-up-arrow"),
+    body
+  )
 }
 
 # ── UI ────────────────────────────────────────────────────────────────────────
@@ -303,7 +434,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       fa <- first_attempts()
       comp <- competency()
       can_refresh <- can_refresh_ability()
-      show_trajectory <- length(unique(ability_trajectory_data(ability_history())$computed_at)) >= 2L
 
       # ── Aggregate stats ──────────────────────────────────────────────────────
       n_total <- nrow(ud)
@@ -470,26 +600,16 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           )
         ),
 
-        # ── Ability trajectory ────────────────────────────────────────────────
-        if (show_trajectory) {
-          bslib::card(
-            class = "mb-4",
-            bslib::card_header(
-              div(
-                class = "d-flex align-items-center gap-2",
-                bsicons::bs_icon("graph-up-arrow"),
-                tags$b("Fähigkeitsverlauf"),
-                tags$span(
-                  class = "text-muted small ms-1",
-                  "(θ je gespeicherter Schätzung · Klick auf die Legende blendet Bereiche aus)"
-                )
-              )
-            ),
-            bslib::card_body(
-              plotly::plotlyOutput(session$ns("ability_trajectory_chart"), height = "440px")
-            )
+        # ── Ability trajectory (expandable, open by default) ──────────────────
+        div(
+          class = "mb-4",
+          bslib::accordion(
+            id = session$ns("dash_sections"),
+            open = "trajectory",
+            multiple = TRUE,
+            trajectory_section(trajectory_hist(), session$ns)
           )
-        },
+        ),
 
         # ── Bloom breakdown + practice behaviour ─────────────────────────────
         div(
@@ -664,117 +784,21 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       )
     })
 
-    # ── Ability trajectory chart (interactive) ────────────────────────────────
-    # Single overlaid panel, one line per learning area — chosen over facets
-    # specifically so it stays usable on a phone screen: a static faceted
-    # ggplot doesn't reflow (the browser just scales a fixed-size raster
-    # image down), so 7 narrow columns just fail differently than one busy
-    # panel would. plotly renders a real responsive HTML widget instead.
-    # 7 crossing lines sharing one panel is more than color alone can safely
-    # disambiguate (see LEARNING_AREA_COLORS in constants.R), which is why
-    # this relies on two secondary encodings that only an interactive chart
-    # can offer: a unified hover (exact θ for every visible area at that
-    # date, color-matched via hovertemplate) and a clickable legend to
-    # declutter on demand (click hides a series, double-click isolates it —
-    # plotly's default trace-click behavior, not custom code). No confidence
-    # band is drawn yet: snapshots now store a standard error (`se`, see
-    # sem_1pl() in R/irt.R), but ones saved before that change have none.
-    #
-    # Two layout details needed explicit tuning vs. plotly's defaults, found
-    # by testing at a real 390px mobile viewport (not just a resized desktop
-    # window — that does NOT reflow the same way): (1) the top margin has to
-    # be set explicitly or the y=3 tick gets clipped; (2) plotly has no
-    # built-in paginated/scrolling legend the way some other JS chart libs
-    # do, so a 7-entry horizontal legend just wraps onto multiple lines on a
-    # narrow screen — `plotlyOutput`'s height above is sized with room for
-    # that, rather than fighting plotly for a compact legend it doesn't
-    # support natively.
-    output$ability_trajectory_chart <- plotly::renderPlotly({
-      hist <- ability_trajectory_data(ability_history())
-      req(length(unique(hist$computed_at)) >= 2L)
+    # ── Ability trajectory: one small chart per learning area ────────────────
+    # Small multiples instead of one chart with 7 crossing lines: each panel
+    # stays readable without a color per area, and the panels wrap with the
+    # screen width (see trajectory_section()). Still plotly rather than
+    # renderPlot: a server-rendered image doesn't reflow on a phone, it just
+    # gets scaled down.
+    trajectory_hist <- reactive(ability_trajectory_data(ability_history()))
 
-      # Connecting line is lowess-smoothed per area when there's enough data
-      # to make that meaningful; otherwise falls back to a plain straight
-      # connect-the-dots line. Ability snapshots are saved at most once per
-      # login (see ability_computed_this_session in R/server.R), so most
-      # students will only ever have a handful of points — lowess on 2-3
-      # points isn't a real smooth, it just reproduces (or barely perturbs)
-      # the straight line, so there's no point special-casing it away; 4 is
-      # the practical minimum for the smooth to show real local curvature
-      # rather than a straight-line-in-disguise.
-      # Markers always show the true recorded theta, never the smoothed
-      # value, and carry the hover tooltip; the line is a pure visual trend
-      # overlay (hoverinfo = "skip") grouped with its markers via
-      # legendgroup so the legend still toggles both together as one series.
-      min_n_smooth <- 4L
-      areas_present <- levels(hist$area_short)
-      fig <- plotly::plot_ly()
-      for (area in areas_present) {
-        d <- hist[hist$area_short == area, ]
-        if (nrow(d) == 0L) next
-        d <- d[order(d$date), ]
-        col <- LEARNING_AREA_COLORS[match(area, levels(hist$area_short))]
-
-        if (nrow(d) >= min_n_smooth) {
-          sm <- stats::lowess(as.numeric(d$date), d$theta)
-          line_x <- as.Date(sm$x, origin = "1970-01-01")
-          line_y <- sm$y
-        } else {
-          line_x <- d$date
-          line_y <- d$theta
-        }
-
-        fig <- fig |>
-          plotly::add_lines(
-            x = line_x,
-            y = line_y,
-            line = list(color = col, width = 2.2),
-            legendgroup = area,
-            showlegend = FALSE,
-            hoverinfo = "skip",
-            name = area
-          ) |>
-          plotly::add_markers(
-            x = d$date,
-            y = d$theta,
-            marker = list(color = col, size = 7, line = list(color = "white", width = 1)),
-            legendgroup = area,
-            showlegend = TRUE,
-            name = area,
-            hovertemplate = "%{y:.2f}<extra>%{fullData.name}</extra>"
-          )
-      }
-
-      fig |>
-        plotly::layout(
-          xaxis = list(
-            title = "",
-            showline = TRUE,
-            linecolor = "#c8ccd1",
-            mirror = TRUE,
-            showgrid = TRUE,
-            gridcolor = "#eef1f4",
-            zeroline = FALSE
-          ),
-          yaxis = list(
-            title = "Fähigkeit (θ)",
-            range = c(-3, 3),
-            showline = TRUE,
-            linecolor = "#c8ccd1",
-            mirror = TRUE,
-            showgrid = TRUE,
-            gridcolor = "#eef1f4",
-            zeroline = TRUE,
-            zerolinecolor = "#c8ccd1",
-            zerolinewidth = 1
-          ),
-          plot_bgcolor = "#fcfdfe",
-          hovermode = "x unified",
-          dragmode = FALSE,
-          legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.25),
-          margin = list(t = 30, b = 10)
-        ) |>
-        plotly::config(displayModeBar = FALSE, scrollZoom = FALSE)
+    lapply(seq_along(LEARNING_AREA_LEVELS), function(k) {
+      output[[paste0("traj_", k)]] <- plotly::renderPlotly({
+        hist <- trajectory_hist()
+        d <- hist[hist$learning_area == LEARNING_AREA_LEVELS[k], ]
+        req(nrow(d) > 0L)
+        trajectory_panel_fig(d, trajectory_x_range(hist))
+      })
     })
   })
 }

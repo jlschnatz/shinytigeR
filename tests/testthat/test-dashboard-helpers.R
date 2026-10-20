@@ -99,7 +99,7 @@ test_that("ability_trajectory_data drops rows with NA theta", {
   expect_true(all(!is.na(result$theta)))
 })
 
-test_that("ability_trajectory_data adds a Date column and short, ordered area labels", {
+test_that("ability_trajectory_data adds time and date columns", {
   ab <- data.frame(
     computed_at = c(1700000000L, 1700000000L),
     learning_area = c(LEARNING_AREA_LEVELS[3], LEARNING_AREA_LEVELS[1]),
@@ -108,13 +108,9 @@ test_that("ability_trajectory_data adds a Date column and short, ordered area la
     stringsAsFactors = FALSE
   )
   result <- ability_trajectory_data(ab)
+  expect_s3_class(result$time, "POSIXct")
   expect_s3_class(result$date, "Date")
-  expect_s3_class(result$area_short, "factor")
-  # Factor levels follow LEARNING_AREA_LEVELS canonical order, not input order
-  expect_equal(
-    levels(result$area_short)[1:3],
-    names(LEARNING_AREA_LABELS)[match(LEARNING_AREA_LEVELS[1:3], LEARNING_AREA_LABELS)]
-  )
+  expect_equal(as.numeric(result$time), c(1700000000, 1700000000))
 })
 
 test_that("ability_trajectory_data handles an all-NA input", {
@@ -127,6 +123,80 @@ test_that("ability_trajectory_data handles an all-NA input", {
   )
   result <- ability_trajectory_data(ab)
   expect_equal(nrow(result), 0L)
+})
+
+# ── trajectory small multiples ────────────────────────────────────────────────
+
+traj_hist <- function(times = c(1700000000, 1700086400), areas = LEARNING_AREA_LEVELS[1], theta = 0.3) {
+  ab <- expand.grid(computed_at = as.integer(times), learning_area = areas, stringsAsFactors = FALSE)
+  ab$theta <- rep_len(theta, nrow(ab))
+  ab$n_items <- 3L
+  ability_trajectory_data(ab)
+}
+
+test_that("competency_band_shapes fills the panel with one contiguous band per level", {
+  bands <- competency_band_shapes()
+  expect_length(bands, nrow(COMPETENCY_SCALE))
+  y0 <- vapply(bands, `[[`, numeric(1), "y0")
+  y1 <- vapply(bands, `[[`, numeric(1), "y1")
+  expect_equal(y0[1], TRAJECTORY_Y_RANGE[1])
+  expect_equal(y1[length(y1)], TRAJECTORY_Y_RANGE[2])
+  expect_true(all(TRAJECTORY_Y_RANGE[1] < THETA_RANGE[1], TRAJECTORY_Y_RANGE[2] > THETA_RANGE[2]))
+  expect_equal(y0[-1], y1[-length(y1)])
+  expect_equal(vapply(bands, `[[`, character(1), "fillcolor"), COMPETENCY_SCALE$color_hex)
+})
+
+test_that("trajectory_x_range pads the time range, also for a single day", {
+  h <- traj_hist()
+  r <- trajectory_x_range(h)
+  expect_true(r[1] < min(h$time) && r[2] > max(h$time))
+  same_day <- traj_hist(times = c(1700000000, 1700003600))
+  r2 <- trajectory_x_range(same_day)
+  expect_gte(as.numeric(diff(r2), units = "hours"), 24)
+})
+
+test_that("trajectory_panel_fig plots the saved estimates with the competency label on hover", {
+  h <- traj_hist(theta = c(-0.5, 1.2))
+  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
+  markers <- Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]
+  expect_equal(as.numeric(markers$y), c(-0.5, 1.2))
+  line <- Filter(function(tr) identical(tr$mode, "lines"), b$x$data)[[1]]
+  expect_equal(as.numeric(line$y), c(-0.5, 1.2)) # not smoothed
+  expect_match(markers$text[1], "Basis")
+  expect_match(markers$text[2], "Fortgeschritten")
+  expect_match(markers$text[2], "1,20", fixed = TRUE)
+  expect_length(b$x$layout$shapes, nrow(COMPETENCY_SCALE))
+})
+
+test_that("trajectory_section asks for a second estimate before showing panels", {
+  one <- traj_hist(times = 1700000000)
+  html <- as.character(trajectory_section(one, shiny::NS("d")))
+  expect_match(html, "mindestens zwei", fixed = TRUE)
+  expect_no_match(html, "traj-panel", fixed = TRUE)
+})
+
+test_that("trajectory_section shows one panel per area, charts only where there is data", {
+  h <- traj_hist(areas = LEARNING_AREA_LEVELS[c(1, 3)])
+  html <- as.character(trajectory_section(h, shiny::NS("d")))
+  expect_equal(lengths(regmatches(html, gregexpr('class="traj-panel"', html))), length(LEARNING_AREA_LEVELS))
+  expect_match(html, 'id="d-traj_1"', fixed = TRUE)
+  expect_match(html, 'id="d-traj_3"', fixed = TRUE)
+  expect_no_match(html, 'id="d-traj_2"', fixed = TRUE)
+  expect_equal(
+    lengths(regmatches(html, gregexpr("Noch keine Schätzung", html, fixed = TRUE))),
+    length(LEARNING_AREA_LEVELS) - 2L
+  )
+})
+
+test_that("trajectory_section puts the legend in the grid after the panels, plus a top variant", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  expect_match(html, "traj-legend traj-legend-top", fixed = TRUE)
+  last_panel <- max(gregexpr('class="traj-panel"', html, fixed = TRUE)[[1]])
+  expect_gt(regexpr("traj-legend-panel", html, fixed = TRUE), last_panel)
+  # Highest level first, like the bands in the charts
+  legend <- regmatches(html, regexpr("traj-legend-panel.*", html))
+  pos <- vapply(COMPETENCY_SCALE$label, function(l) regexpr(l, legend, fixed = TRUE), integer(1))
+  expect_true(all(diff(pos) < 0))
 })
 
 # ── certainty (label probability → dots) ──────────────────────────────────────
