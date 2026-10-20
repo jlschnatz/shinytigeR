@@ -1,35 +1,17 @@
-mod_practice_ui <- function(id, data_item, practice_ids) {
+mod_practice_ui <- function(id) {
   ns <- NS(id)
 
-  # Which of mc_wrap/num_wrap should be visible for the FIRST item of this
-  # queue, baked directly into the initial HTML. This can't be left to the
-  # server's observe() (below) alone: that observe() and this UI function are
-  # two separate reactive contexts that both react to practice_ids() but have
-  # no dependency edge between them, so their relative order within the same
-  # flush is unspecified. If the observe()'s shinyjs::show()/hide() messages
-  # for mc_wrap/num_wrap happen to be processed client-side before this UI's
-  # HTML has actually been inserted into the DOM, jQuery finds no matching
-  # element and the message is silently dropped — leaving whichever default
-  # was baked into the HTML (both visible, if neither is pre-hidden here).
-  # Item-to-item transitions later (via "Weiter") don't have this problem —
-  # the DOM already exists by then — so only the *first* item needs this.
-  ids <- practice_ids()
-  first_is_num <- FALSE
-  if (length(ids) > 0L) {
-    row <- data_item[data_item$id_item == ids[1], , drop = FALSE]
-    if (nrow(row) == 1L) first_is_num <- identical(as.character(row$answer_mode[1]), "num")
-  }
+  # This UI is mounted once at login and never remounted (see train_view in
+  # server.R), so the server's observers always find mc_wrap/num_wrap/skip in
+  # the DOM and set the right visibility per item. The hidden() defaults here
+  # are only the pre-first-item state.
   mc_ui <- div(id = ns("mc_wrap"), mod_mc_answer_ui(ns("answer_mc")))
-  num_ui <- div(id = ns("num_wrap"), mod_numeric_answer_ui(ns("answer_num")))
-  # The numeric skip button lives in the action row below, outside num_wrap,
-  # so it needs the same first-item pre-hiding treatment on its own.
-  skip_ui <- mod_numeric_answer_skip_ui(ns("answer_num"))
-  if (first_is_num) {
-    mc_ui <- shinyjs::hidden(mc_ui)
-  } else {
-    num_ui <- shinyjs::hidden(num_ui)
-    skip_ui <- shinyjs::hidden(skip_ui)
-  }
+  num_ui <- shinyjs::hidden(
+    div(id = ns("num_wrap"), mod_numeric_answer_ui(ns("answer_num")))
+  )
+  # The numeric skip button lives in the action row below, outside num_wrap;
+  # mod_numeric_answer_server() toggles it on its own.
+  skip_ui <- shinyjs::hidden(mod_numeric_answer_skip_ui(ns("answer_num")))
 
   div(
     class = "practice-wrap",

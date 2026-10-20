@@ -215,21 +215,30 @@ All modules are registered **inside** an `observeEvent(credentials()$user_auth, 
 
 ### Train panel view switching
 
-The train panel renders the selector, practice, or inspect UI dynamically. `inspect_id` takes priority — if a student has looked up an item by ID, that overview shows even if a practice queue also happens to be set:
+All three views (selector, practice, inspect) are mounted **once** at login inside a `bslib::navset_hidden(id = "train_nav")` and then only switched with `bslib::nav_select()` — never remounted. `inspect_id` takes priority — if a student has looked up an item by ID, that overview shows even if a practice queue also happens to be set:
 
 ```r
-output$train_view <- renderUI({
-  if (!is.null(inspect_id()))  mod_inspect_ui("inspect_1")
-  else if (is.null(practice_ids())) mod_selector_ui("selector_1", data_item)
-  else                               mod_practice_ui("practice_1")
+output$train_view <- renderUI(            # no reactive deps -> renders once
+  bslib::navset_hidden(id = "train_nav", selected = "selector",
+    nav_panel_hidden("selector", mod_selector_ui("selector_1", data_item)),
+    nav_panel_hidden("practice", mod_practice_ui("practice_1")),
+    nav_panel_hidden("inspect",  mod_inspect_ui("inspect_1"))))
+outputOptions(output, "train_view", suspendWhenHidden = FALSE)
+
+observe({
+  view <- if (!is.null(inspect_id())) "inspect"
+          else if (is.null(practice_ids())) "selector" else "practice"
+  bslib::nav_select("train_nav", view)
 })
 ```
 
-All three module **servers** are registered once at login time and remain active; only the UI toggles.
+It's a `renderUI` (not static in `app_ui`) only because `mod_selector_ui()` needs `data_item`. All three module **servers** are registered once at login time and remain active; only the visible panel changes.
+
+> **Don't switch back to a `renderUI` that remounts views on `practice_ids()`/`inspect_id()`.** That was the old design and caused a race: the remount and the module servers' `shinyjs` show/hide observers are separate reactive contexts with no ordering between them, so show/hide messages for the first practice item could reach the browser before its HTML existed and be silently dropped. With permanently mounted views the target DOM always exists, and module `actionButton`s are never recreated (so no resend-`0` quirk, see `item_id_badge()`). Consequence: views keep their state across switches — a module must reset its own state when its queue/id changes (e.g. `mod_practice_server`'s `observeEvent(practice_ids(), …)` resetting `check`/`next_item`; `mod_numeric_answer_server` clearing its field on item change), it can't rely on fresh HTML.
 
 ### Answer-mode dispatch inside `mod_practice.R`
 
-Items are answered one of two ways, controlled by `db_item.sqlite`'s `answer_mode` column (`"mc"` or `"num"`): a multiple-choice radio group, or a typed numeric value matched against per-option value ranges (see "Numeric item rules" under Databases). `mod_practice.R` doesn't render either directly — it composes two child modules, **`mod_mc_answer.R`** and **`mod_numeric_answer.R`**, following the same "register once, toggle visibility" pattern as the top-level modules above (see `R/mod_practice.R` below for why visibility, not remounting, and why the very first item of a session needed special handling to avoid a race).
+Items are answered one of two ways, controlled by `db_item.sqlite`'s `answer_mode` column (`"mc"` or `"num"`): a multiple-choice radio group, or a typed numeric value matched against per-option value ranges (see "Numeric item rules" under Databases). `mod_practice.R` doesn't render either directly — it composes two child modules, **`mod_mc_answer.R`** and **`mod_numeric_answer.R`**, following the same "register once, toggle visibility" pattern as the top-level modules above (see `R/mod_practice.R` below for why visibility, not remounting).
 
 ---
 
@@ -338,7 +347,7 @@ Below the area list, a second `bslib::card` (same `card_header` + `card_body` pa
 
 ### `R/mod_practice.R`
 
-`mod_practice_ui(id, data_item, practice_ids)` — unlike other module UI functions, this one takes `data_item`/`practice_ids`, not just `id`. It needs them to bake the correct initial answer-mode visibility directly into the HTML for the *first* item of a queue (see the race-condition note below) — `mod_selector_ui(id, data_item)` already sets the precedent for a module UI function taking more than an id.
+`mod_practice_ui(id)` — mounted once at login and never remounted (see "Train panel view switching" above), so it holds no per-item or first-item state; it only sets the pre-first-item defaults (`num_wrap` and the skip button `shinyjs::hidden()`).
 
 Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 
@@ -346,8 +355,6 @@ Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 - **`output$progress_bar`** — also shows the current item's `id_item` next to "Aufgabe X von Y", so a student stuck on a question can report its ID (e.g. to a lecturer) without needing the separate lookup flow in `mod_selector`. Built with `item_id_badge()` — same component and behaviour as `mod_inspect.R`'s.
 
 **Answer rendering is delegated**, not inline. `mod_practice_server` registers both `mod_mc_answer_server` and `mod_numeric_answer_server` as children — always both, regardless of the current item's mode, same "register once" pattern as the top-level modules — and the UI mounts both `mod_mc_answer_ui("answer_mc")`/`mod_numeric_answer_ui("answer_num")` inside `div(id=ns("mc_wrap"), ...)`/`div(id=ns("num_wrap"), ...)` wrappers. Only one is ever visible; `mod_practice_server` toggles that via `shinyjs::show()`/`hide()` on `mc_wrap`/`num_wrap` in an `observe()` keyed on the current item's `answer_mode`. Neither wrap is remounted per item — see `R/mod_numeric_answer.R` below for why that matters specifically for the numeric module's skip button.
-
-> **Race condition, already hit and fixed once — don't reintroduce it.** `output$train_view`'s `renderUI` in `server.R` (which inserts `mod_practice_ui(...)` into the DOM) and the `observe()` above (which sends the `mc_wrap`/`num_wrap` show/hide messages) are two *separate* reactive contexts that both react to `practice_ids()`, with no dependency edge between them — so their relative evaluation order within the same flush is unspecified. If the show/hide messages for the first item of a new practice session are processed by the browser before that item's HTML has actually been inserted, `shinyjs` silently no-ops (the target element doesn't exist yet). This only ever affects the *first* item of a session (later "Weiter" transitions are safe — the DOM already exists by then), and it's exactly why `mod_practice_ui()` computes the first item's `answer_mode` itself and pre-hides the inactive wrap with `shinyjs::hidden()` directly in the initial HTML, rather than relying on that observer for the first render.
 
 **Child-module contract** (`mod_mc_answer_server`/`mod_numeric_answer_server`, see their own files): each takes `item` (reactive single-row item `data.frame`), `checked` (reactive logical), `result` (reactive list) from the parent, and returns `list(raw_answer, ready, skip_requested)`. The children are pure UI/input components — they render and report the raw input; `mod_practice.R` owns evaluation (`evaluate_answer()`/`evaluate_numeric_answer()`) and the DB write, so scoring logic lives in one place, not duplicated per answer mode.
 
@@ -369,7 +376,7 @@ Child modules of `mod_practice.R` (see above for the contract and dispatch patte
 `mod_numeric_answer.R` is different in three ways:
 
 - The input is a plain **text** field (not `type="number"`), so both `"3.5"` and `"3,5"` are typeable; `parse_numeric_input()` normalizes the locale.
-- It has a dedicated **skip button** (`skip_requested` in the return contract), since there's no last-radio-option slot. The button's UI is a separate function, `mod_numeric_answer_skip_ui(id)`, which `mod_practice_ui()` places in its action-button row left of "Antwort prüfen" (called with the same `ns("answer_num")` id, so `input$skip` still belongs to the numeric module). Because it sits outside `num_wrap`, it gets its own first-item pre-hiding in `mod_practice_ui()` and its own `shinyjs::toggle()` observer in `mod_numeric_answer_server()` (visible only for an unchecked numeric item).
+- It has a dedicated **skip button** (`skip_requested` in the return contract), since there's no last-radio-option slot. The button's UI is a separate function, `mod_numeric_answer_skip_ui(id)`, which `mod_practice_ui()` places in its action-button row left of "Antwort prüfen" (called with the same `ns("answer_num")` id, so `input$skip` still belongs to the numeric module). Because it sits outside `num_wrap`, it gets its own `shinyjs::toggle()` observer in `mod_numeric_answer_server()` (visible only for an unchecked numeric item).
 - **Its input field and skip button are static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — only its post-check feedback panel (`output$feedback_ui`) re-renders. After check, the input row stays visible (like MC's radios): the field is `shinyjs::disable()`d with the typed value kept, gets a `.numeric-result-*` border class, and the feedback card renders below it; all of that is reset on the next item. A freshly recreated `actionButton` resends its client-side reset value (`0`) on the next real render, which Shiny then treats as a genuine click if the server's last remembered value was nonzero — the same quirk documented on `item_id_badge()` in `utils.R`. Keeping the skip button's DOM node stable across item changes (clearing the text field and toggling visibility instead of remounting) avoids that entirely.
 
 The **UI itself** is a purpose-built `.numeric-answer-card` (see CSS table below) — deliberately not styled to reuse MC's `.answer-option` list-row classes, since a single numeric field isn't a list of choices and looked like a bolted-on afterthought when it borrowed that styling.
