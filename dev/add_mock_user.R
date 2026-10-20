@@ -99,20 +99,20 @@ if (DO_IRT_BACKFILL && any(missing)) {
 items <- DBI::dbGetQuery(con_i, "SELECT * FROM item_db")
 DBI::dbDisconnect(con_i)
 
-# Number of answer options per item; the last one is always "Überspringen"
+# Number of answer options per item
 opt_cols <- grep("^answeroption_0[1-6]$", names(items), value = TRUE)
 n_opts <- rowSums(!is.na(items[, opt_cols, drop = FALSE]) & items[, opt_cols, drop = FALSE] != "")
 
 # One response row per (item index, outcome), encoded the way the app's
-# build_response_row() does: skip = last option, bool_correct NA.
+# build_response_row() does: a skip has no selected option and bool_correct NA.
 make_rows <- function(i, outcome, dt) {
   # answer_correct is text and may list several options ("1;2"); use the first
   correct_opt <- as.integer(strsplit(as.character(items$answer_correct[i]), ";")[[1]][1])
-  wrong_opt <- setdiff(seq_len(n_opts[i] - 1L), correct_opt)[1]
+  wrong_opt <- setdiff(seq_len(n_opts[i]), correct_opt)[1]
   selected <- switch(outcome,
     correct = correct_opt,
     incorrect = wrong_opt,
-    skip = as.integer(n_opts[i])
+    skip = NA_integer_
   )
   data.frame(
     id_user = MOCK_USER,
