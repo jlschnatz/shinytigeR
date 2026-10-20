@@ -438,13 +438,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       # ── Aggregate stats ──────────────────────────────────────────────────────
       n_total <- nrow(ud)
       n_unique <- nrow(fa)
-      n_correct <- sum(fa$bool_correct == TRUE, na.rm = TRUE)
-      n_skipped <- sum(ud$skipped == TRUE, na.rm = TRUE)
-      pct_correct <- if (n_unique > 0L) {
-        round(100 * n_correct / n_unique)
-      } else {
-        0L
-      }
 
       all_dates <- unique(ud$date)
       n_days <- length(all_dates)
@@ -479,43 +472,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       )
 
       tagList(
-        # ── Value boxes ──────────────────────────────────────────────────────────
-        div(
-          class = "row g-3 mb-4",
-          div(
-            class = "col-sm-4",
-            bslib::value_box(
-              title = "Geübt an",
-              value = sprintf(
-                "%d Tag%s",
-                n_days,
-                if (n_days == 1) "" else "en"
-              ),
-              showcase = bsicons::bs_icon("calendar-check"),
-              theme = "primary"
-            )
-          ),
-          div(
-            class = "col-sm-4",
-            bslib::value_box(
-              title = "Einmalige Aufgaben",
-              value = n_unique,
-              showcase = bsicons::bs_icon("list-check"),
-              theme = bslib::value_box_theme(bg = "#285f8a", fg = "white")
-            )
-          ),
-          div(
-            class = "col-sm-4",
-            bslib::value_box(
-              title = "Korrekt (Erstversuche)",
-              value = sprintf("%d%%", pct_correct),
-              showcase = bsicons::bs_icon("check-circle-fill"),
-              theme = bslib::value_box_theme(bg = "#00618f", fg = "white")
-            )
-          )
-        ),
-
-        # ── Two-column: competency map + recommendations ──────────────────────
+        # ── Top row: competency map + AI feedback ─────────────────────────────
         div(
           class = "row g-3 mb-4",
 
