@@ -31,6 +31,13 @@ mod_mc_answer_server <- function(id, item, checked, result) {
       it <- as.list(it[1, ])
       choices <- get_answeroptions(it)
 
+      # Re-typeset LaTeX after every render: after the check only this output
+      # re-renders (not the stimulus), so the feedback's math would stay raw
+      session$onFlushed(
+        function() session$sendCustomMessage("mathjax_typeset", TRUE),
+        once = TRUE
+      )
+
       if (!isTRUE(checked())) {
         radio_opts <- lapply(seq_along(choices), function(i) {
           id_i <- paste0(ns("answer"), "_", i)
