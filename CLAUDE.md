@@ -260,7 +260,8 @@ Single source of truth for:
 | `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
 | `SKIP_FEEDBACK` | `character` | Feedback text after the skip button, MC and numeric alike (skipping isn't stored in the item DB) |
-| `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: bounds of `estimate_theta()`, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
+| `EAP_PRIOR_MEAN` / `EAP_PRIOR_SD` | `numeric` | 0 and 1: normal prior of the EAP ability estimate (`R/irt.R`); a smaller SD makes early estimates more conservative |
+| `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: the grid `estimate_theta()` integrates over, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
 | `CERTAINTY_HIGH` / `CERTAINTY_MED` | `numeric` | 2/3 and 1/3: cutoffs mapping the label probability to 3/2/1 certainty dots (IPCC calibrated probability language) |
 | `COMPETENCY_SCALE` | `data.frame` | θ interval → competency label + color for the dashboard's "Dein Lernstand" card — see `R/mod_dashboard.R` below |
 | `TRAJECTORY_COLOR` | `character` | Line/marker color of the "Fähigkeitsverlauf" panels — a dark neutral that stays readable on every competency band |
@@ -299,12 +300,13 @@ One-parameter logistic (1PL / Rasch) IRT model for estimating student ability. S
 | Function | Description |
 |---|---|
 | `irf_1pl(theta, b)` | Item response probability: `plogis(theta - b)` |
-| `iteminfo_1pl(theta, b)` | Item information `P * (1 - P)` (max 0.25 at θ = b) |
-| `estimate_theta(responses, a, b)` | MLE via L-BFGS-B (`optim`), bounded to `THETA_RANGE` (`[-3, 3]`). Returns `NA` on error |
-| `sem_1pl(theta, b)` | Standard error of the estimate: `1 / sqrt(sum(iteminfo_1pl(θ̂, b)))` |
-| `prob_in_interval(theta, se, lower, upper)` | P(true θ ∈ [lower, upper)) under the normal approximation N(θ̂, SE²); drives the dashboard's certainty dots |
+| `theta_posterior(responses, b)` | Posterior of θ on `THETA_GRID` (241 points over `THETA_RANGE`): N(`EAP_PRIOR_MEAN`, `EAP_PRIOR_SD`²) prior × 1PL likelihood, normalized |
+| `estimate_theta(responses, b)` | **EAP** estimate: `list(theta, se)` = posterior mean and posterior SD. Finite for all-correct/all-wrong patterns and pulled towards the prior mean with few responses (so early estimates don't jump around). Both `NA` for no/NA difficulties |
+| `prob_in_interval(theta, se, lower, upper)` | P(true θ ∈ [lower, upper)) under the normal approximation N(EAP, posterior SD²) of the posterior; drives the dashboard's certainty dots and the 80 % interval line |
 | `estimate_competency(responses, items)` | Runs `estimate_theta` per learning area. Returns a `data.frame` with columns `learning_area`, `theta`, `se`, `n_items` |
 | `compute_and_save_ability(user_id, session_token, items)` | Pulls the user's full response history, drops skipped responses, then dedupes to the **latest non-skipped attempt per item** via `latest_attempts()` (so an item answered and later skipped counts with its last real answer, instead of dropping out) (`R/utils.R`), runs `estimate_competency()`, and persists the result to `db_ability.sqlite` via `db_write_ability()`. The single call site both the login-time auto-check (`R/server.R`) and the dashboard's refresh button (`R/mod_dashboard.R`) use — see that module's section below for the full trigger/persistence design |
+
+**Why EAP, not MLE:** the dashboard states probabilities ("liegt mit 80 % Wahrscheinlichkeit", the certainty dots). Those are posterior statements; around an MLE ± z·SE they'd be a confidence interval, which doesn't mean that. Only θ and the posterior SD are stored in `db_ability.sqlite`, so intervals use the normal approximation — checked against the exact grid quantiles, the 80 % bounds differ by ≤ 0.04 θ even for 1 item or 30/30 correct.
 
 The difficulty `b` comes from the `irt_diff` column in `db_item.sqlite`. Items with a missing `irt_diff` are silently excluded from estimation. If the difficulties were calibrated under a 2PL model, they are not exactly Rasch difficulties; recalibrating them under 1PL (item authoring lives in `../tigertools`) would make the estimates consistent.
 

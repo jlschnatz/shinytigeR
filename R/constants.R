@@ -68,6 +68,12 @@ COMPETENCY_SCALE <- data.frame(
   stringsAsFactors = FALSE
 )
 
+# Normal prior of the EAP ability estimate (estimate_theta() in R/irt.R). The
+# item difficulties are calibrated so that 0 is an average student; with few
+# responses the estimate is pulled towards the prior mean.
+EAP_PRIOR_MEAN <- 0
+EAP_PRIOR_SD   <- 1
+
 # Range of the ability estimate (estimate_theta() is bounded to it). Also the
 # effective ends of COMPETENCY_SCALE when computing label certainty: the model
 # can't distinguish abilities beyond these bounds, so the open-ended outer
@@ -82,7 +88,8 @@ CERTAINTY_HIGH    <- 2 / 3
 CERTAINTY_MED     <- 1 / 3
 
 # Coverage of the interval bar in "Dein Lernstand im Detail": the range the
-# true ability lies in with this probability (normal approximation)
+# true ability lies in with this posterior probability (normal approximation
+# of the EAP posterior)
 ESTIMATE_INTERVAL_LEVEL <- 0.8
 
 # Evidence strength thresholds (unique items per area) — fallback for saved

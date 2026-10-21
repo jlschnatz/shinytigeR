@@ -14,7 +14,8 @@ theta_pct <- function(theta) {
 }
 
 # Central ESTIMATE_INTERVAL_LEVEL interval of the normal approximation
-# theta_true ~ N(theta, se^2), clipped to THETA_RANGE
+# theta_true ~ N(theta, se^2) of the EAP posterior (R/irt.R), clipped to
+# THETA_RANGE
 estimate_interval <- function(theta, se, level = ESTIMATE_INTERVAL_LEVEL) {
   z <- stats::qnorm(1 - (1 - level) / 2)
   pmin(pmax(c(theta - z * se, theta + z * se), THETA_RANGE[1]), THETA_RANGE[2])
@@ -141,7 +142,8 @@ explainer_card <- function() {
       tags$li("Jede Aufgabe hat eine Schwierigkeit. Wer schwierige Aufgaben löst, wird höher eingeschätzt als jemand, der nur leichte löst."),
       tags$li("Pro Aufgabe zählt deine letzte Antwort: Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung."),
       tags$li("Übersprungene Aufgaben und nicht erkannte Zahleneingaben zählen nicht."),
-      tags$li("Je mehr Aufgaben du in einem Bereich bearbeitest, desto schmaler wird der Balken – die Einschätzung wird sicherer."),
+      tags$li("Je mehr Aufgaben du in einem Bereich bearbeitest, desto kürzer wird die Linie – die Einschätzung wird sicherer."),
+      tags$li("Bei wenigen Aufgaben wird deine Einschätzung vorsichtig zur Mitte gezogen. So springt sie nicht nach ein, zwei Zufallstreffern hin und her."),
       tags$li("Neu berechnet wird höchstens einmal pro Sitzung: beim Anmelden oder über „Fähigkeitsverlauf aktualisieren“."),
       tags$li("Die Einschätzung ist eine Orientierung für dein Üben, keine Note.")
     )

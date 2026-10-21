@@ -20,40 +20,66 @@ test_that("irf_1pl decreases with difficulty", {
   expect_gt(irf_1pl(0, b = -1), irf_1pl(0, b = 1))
 })
 
-test_that("iteminfo_1pl peaks at 0.25 where theta equals difficulty", {
-  expect_equal(iteminfo_1pl(0.5, b = 0.5), 0.25)
-  expect_lt(iteminfo_1pl(2, b = 0), 0.25)
+test_that("theta_posterior is a normalized distribution on THETA_GRID", {
+  w <- theta_posterior(c(1, 0, 1), b = c(-1, 0, 1))
+  expect_length(w, length(THETA_GRID))
+  expect_equal(sum(w), 1)
+  expect_true(all(w >= 0))
 })
 
-test_that("estimate_theta recovers ability from unambiguous response patterns", {
+test_that("estimate_theta returns the prior for an uninformative response", {
+  # An item far too easy/hard to be informative barely moves the posterior
+  est <- estimate_theta(1, b = -50)
+  expect_equal(est$theta, EAP_PRIOR_MEAN, tolerance = 0.02)
+  expect_equal(est$se, EAP_PRIOR_SD, tolerance = 0.05)
+})
+
+test_that("estimate_theta orders unambiguous response patterns", {
   b <- c(-2, -1, 0, 1, 2)
-
-  # All correct → high ability
-  theta_high <- estimate_theta(c(1, 1, 1, 1, 1), b)
-  expect_gt(theta_high, 1)
-
-  # All wrong → low ability
-  theta_low <- estimate_theta(c(0, 0, 0, 0, 0), b)
-  expect_lt(theta_low, -1)
-
-  # Mixed, harder items wrong → near zero
-  theta_mid <- estimate_theta(c(1, 1, 1, 0, 0), b)
-  expect_gt(theta_mid, -1)
-  expect_lt(theta_mid, 1)
+  high <- estimate_theta(c(1, 1, 1, 1, 1), b)$theta
+  low <- estimate_theta(c(0, 0, 0, 0, 0), b)$theta
+  mid <- estimate_theta(c(1, 1, 1, 0, 0), b)$theta
+  expect_gt(high, 1)
+  expect_lt(low, -1)
+  expect_gt(mid, -1)
+  expect_lt(mid, 1)
+  expect_lt(low, mid)
+  expect_lt(mid, high)
 })
 
-test_that("estimate_theta is bounded to THETA_RANGE", {
+test_that("estimate_theta is finite and inside THETA_RANGE for all-correct/all-wrong", {
   b <- rep(0, 3)
-  expect_lte(estimate_theta(c(1, 1, 1), b), THETA_RANGE[2])
-  expect_gte(estimate_theta(c(0, 0, 0), b), THETA_RANGE[1])
+  high <- estimate_theta(c(1, 1, 1), b)
+  low <- estimate_theta(c(0, 0, 0), b)
+  expect_true(is.finite(high$theta) && is.finite(low$theta))
+  expect_lt(high$theta, THETA_RANGE[2])
+  expect_gt(low$theta, THETA_RANGE[1])
+  # symmetric prior and items -> symmetric estimates
+  expect_equal(high$theta, -low$theta)
 })
 
-test_that("estimate_theta returns NA when all difficulties are missing", {
-  # Items with NA difficulty are excluded by estimate_competency before reaching
-  # estimate_theta, but calling it directly with NA params should not crash
-  theta <- estimate_theta(c(1, 0), b = c(NA, NA))
-  # Either returns NA (error caught) or a numeric — must not throw
-  expect_true(is.numeric(theta) || is.na(theta))
+test_that("estimate_theta shrinks towards the prior mean with few responses", {
+  # Same proportion correct (all), more items -> further from the prior mean
+  few <- estimate_theta(rep(1, 2), b = rep(0, 2))$theta
+  many <- estimate_theta(rep(1, 10), b = rep(0, 10))$theta
+  expect_gt(few, EAP_PRIOR_MEAN)
+  expect_lt(few, many)
+})
+
+test_that("estimate_theta's posterior SD shrinks with more responses", {
+  se5 <- estimate_theta(rep(c(1, 0), 5), b = rep(0, 10))$se
+  se20 <- estimate_theta(rep(c(1, 0), 20), b = rep(0, 40))$se
+  expect_lt(se20, se5)
+  expect_lt(se5, EAP_PRIOR_SD)
+})
+
+test_that("estimate_theta returns NA when difficulties are missing", {
+  # Items with NA difficulty are excluded by estimate_competency before
+  # reaching estimate_theta, but calling it directly must not throw
+  est <- estimate_theta(c(1, 0), b = c(NA, NA))
+  expect_true(is.na(est$theta))
+  expect_true(is.na(est$se))
+  expect_true(is.na(estimate_theta(integer(0), numeric(0))$theta))
 })
 
 test_that("estimate_competency returns one row per learning area", {
@@ -193,7 +219,7 @@ test_that("compute_and_save_ability uses the latest non-skipped attempt when the
   saved <- db_get_ability("bob", ability_path)
   area1 <- saved[saved$learning_area == LEARNING_AREA_LEVELS[1], ]
   expect_equal(area1$n_items, 1L)
-  expect_equal(area1$theta, estimate_theta(1L, b = 0))
+  expect_equal(area1$theta, estimate_theta(1L, b = 0)$theta)
 })
 
 test_that("compute_and_save_ability saves an all-NA batch when every response is a skip", {
@@ -255,14 +281,7 @@ test_that("estimate_competency ignores irt_discr (1PL): items without it are sti
   expect_equal(r1$theta[1], r2$theta[1])
 })
 
-# ── sem_1pl / prob_in_interval ────────────────────────────────────────────────
-
-test_that("sem_1pl equals 1/sqrt(test information) and shrinks with more items", {
-  b <- c(-1, 0, 1)
-  p <- plogis(0.2 - b)
-  expect_equal(sem_1pl(0.2, b), 1 / sqrt(sum(p * (1 - p))))
-  expect_lt(sem_1pl(0, rep(0, 20)), sem_1pl(0, rep(0, 5)))
-})
+# ── prob_in_interval ─────────────────────────────────────────────────────────
 
 test_that("prob_in_interval is a normal-approximation interval probability", {
   expect_equal(prob_in_interval(0, 1, -1.96, 1.96), 0.95, tolerance = 1e-3)
@@ -288,6 +307,6 @@ test_that("estimate_competency returns an SE for estimated areas and NA otherwis
   )
   comp <- estimate_competency(responses, items)
   reg <- comp[comp$learning_area == "Regression", ]
-  expect_equal(reg$se, sem_1pl(reg$theta, items$irt_diff))
+  expect_equal(reg$se, estimate_theta(c(1, 0, 1, 0), items$irt_diff)$se)
   expect_true(all(is.na(comp$se[comp$learning_area != "Regression"])))
 })

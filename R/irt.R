@@ -6,44 +6,41 @@ irf_1pl <- function(theta, b) {
   stats::plogis(theta - b)
 }
 
-# Item information at theta: P * (1 - P)
-iteminfo_1pl <- function(theta, b) {
-  p <- irf_1pl(theta, b)
-  p * (1 - p)
-}
-
-# Standard error of an ability estimate: 1 / sqrt(test information) at theta
-sem_1pl <- function(theta, b) {
-  1 / sqrt(sum(iteminfo_1pl(theta, b)))
-}
-
 # Probability that the true theta lies in [lower, upper), using the normal
-# approximation theta_true ~ N(theta_hat, se^2). Drives the certainty dots of
-# the dashboard's "Dein Lernstand" card (interval = the assigned label's).
+# approximation theta_true ~ N(theta, se^2) of the posterior (theta = EAP,
+# se = posterior SD, see estimate_theta()). Drives the certainty dots of the
+# dashboard's "Dein Lernstand" card (interval = the assigned label's).
 prob_in_interval <- function(theta, se, lower, upper) {
   stats::pnorm((upper - theta) / se) - stats::pnorm((lower - theta) / se)
 }
 
-neg_log_lik <- function(theta, responses, b) {
-  p <- irf_1pl(theta, b)
-  p <- pmax(pmin(p, 1 - 1e-9), 1e-9)
-  -sum(responses * log(p) + (1 - responses) * log(1 - p))
+# Grid over THETA_RANGE on which the posterior is evaluated
+THETA_GRID <- seq(THETA_RANGE[1], THETA_RANGE[2], length.out = 241)
+
+# Posterior of theta on THETA_GRID: N(EAP_PRIOR_MEAN, EAP_PRIOR_SD^2) prior
+# times the 1PL likelihood of the responses, normalized to sum to 1
+theta_posterior <- function(responses, b, grid = THETA_GRID) {
+  p <- irf_1pl(outer(grid, b, "-"), 0)
+  p <- pmax(pmin(p, 1 - 1e-12), 1e-12)
+  r <- matrix(responses, nrow = length(grid), ncol = length(b), byrow = TRUE)
+  log_post <- rowSums(r * log(p) + (1 - r) * log(1 - p)) +
+    stats::dnorm(grid, EAP_PRIOR_MEAN, EAP_PRIOR_SD, log = TRUE)
+  w <- exp(log_post - max(log_post))
+  w / sum(w)
 }
 
+# Expected a posteriori (EAP) estimate: the posterior mean and SD. Unlike the
+# maximum-likelihood estimate it is finite for all-correct/all-wrong patterns
+# and is pulled towards the prior mean when there are only few responses, so
+# early estimates don't jump around. Returns list(theta, se), both NA when
+# there is nothing to estimate from.
 estimate_theta <- function(responses, b) {
-  fit <- tryCatch(
-    optim(
-      0,
-      neg_log_lik,
-      method = "L-BFGS-B",
-      lower = THETA_RANGE[1],
-      upper = THETA_RANGE[2],
-      responses = responses,
-      b = b
-    ),
-    error = function(e) list(par = NA_real_)
-  )
-  fit$par
+  if (length(b) == 0L || anyNA(b) || anyNA(responses)) {
+    return(list(theta = NA_real_, se = NA_real_))
+  }
+  w <- theta_posterior(responses, b)
+  theta <- sum(THETA_GRID * w)
+  list(theta = theta, se = sqrt(sum((THETA_GRID - theta)^2 * w)))
 }
 
 estimate_competency <- function(responses, items) {
@@ -66,9 +63,8 @@ estimate_competency <- function(responses, items) {
       return(list(theta = NA_real_, se = NA_real_, n = 0L))
     }
     b <- items$irt_diff[idx]
-    theta <- estimate_theta(as.integer(rows$bool_correct), b)
-    se <- if (is.na(theta)) NA_real_ else sem_1pl(theta, b)
-    list(theta = theta, se = se, n = nrow(rows))
+    est <- estimate_theta(as.integer(rows$bool_correct), b)
+    list(theta = est$theta, se = est$se, n = nrow(rows))
   })
 
   data.frame(
