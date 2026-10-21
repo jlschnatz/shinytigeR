@@ -229,7 +229,7 @@ trajectory_panel_fig <- function(d, x_range) {
   hover <- sprintf(
     "%s<br><b>%s</b> (\u03b8 = %s)",
     format_date_de(d$date), lbl,
-    formatC(d$theta, format = "f", digits = 2, decimal.mark = ",")
+    formatC(d$theta, format = "f", digits = 2, decimal.mark = ".")
   )
   axis <- list(
     title = "", fixedrange = TRUE, showgrid = FALSE, zeroline = FALSE,
@@ -431,45 +431,8 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       }
 
       ud <- user_data()
-      fa <- first_attempts()
       comp <- competency()
       can_refresh <- can_refresh_ability()
-
-      # ── Aggregate stats ──────────────────────────────────────────────────────
-      n_total <- nrow(ud)
-      n_unique <- nrow(fa)
-
-      all_dates <- unique(ud$date)
-      n_days <- length(all_dates)
-      week_start <- Sys.Date() - (as.integer(format(Sys.Date(), "%u")) - 1L)
-      n_this_week <- length(unique(ud$date[ud$date >= week_start]))
-      n_repeated <- n_total - n_unique
-
-      # Bloom accuracy
-      bloom_lvls <- c("knowledge", "comprehension", "application")
-      bloom_acc <- setNames(
-        vapply(
-          bloom_lvls,
-          function(b) {
-            rows <- merge(
-              fa[!is.na(fa$bool_correct), ],
-              data_item[, c("id_item", "bloom_taxonomy")],
-              by = "id_item",
-              all.x = TRUE
-            )
-            sub <- rows[
-              !is.na(rows$bloom_taxonomy) & rows$bloom_taxonomy == b,
-            ]
-            if (nrow(sub) == 0L) {
-              NA_real_
-            } else {
-              mean(sub$bool_correct, na.rm = TRUE)
-            }
-          },
-          numeric(1)
-        ),
-        bloom_lvls
-      )
 
       tagList(
         # ── Top row: competency map + AI feedback ─────────────────────────────
@@ -557,185 +520,17 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           )
         ),
 
-        # ── Ability trajectory (expandable, open by default) ──────────────────
+        # ── Expandable sections: trajectory (open by default), then the
+        # detailed estimate and the learning behaviour (R/dashboard_details.R)
         div(
           class = "mb-4",
           bslib::accordion(
             id = session$ns("dash_sections"),
             open = "trajectory",
             multiple = TRUE,
-            trajectory_section(trajectory_hist(), session$ns)
-          )
-        ),
-
-        # ── Bloom breakdown + practice behaviour ─────────────────────────────
-        div(
-          class = "row g-3 mb-4",
-
-          # Bloom breakdown
-          div(
-            class = "col-md-5",
-            bslib::card(
-              height = "100%",
-              bslib::card_header(
-                div(
-                  class = "d-flex align-items-center gap-2",
-                  bsicons::bs_icon("layers"),
-                  tags$b("Aufgabentyp (Bloom)")
-                )
-              ),
-              bslib::card_body(
-                tagList(lapply(bloom_lvls, function(b) {
-                  lbl <- switch(
-                    b,
-                    knowledge = "Wissen",
-                    comprehension = "Verständnis",
-                    application = "Anwendung"
-                  )
-                  acc <- bloom_acc[[b]]
-                  div(
-                    class = "mb-3",
-                    div(
-                      class = "d-flex justify-content-between mb-1",
-                      tags$span(class = "small fw-semibold", lbl),
-                      tags$span(
-                        class = "small text-muted",
-                        if (is.na(acc)) {
-                          "Keine Daten"
-                        } else {
-                          sprintf("%d%%", round(acc * 100))
-                        }
-                      )
-                    ),
-                    if (!is.na(acc)) {
-                      div(
-                        class = "progress",
-                        style = "height:8px;",
-                        div(
-                          class = "progress-bar",
-                          style = sprintf(
-                            "width:%d%%;background:%s;",
-                            round(acc * 100),
-                            PRIMARY_COLOR
-                          )
-                        )
-                      )
-                    } else {
-                      div(
-                        class = "progress",
-                        style = "height:8px;",
-                        div(
-                          class = "progress-bar",
-                          style = "width:0%;background:#dee2e6;"
-                        )
-                      )
-                    }
-                  )
-                }))
-              )
-            )
-          ),
-
-          # Practice behaviour
-          div(
-            class = "col-md-7",
-            bslib::card(
-              height = "100%",
-              bslib::card_header(
-                div(
-                  class = "d-flex align-items-center gap-2",
-                  bsicons::bs_icon("calendar3"),
-                  tags$b("Übungsverhalten")
-                )
-              ),
-              bslib::card_body(
-                div(
-                  class = "row g-2 mb-3",
-                  div(
-                    class = "col-6",
-                    div(
-                      class = "practice-stat",
-                      div(class = "practice-stat-val", n_days),
-                      div(
-                        class = "practice-stat-lbl",
-                        sprintf(
-                          "Aktive Tag%s gesamt",
-                          if (n_days == 1) "" else "e"
-                        )
-                      )
-                    )
-                  ),
-                  div(
-                    class = "col-6",
-                    div(
-                      class = "practice-stat",
-                      div(class = "practice-stat-val", n_this_week),
-                      div(
-                        class = "practice-stat-lbl",
-                        sprintf(
-                          "Tag%s diese Woche",
-                          if (n_this_week == 1) "" else "e"
-                        )
-                      )
-                    )
-                  ),
-                  div(
-                    class = "col-6",
-                    div(
-                      class = "practice-stat",
-                      div(class = "practice-stat-val", n_unique),
-                      div(class = "practice-stat-lbl", "Einmalige Aufgaben")
-                    )
-                  ),
-                  div(
-                    class = "col-6",
-                    div(
-                      class = "practice-stat",
-                      div(class = "practice-stat-val", n_repeated),
-                      div(class = "practice-stat-lbl", "Wiederholungen")
-                    )
-                  )
-                ),
-                if (n_repeated > 0L) {
-                  pct_new <- round(100 * n_unique / n_total)
-                  div(
-                    class = "mt-2",
-                    div(
-                      class = "d-flex justify-content-between small text-muted mb-1",
-                      span("Neue Aufgaben"),
-                      span(sprintf("%d%%", pct_new))
-                    ),
-                    div(
-                      class = "progress",
-                      style = "height:8px;",
-                      div(
-                        class = "progress-bar",
-                        style = sprintf(
-                          "width:%d%%;background:#285f8a;",
-                          pct_new
-                        )
-                      ),
-                      div(
-                        class = "progress-bar",
-                        style = sprintf(
-                          "width:%d%%;background:#b0c9dc;",
-                          100 - pct_new
-                        )
-                      )
-                    ),
-                    div(
-                      class = "small text-muted mt-1",
-                      sprintf("%d%% Wiederholungen — ", 100 - pct_new),
-                      if (n_repeated > n_unique * 0.5) {
-                        "Versuche mehr neue Aufgaben für stärkere Lerneffekte."
-                      } else {
-                        "Gute Mischung aus neuen und wiederholten Aufgaben."
-                      }
-                    )
-                  )
-                }
-              )
-            )
+            trajectory_section(trajectory_hist(), session$ns),
+            detail_section(comp),
+            behaviour_section(ud, data_item)
           )
         )
       )

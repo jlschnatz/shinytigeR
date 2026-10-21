@@ -81,6 +81,10 @@ THETA_RANGE <- c(-3, 3)
 CERTAINTY_HIGH    <- 2 / 3
 CERTAINTY_MED     <- 1 / 3
 
+# Coverage of the interval bar in "Dein Lernstand im Detail": the range the
+# true ability lies in with this probability (normal approximation)
+ESTIMATE_INTERVAL_LEVEL <- 0.8
+
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L

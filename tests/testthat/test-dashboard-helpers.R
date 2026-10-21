@@ -164,7 +164,7 @@ test_that("trajectory_panel_fig plots the saved estimates with the competency la
   expect_equal(as.numeric(line$y), c(-0.5, 1.2)) # not smoothed
   expect_match(markers$text[1], "Basis")
   expect_match(markers$text[2], "Fortgeschritten")
-  expect_match(markers$text[2], "1,20", fixed = TRUE)
+  expect_match(markers$text[2], "1.20", fixed = TRUE)
   expect_length(b$x$layout$shapes, nrow(COMPETENCY_SCALE))
 })
 
