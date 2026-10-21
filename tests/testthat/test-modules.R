@@ -226,6 +226,47 @@ test_that("practice: checking an answer sets state$checked and writes to DB", {
   })
 })
 
+test_that("practice: the MC feedback is typeset by MathJax after the check", {
+  # Regression test: after the check only the MC answer output re-renders (not
+  # the stimulus), so it has to trigger the typeset itself, or LaTeX in the
+  # feedback stays raw.
+  data_item <- make_data_item()
+  data_item$if_answeroption_01 <- "Richtig, $B_1 = b_1 \\cdot \\frac{s_x}{s_y}$."
+
+  withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = reactiveVal(1L),
+        credentials = fake_credentials(),
+        write_trigger = reactiveVal(0L)
+      ),
+      {
+        typesets <- 0L
+        # The mock session's sendCustomMessage is a no-op; count the calls
+        # (on the root mock session, which the module proxies forward to)
+        root <- session$rootScope()
+        unlockBinding("sendCustomMessage", root)
+        root$sendCustomMessage <- function(type, message) {
+          if (identical(type, "mathjax_typeset")) typesets <<- typesets + 1L
+        }
+        output$`answer_mc-answer_ui`
+        session$flushReact()
+        before <- typesets
+
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
+        html <- output$`answer_mc-answer_ui`$html
+        session$flushReact()
+
+        expect_match(html, "feedback-card", fixed = TRUE)
+        expect_match(html, "\\(B_1", fixed = TRUE)
+        expect_gt(typesets, before)
+      }
+    )
+  })
+})
+
 test_that("practice: next_item advances position", {
   data_item <- make_data_item()
   practice_ids <- reactiveVal(c(1L, 2L, 3L))
