@@ -770,6 +770,41 @@ test_that("dashboard: user_exists is FALSE with no DB data", {
   })
 })
 
+test_that("dashboard: 'nochmal üben' starts a queue of the open (wrong, unsolved) items", {
+  data_item <- make_data_item()
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+  # items 1-4 answered: 1 right, 2-4 wrong -> 2-4 are open. 2 and 3 were
+  # answered three days ago, 4 just now (still in its time-out)
+  ids <- data_item$id_item[1:4]
+  path <- make_user_db(item_ids = ids, correct = c(TRUE, FALSE, FALSE, FALSE))
+  con <- DBI::dbConnect(RSQLite::SQLite(), path)
+  DBI::dbExecute(con, sprintf(
+    "UPDATE testuser SET id_datetime = id_datetime - 3 * 86400 WHERE id_item IN (%d, %d, %d)",
+    ids[1], ids[2], ids[3]
+  ))
+  DBI::dbDisconnect(con)
+  file.copy(path, file.path(db_dir, "db_user.sqlite"))
+  queued <- NULL
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_dashboard_server,
+      args = list(
+        data_item = data_item,
+        credentials = fake_credentials(),
+        write_trigger = reactiveVal(0L),
+        ability_computed_this_session = reactiveVal(FALSE),
+        retry_items = function(ids) queued <<- ids
+      ),
+      {
+        session$setInputs(retry_open = 1)
+        expect_setequal(queued, ids[2:3])
+      }
+    )
+  })
+})
+
 test_that("dashboard: user_exists becomes TRUE after a response is written", {
   data_item <- make_data_item()
   write_trigger <- reactiveVal(0L)

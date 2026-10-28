@@ -262,3 +262,229 @@ test_that("ai_feedback_card renders Markdown feedback instead of the placeholder
   expect_no_match(html, "ai-feedback-skeleton", fixed = TRUE)
   expect_no_match(html, "Bald verfügbar", fixed = TRUE)
 })
+
+# ── answer tree ───────────────────────────────────────────────────────────────
+
+tree_ud <- function(id_item, bool_correct, skipped = rep(FALSE, length(id_item))) {
+  data.frame(
+    id_item = id_item, bool_correct = bool_correct, skipped = skipped,
+    id_datetime = seq_along(id_item)
+  )
+}
+
+test_that("answer_tree_stats splits the pool attempt by attempt", {
+  pool <- data.frame(id_item = 1:6)
+  ud <- tree_ud(
+    id_item      = c(1L, 2L, 2L, 3L, 3L, 3L, 4L, 4L),
+    bool_correct = c(TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE)
+  )
+  tr <- answer_tree_stats(ud, pool)
+  n <- function(node) vapply(node$children, `[[`, integer(1), "n")
+  expect_equal(tr$n, 6L)
+  # 1st attempt: 1, 4 right; 2, 3 wrong; 5, 6 not worked on
+  expect_equal(unname(n(tr)), c(2L, 2L, 2L))
+  # right first: 4 regresses to wrong, 1 not repeated
+  expect_equal(unname(n(tr$children$correct)), c(0L, 1L, 1L))
+  # wrong first: 2 right at the 2nd attempt, 3 wrong again ...
+  expect_equal(unname(n(tr$children$wrong)), c(1L, 1L, 0L))
+  # ... and right at the 3rd
+  expect_equal(unname(n(tr$children$wrong$children$wrong)), c(1L, 0L, 0L))
+  # "none" nodes and the last attempt's nodes are leaves
+  expect_null(tr$children$none$children)
+  expect_null(tr$children$wrong$children$wrong$children$correct$children)
+})
+
+test_that("answer_tree_stats ignores skips, unmatched answers and items outside the pool", {
+  pool <- data.frame(id_item = 1:3)
+  ud <- tree_ud(
+    id_item      = c(1L, 1L, 2L, 99L),
+    bool_correct = c(NA, FALSE, NA, TRUE),
+    skipped      = c(TRUE, FALSE, FALSE, FALSE)
+  )
+  tr <- answer_tree_stats(ud, pool)
+  # item 1: skip then wrong -> wrong at the 1st attempt, not repeated; item 2
+  # only an unmatched numeric answer -> not worked on; 99 isn't in the pool
+  expect_equal(unname(vapply(tr$children, `[[`, integer(1), "n")), c(0L, 1L, 2L))
+  expect_equal(tr$children$wrong$children$none$n, 1L)
+})
+
+test_that("answer_tree_card opens the 1st attempt's branches and only makes non-empty nodes clickable", {
+  pool <- data.frame(id_item = 1:3)
+  ud <- tree_ud(id_item = c(1L, 1L, 2L), bool_correct = c(FALSE, TRUE, FALSE))
+  html <- as.character(answer_tree_card(answer_tree_stats(ud, pool)))
+  # wrong at the 1st attempt (open) and right at the 2nd (closed) are
+  # clickable; the right-at-1st node is empty, so not a button
+  expect_equal(lengths(regmatches(html, gregexpr("data-node", html, fixed = TRUE))), 2L)
+  expect_equal(lengths(regmatches(html, gregexpr('aria-expanded="true"', html, fixed = TRUE))), 1L)
+  expect_match(html, "nicht bearbeitet", fixed = TRUE)
+  expect_false(grepl("noch nicht bearbeitet", html, fixed = TRUE))
+  expect_match(html, "nicht wiederholt", fixed = TRUE)
+})
+
+test_that("answer_tree_stats summarizes the first-wrong items over all later attempts", {
+  pool <- data.frame(id_item = 1:4)
+  ud <- tree_ud(
+    # 1: wrong, never retried; 2: wrong x3, right at the 4th (beyond depth 3);
+    # 3: wrong, wrong; 4: right
+    id_item      = c(1L, 2L, 2L, 2L, 2L, 3L, 3L, 4L),
+    bool_correct = c(FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE)
+  )
+  m <- answer_tree_stats(ud, pool)$mistakes
+  expect_equal(m, list(n_wrong = 3L, n_retried = 2L, n_solved = 1L, n_open = 2L, n_later_day = 0L))
+})
+
+test_that("answer_tree_takeaway puts the tree's message into one sentence", {
+  tk <- function(id_item, bool_correct, pool = 1:5) {
+    answer_tree_takeaway(answer_tree_stats(tree_ud(id_item, bool_correct), data.frame(id_item = pool)))
+  }
+  expect_match(tk(integer(0), logical(0)), "Sobald du Aufgaben bearbeitest")
+  expect_match(tk(1L, TRUE), "keine Aufgabe beim ersten Versuch falsch")
+  expect_equal(
+    tk(c(1L, 2L), c(FALSE, FALSE)),
+    "Von 2 Aufgaben, die du beim ersten Versuch falsch hattest, hast du noch keine erneut versucht."
+  )
+  expect_equal(
+    tk(c(1L, 1L, 2L, 2L, 3L), c(FALSE, TRUE, FALSE, TRUE, FALSE)),
+    "Von 3 Aufgaben, die du beim ersten Versuch falsch hattest, hast du 2 noch einmal versucht (am selben Tag) und alle 2 dann gelöst. 1 wartet noch auf dich."
+  )
+  expect_equal(
+    tk(c(1L, 1L), c(FALSE, FALSE)),
+    "Von 1 Aufgabe, die du beim ersten Versuch falsch hattest, hast du 1 noch einmal versucht (am selben Tag), aber noch keine davon gelöst. 1 wartet noch auf dich."
+  )
+})
+
+test_that("answer_tree_stats counts retries on a later day than the first attempt", {
+  day <- 86400
+  ud <- data.frame(
+    id_item = c(1L, 1L, 2L, 2L, 3L, 3L),
+    bool_correct = c(FALSE, TRUE, FALSE, TRUE, FALSE, FALSE),
+    skipped = FALSE,
+    # 1 retried the same day, 2 and 3 two days later
+    id_datetime = c(10, 20, 30, 2 * day + 30, 40, 2 * day + 40)
+  )
+  m <- answer_tree_stats(ud, data.frame(id_item = 1:3))$mistakes
+  expect_equal(m$n_later_day, 2L)
+  expect_match(answer_tree_takeaway(answer_tree_stats(ud, data.frame(id_item = 1:3))), "(2 davon an einem späteren Tag)", fixed = TRUE)
+})
+
+# ── Lernverhalten: shared "answered" definition, summary, coverage ───────────
+
+test_that("answered_rows keeps only real answers to items in the pool", {
+  ud <- tree_ud(
+    id_item      = c(1L, 1L, 2L, 3L, 99L),
+    bool_correct = c(NA, TRUE, NA, FALSE, TRUE),
+    skipped      = c(TRUE, FALSE, FALSE, FALSE, FALSE)
+  )
+  a <- answered_rows(ud, data.frame(id_item = 1:3))
+  # the skip, the unmatched numeric answer (item 2) and item 99 are dropped
+  expect_equal(a$id_item, c(1L, 3L))
+  expect_s3_class(a$date, "Date")
+  expect_equal(nrow(answered_rows(data.frame())), 0L)
+})
+
+test_that("behaviour_stats reports items, days and the last practice day", {
+  day <- 86400
+  pool <- data.frame(id_item = 1:4)
+  ud <- data.frame(
+    id_item = c(1L, 2L, 2L, 3L, 4L),
+    bool_correct = c(TRUE, FALSE, TRUE, FALSE, NA),
+    skipped = c(FALSE, FALSE, FALSE, FALSE, TRUE),
+    id_datetime = c(10, 20, 3 * day, 3 * day + 10, 3 * day + 20)
+  )
+  st <- behaviour_stats(ud, pool, today = as.Date("1970-01-04"))
+  # 3 answered items (the skipped item 4 doesn't count), on 2 days; the last
+  # day (Jan 4) has 2 answers (item 2's retry, item 3), 1 right
+  expect_equal(st[c("n_items", "n_total", "n_days", "last_n", "last_correct")],
+               list(n_items = 3L, n_total = 4L, n_days = 2L, last_n = 2L, last_correct = 1L))
+  expect_equal(st$last_date, as.Date("1970-01-04"))
+  expect_null(behaviour_stats(data.frame(), pool))
+})
+
+test_that("behaviour_tiles shows three tiles, or a sentence before the first answer", {
+  st <- list(n_items = 1L, n_total = 4L, n_days = 2L, n_week = 1L,
+             last_date = as.Date("2026-10-27"), last_n = 1L, last_correct = 1L)
+  html <- as.character(behaviour_tiles(st, today = as.Date("2026-10-28")))
+  expect_equal(lengths(regmatches(html, gregexpr('class="la-tile"', html, fixed = TRUE))), 3L)
+  expect_match(html, "Aufgabe beantwortet", fixed = TRUE)
+  expect_match(html, "27. Okt<", fixed = TRUE)
+  expect_match(html, "1 von 1 richtig", fixed = TRUE)
+  expect_match(as.character(behaviour_tiles(NULL)), "noch keine Aufgaben beantwortet")
+})
+
+test_that("format_date_short adds the year only for other years", {
+  expect_equal(format_date_short(as.Date("2026-03-05"), today = as.Date("2026-10-28")), "5. Mär")
+  expect_equal(format_date_short(as.Date("2025-12-01"), today = as.Date("2026-10-28")), "1. Dez 2025")
+})
+
+test_that("coverage_matrix splits each area x type cell by the latest answer", {
+  pool <- data.frame(
+    id_item = 1:4,
+    learning_area = c("Regression", "Regression", "Regression", "Poweranalyse"),
+    type_item = c("content", "content", "coding", "content")
+  )
+  ud <- tree_ud(
+    id_item      = c(1L, 2L, 2L, 3L),
+    bool_correct = c(TRUE, TRUE, FALSE, NA),
+    skipped      = c(FALSE, FALSE, FALSE, TRUE)
+  )
+  cov <- coverage_matrix(ud, pool)
+  expect_equal(nrow(cov), length(LEARNING_AREA_LEVELS) * length(ITEM_TYPE_LABELS))
+  cell <- function(area, type) unlist(cov[cov$learning_area == area & cov$type == type, c("n_total", "n_correct", "n_wrong")])
+  # item 2's latest answer is wrong; item 3 was only skipped -> still open
+  expect_equal(unname(cell("Regression", "content")), c(2L, 1L, 1L))
+  expect_equal(unname(cell("Regression", "coding")), c(1L, 0L, 0L))
+  expect_equal(unname(cell("Poweranalyse", "content")), c(1L, 0L, 0L))
+  expect_equal(unname(cell("Deskriptivstatistik", "coding")), c(0L, 0L, 0L))
+})
+
+
+test_that("open_items lists first-wrong items never solved since, newest first", {
+  pool <- data.frame(
+    id_item = 1:5,
+    learning_area = c("Regression", "Regression", "Poweranalyse", "Regression", "Regression"),
+    type_item = c("content", "coding", "content", "content", "content")
+  )
+  ud <- tree_ud(
+    # 1: wrong, then right -> solved; 2: wrong (earlier); 3: wrong twice
+    # (latest answer last); 4: right; 5: only skipped
+    id_item      = c(1L, 1L, 2L, 3L, 4L, 3L, 5L),
+    bool_correct = c(FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, NA),
+    skipped      = c(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
+  )
+  oi <- open_items(ud, pool)
+  expect_equal(oi$id_item, c(3L, 2L))
+  expect_equal(oi$type_item, c("content", "coding"))
+  # same count as the tree's "warten noch auf dich"
+  expect_equal(nrow(oi), answer_tree_stats(ud, pool)$mistakes$n_open)
+  expect_equal(nrow(open_items(tree_ud(1L, TRUE), pool)), 0L)
+})
+
+test_that("retry_eligible applies the time-out of RETRY_MIN_DAYS calendar days", {
+  today <- as.Date("2026-10-28")
+  oi <- data.frame(id_item = 1:3, last_date = today - c(0L, 1L, 5L))
+  expect_equal(retry_eligible(oi, today)$id_item, which(c(0L, 1L, 5L) >= RETRY_MIN_DAYS))
+})
+
+test_that("open_items_panel offers the retry only for mistakes past their time-out", {
+  today <- as.Date("2026-10-28")
+  oi <- function(days_ago) data.frame(
+    id_item = seq_along(days_ago), learning_area = rep("Regression", length(days_ago)),
+    type_item = rep("content", length(days_ago)), last_date = today - days_ago
+  )
+  ns <- shiny::NS("dashboard_1")
+  # 12 old mistakes -> capped button
+  html <- as.character(open_items_panel(oi(rep(3L, 12)), ns, today))
+  expect_match(html, "dashboard_1-retry_open", fixed = TRUE)
+  expect_match(html, sprintf("%d davon nochmal üben", RETRY_MAX_ITEMS), fixed = TRUE)
+  # 2 old + 1 from today -> "Alle 2" plus the waiting note
+  html <- as.character(open_items_panel(oi(c(2L, 4L, 0L)), ns, today))
+  expect_match(html, "Alle 2 nochmal üben", fixed = TRUE)
+  expect_match(html, "1 von heute erst ab morgen", fixed = TRUE)
+  # only mistakes from today -> no button at all
+  html <- as.character(open_items_panel(oi(c(0L, 0L)), ns, today))
+  expect_false(grepl("retry_open", html, fixed = TRUE))
+  expect_match(html, "Alle von heute", fixed = TRUE)
+  # no item list or solution lookup
+  expect_false(grepl("oi-item", html, fixed = TRUE))
+  expect_match(as.character(open_items_panel(oi(integer(0)), ns, today)), "inzwischen gelöst")
+})

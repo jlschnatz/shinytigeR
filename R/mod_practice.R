@@ -37,7 +37,7 @@ mod_practice_ui <- function(id) {
       class = "d-flex gap-2 justify-content-between mt-3",
       actionButton(
         ns("back"),
-        div(bsicons::bs_icon("arrow-left"), "Neue Auswahl"),
+        div(bsicons::bs_icon("arrow-left"), tags$span(id = ns("back_label"), "Neue Auswahl")),
         class = "btn btn-outline-secondary"
       ),
       div(
@@ -73,10 +73,18 @@ mod_practice_server <- function(
   data_item,
   practice_ids,
   credentials,
-  write_trigger
+  write_trigger,
+  # TRUE while the queue is a retry from the dashboard ("Offene Fehler"):
+  # answers are stored with practice_mode = "retry", and leaving the queue
+  # leads back to the dashboard (server.R), so the back label says so
+  retry_active = reactive(FALSE)
 ) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    observe({
+      shinyjs::html("back_label", if (isTRUE(retry_active())) "Zurück zum Fortschritt" else "Neue Auswahl")
+    })
 
     # Internal state — position in the queue + check state.
     # `result` (set once state$checked is TRUE) is a list with `category`
@@ -264,7 +272,8 @@ mod_practice_server <- function(
         uid,
         token,
         typed_value = typed_value,
-        skipped = category == "skip"
+        skipped = category == "skip",
+        practice_mode = if (isTRUE(retry_active())) "retry" else "standard"
       )
       tryCatch(
         {
@@ -319,7 +328,8 @@ mod_practice_server <- function(
       if (state$pos < length(ids)) {
         state$pos <- state$pos + 1L
       } else {
-        # Finished all items — return to selector
+        # Finished all items — return to selector (or to the dashboard, if
+        # the queue was a retry from there: see retry_active in server.R)
         practice_ids(NULL)
         showNotification(
           paste0("Du hast alle ", length(ids), " Aufgaben bearbeitet!"),

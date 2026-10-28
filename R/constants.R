@@ -85,6 +85,14 @@ CERTAINTY_MED     <- 1 / 3
 # true ability lies in with this probability (normal approximation)
 ESTIMATE_INTERVAL_LEVEL <- 0.8
 
+# "Fehler nochmal üben" on the dashboard: at most this many open (wrong, not
+# yet solved) items per retry queue, drawn at random. A mistake only becomes
+# retryable RETRY_MIN_DAYS calendar days after its latest answer — a time-out
+# against redoing the same items over and over within minutes (spacing helps
+# retention, too). Random draws in the selector aren't affected.
+RETRY_MAX_ITEMS <- 10L
+RETRY_MIN_DAYS <- 1L
+
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L

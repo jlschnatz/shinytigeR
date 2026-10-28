@@ -159,6 +159,83 @@ detail_section <- function(comp) {
 
 # ── Lernverhalten ─────────────────────────────────────────────────────────────
 
+# A small (i) button next to a card title that shows `text` as a tooltip —
+# the explanations that would otherwise take a line of their own. Tooltips
+# are any element with `data-tip`, shown by one shared script in ui.R (mouse
+# hover, keyboard focus, and a tap on touch screens).
+info_tip <- function(text) {
+  tags$button(
+    type = "button", class = "la-info", `data-tip` = text, `aria-label` = text,
+    bsicons::bs_icon("info-circle")
+  )
+}
+
+# One definition of "worked on" for the whole section: an item counts once it
+# has been ANSWERED (right or wrong). Skips and unrecognized numeric answers
+# (bool_correct NA) don't count — the same rule as the ability estimate. With
+# `data_item`, answers to items no longer in the pool are dropped too. Adds a
+# `date` column if the caller hasn't.
+answered_rows <- function(ud, data_item = NULL) {
+  if (nrow(ud) == 0L || is.null(ud$bool_correct)) {
+    return(data.frame(id_item = integer(0), bool_correct = logical(0), id_datetime = numeric(0), date = as.Date(character(0)), learning_area = character(0)))
+  }
+  keep <- !is.na(ud$bool_correct) & !(ud$skipped %in% c(TRUE, 1L))
+  if (!is.null(data_item)) keep <- keep & ud$id_item %in% data_item$id_item
+  a <- ud[keep, , drop = FALSE]
+  a$bool_correct <- as.logical(a$bool_correct)
+  if (is.null(a$date)) a$date <- as.Date(as.POSIXct(a$id_datetime, origin = "1970-01-01"))
+  a[order(a$id_item, a$id_datetime), , drop = FALSE]
+}
+
+# The section's key numbers: cumulative effort (never goes down, unlike the
+# estimate) and where the student left off. NULL if nothing was answered yet.
+behaviour_stats <- function(ud, data_item, today = Sys.Date()) {
+  a <- answered_rows(ud, data_item)
+  if (nrow(a) == 0L) {
+    return(NULL)
+  }
+  last <- a[a$date == max(a$date), , drop = FALSE]
+  list(
+    n_items = length(unique(a$id_item)),
+    n_total = nrow(data_item),
+    n_days = length(unique(a$date)),
+    n_week = length(unique(a$date[a$date >= week_monday(today)])),
+    last_date = max(a$date),
+    last_n = nrow(last),
+    last_correct = sum(last$bool_correct)
+  )
+}
+
+# "27. Okt", with the year only if it isn't the current one
+format_date_short <- function(date, today = Sys.Date()) {
+  months <- c("Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez")
+  s <- sprintf("%d. %s", as.integer(format(date, "%d")), months[as.integer(format(date, "%m"))])
+  if (format(date, "%Y") != format(today, "%Y")) paste(s, format(date, "%Y")) else s
+}
+
+# Three small tiles at the top of the section, side by side on every screen
+behaviour_tiles <- function(st, today = Sys.Date()) {
+  if (is.null(st)) {
+    return(tags$p(
+      class = "la-summary la-behaviour-empty",
+      "Du hast noch keine Aufgaben beantwortet. Sobald du übst, siehst du hier, wann, wo und wie."
+    ))
+  }
+  tile <- function(value, label, sub) {
+    div(class = "la-tile", div(class = "la-tile-val", value), div(class = "la-tile-lbl", label), div(class = "la-tile-sub", sub))
+  }
+  plural <- function(n, one, many) if (n == 1L) one else many
+  div(
+    class = "la-tiles",
+    tile(st$n_items, plural(st$n_items, "Aufgabe beantwortet", "Aufgaben beantwortet"), sprintf("von %d", st$n_total)),
+    tile(st$n_days, plural(st$n_days, "Tag geübt", "Tage geübt"), sprintf("%d diese Woche", st$n_week)),
+    tile(
+      format_date_short(st$last_date, today), "zuletzt geübt",
+      sprintf("%d von %d richtig", st$last_correct, st$last_n)
+    )
+  )
+}
+
 WEEKDAYS_DE <- c("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 
 # Monday of the week containing each date
@@ -180,9 +257,9 @@ activity_calendar_data <- function(dates, today = Sys.Date(), max_weeks = 16L) {
 }
 
 calendar_card <- function(ud, today = Sys.Date()) {
+  ud <- answered_rows(ud)
   cal <- activity_calendar_data(ud$date, today)
   n_days <- length(unique(ud$date))
-  n_week <- length(unique(ud$date[ud$date >= week_monday(today)]))
   cells <- lapply(seq_len(nrow(cal)), function(i) {
     d <- cal[i, ]
     tip <- sprintf(
@@ -190,17 +267,19 @@ calendar_card <- function(ud, today = Sys.Date()) {
       WEEKDAYS_DE[as.integer(format(d$date, "%u"))], format(d$date, "%d.%m."),
       if (d$n == 0L) "nicht geübt" else sprintf("%d Antwort%s", d$n, if (d$n == 1L) "" else "en")
     )
+    # tabindex -1: focusable by a tap (so the tooltip shows on touch screens)
+    # but not a stop when tabbing through the page
     tags$span(
       class = paste0("cal-cell cal-l", d$level, if (d$future) " is-future"),
-      title = if (!d$future) tip
+      `data-tip` = if (!d$future) tip,
+      tabindex = if (!d$future) "-1"
     )
   })
   div(
     class = "la-card",
-    div(class = "la-card-title", "Wann hast du geübt?"),
     div(
-      class = "la-summary",
-      sprintf("An %d Tag%s geübt, davon %d diese Woche", n_days, if (n_days == 1L) "" else "en", n_week)
+      class = "la-card-title", "Wann hast du geübt?",
+      info_tip("Jedes Kästchen ist ein Tag, je dunkler, desto mehr Antworten. Über mehrere Tage verteiltes Üben bleibt besser hängen als viel Üben an einem Tag.")
     ),
     div(
       class = "cal-wrap",
@@ -212,130 +291,356 @@ calendar_card <- function(ud, today = Sys.Date()) {
       "weniger",
       lapply(0:4, function(l) tags$span(class = paste0("cal-cell cal-l", l))),
       "mehr"
-    ),
-    tags$p(
-      class = "la-note",
-      "Jedes Kästchen ist ein Tag. Über mehrere Tage verteiltes Üben bleibt besser hängen als viel Üben an einem Tag."
     )
   )
 }
 
-# Items seen per learning area, with the same definition as the selector's
-# "neu" badges: any answer (a skip too) means the item is no longer new
-coverage_by_area <- function(ud, data_item) {
-  seen <- unique(as.integer(ud$id_item))
-  data.frame(
-    learning_area = LEARNING_AREA_LEVELS,
-    n_total = vapply(LEARNING_AREA_LEVELS, function(a) sum(data_item$learning_area == a), integer(1)),
-    n_seen = vapply(LEARNING_AREA_LEVELS, function(a) {
-      sum(data_item$learning_area == a & data_item$id_item %in% seen)
-    }, integer(1)),
-    row.names = NULL
+# Items per learning area x item type (the selector's layout), each split by
+# its latest answer: richtig / falsch / noch offen (never answered)
+coverage_matrix <- function(ud, data_item) {
+  a <- answered_rows(ud, data_item)
+  latest <- a[!duplicated(a$id_item, fromLast = TRUE), , drop = FALSE]
+  status <- latest$bool_correct[match(data_item$id_item, latest$id_item)]
+  grid <- expand.grid(type = unname(ITEM_TYPE_LABELS), learning_area = LEARNING_AREA_LEVELS, stringsAsFactors = FALSE)
+  counts <- t(mapply(function(area, type) {
+    in_cell <- data_item$learning_area == area & data_item$type_item == type
+    c(n_total = sum(in_cell), n_correct = sum(status[in_cell] %in% TRUE), n_wrong = sum(status[in_cell] %in% FALSE))
+  }, grid$learning_area, grid$type))
+  cbind(grid[, c("learning_area", "type")], as.data.frame(counts, row.names = NULL))
+}
+
+coverage_cell <- function(r) {
+  if (r$n_total == 0L) {
+    return(div(class = "cov-cell is-empty", tags$span(class = "cov-count", "keine Aufgaben")))
+  }
+  n_open <- r$n_total - r$n_correct - r$n_wrong
+  pct <- function(n) sprintf("width:%.1f%%;", 100 * n / r$n_total)
+  div(
+    class = "cov-cell",
+    `data-tip` = sprintf("Zuletzt %d richtig, %d falsch, %d noch offen", r$n_correct, r$n_wrong, n_open),
+    tabindex = "-1",
+    # "offen" on the count line, not below the bar, so all bars line up
+    div(
+      class = "cov-count",
+      sprintf("%d von %d", r$n_correct + r$n_wrong, r$n_total),
+      if (n_open > 0L) tags$span(class = "cov-new", sprintf(" · %d offen", n_open))
+    ),
+    div(
+      class = "cov-bar", `aria-hidden` = "true",
+      tags$span(class = "is-correct", style = pct(r$n_correct)),
+      tags$span(class = "is-wrong", style = pct(r$n_wrong))
+    )
   )
 }
 
 coverage_card <- function(cov) {
+  types <- names(ITEM_TYPE_LABELS)
   div(
-    class = "la-card",
-    div(class = "la-card-title", "Wo hast du schon geübt?"),
-    lapply(seq_len(nrow(cov)), function(i) {
-      r <- cov[i, ]
-      pct <- if (r$n_total > 0L) 100 * r$n_seen / r$n_total else 0
-      n_new <- r$n_total - r$n_seen
-      div(
-        class = "cov-row",
+    class = "la-card cov-card",
+    div(
+      class = "la-card-title", "Wo hast du schon geübt?",
+      info_tip("Aufgeteilt wie die Auswahl unter „Üben“: Dort findest du die offenen Aufgaben jedes Bereichs. Ein Balken zeigt, ob deine letzte Antwort richtig oder falsch war.")
+    ),
+    div(
+      class = "cov-grid",
+      div(class = "cov-head-row", `aria-hidden` = "true", tags$span(), lapply(types, tags$span)),
+      lapply(LEARNING_AREA_LEVELS, function(area) {
         div(
-          class = "cov-head",
-          tags$span(class = "cov-area", r$learning_area),
-          tags$span(class = "cov-count", sprintf("%d von %d", r$n_seen, r$n_total))
-        ),
-        div(class = "cov-bar", tags$span(style = sprintf("width:%.1f%%;", pct))),
-        if (n_new > 0L) tags$span(class = "cov-new", sprintf("noch %d neu", n_new))
-      )
-    }),
-    tags$p(class = "la-note", "Wie viele Aufgaben jedes Bereichs du schon gesehen hast. Neue Aufgaben findest du unter „Üben“.")
-  )
-}
-
-# New items vs. repeats, and what happened to items answered wrong at first.
-# Skips are left out: they're not an attempt at the item.
-retry_stats <- function(ud) {
-  a <- ud[!(ud$skipped %in% c(TRUE, 1L)), , drop = FALSE]
-  a <- a[order(a$id_item, a$id_datetime), , drop = FALSE]
-  first <- !duplicated(a$id_item)
-  per_item <- lapply(split(a, a$id_item), function(d) {
-    list(
-      first_wrong = isFALSE(as.logical(d$bool_correct[1])),
-      retried = nrow(d) > 1L,
-      solved = isTRUE(as.logical(d$bool_correct[nrow(d)]))
+          class = "cov-row",
+          div(class = "cov-area", area),
+          lapply(ITEM_TYPE_LABELS, function(type) {
+            coverage_cell(cov[cov$learning_area == area & cov$type == type, ])
+          })
+        )
+      })
+    ),
+    div(
+      class = "lt-legend cov-legend",
+      tags$span(tags$span(class = "lt-swatch is-correct"), "zuletzt richtig"),
+      tags$span(tags$span(class = "lt-swatch is-wrong"), "zuletzt falsch"),
+      tags$span(tags$span(class = "lt-swatch is-none"), "noch offen")
     )
-  })
-  wrong <- Filter(function(x) x$first_wrong, per_item)
-  retried <- Filter(function(x) x$retried, wrong)
-  list(
-    n_new = sum(first),
-    n_repeat = sum(!first),
-    n_first_wrong = length(wrong),
-    n_retried = length(retried),
-    n_solved = sum(vapply(retried, function(x) x$solved, logical(1)))
   )
 }
 
-retry_card <- function(st) {
-  n_ans <- st$n_new + st$n_repeat
-  pct_new <- if (n_ans > 0L) 100 * st$n_new / n_ans else 0
-  step <- function(n, label, cls = NULL) {
-    div(class = paste("rt-step", cls), div(class = "rt-num", n), div(class = "rt-lbl", label))
+# ── Answer tree: what became of all items ─────────────────────────────────────
+
+# Counts for the answer tree, one level per attempt. Root = every item in the
+# pool; a node's children split its items by the next attempt: richtig /
+# falsch / none (no such attempt: "nicht bearbeitet" at the 1st attempt,
+# "nicht wiederholt" after that). Goes ANSWER_TREE_DEPTH attempts deep. Skips
+# and unrecognized numeric answers aren't answers here (same as for the
+# estimate), so an item that was only skipped counts as not worked on yet.
+# Returns a nested list(n, children = list(correct, wrong, none)); nodes at
+# the last level and "none" nodes have no children.
+ANSWER_TREE_DEPTH <- 3L
+
+answer_tree_stats <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
+  a <- answered_rows(ud, data_item)
+  answered <- split(a$bool_correct, a$id_item)
+  dates <- split(a$date, a$id_item)
+  seqs <- lapply(as.character(data_item$id_item), function(id) {
+    if (is.null(answered[[id]])) logical(0) else answered[[id]]
+  })
+  build <- function(s, attempt) {
+    node <- list(n = length(s))
+    if (attempt <= depth) {
+      at <- vapply(s, function(x) if (length(x) >= attempt) x[attempt] else NA, logical(1))
+      node$children <- list(
+        correct = build(s[at %in% TRUE], attempt + 1L),
+        wrong = build(s[at %in% FALSE], attempt + 1L),
+        none = list(n = sum(is.na(at)))
+      )
+    }
+    node
   }
+  tree <- build(seqs, 1L)
+  # For the takeaway sentence: what became of the items that were wrong at
+  # the first attempt, over ALL later attempts (not cut off at `depth`)
+  wrong_first <- names(Filter(function(x) !x[1], answered))
+  retried <- wrong_first[lengths(answered[wrong_first]) > 1L]
+  solved <- vapply(answered[retried], function(x) any(x[-1]), logical(1))
+  # Retried on a later day than the first attempt (spaced, not right away)
+  later_day <- vapply(dates[retried], function(d) any(d[-1] > d[1]), logical(1))
+  tree$mistakes <- list(
+    n_wrong = length(wrong_first),
+    n_retried = length(retried),
+    n_solved = sum(solved),
+    n_open = length(wrong_first) - sum(solved),
+    n_later_day = sum(later_day)
+  )
+  tree
+}
+
+# The tree's message in one sentence, so students who only skim get it too.
+# `tree` is answer_tree_stats()'s result.
+answer_tree_takeaway <- function(tree) {
+  m <- tree$mistakes
+  n_answered <- tree$n - tree$children$none$n
+  aufgaben <- function(n) sprintf("%d Aufgabe%s", n, if (n == 1L) "" else "n")
+  if (n_answered == 0L) {
+    return("Sobald du Aufgaben bearbeitest, siehst du hier, wie es nach dem ersten Versuch weiterging.")
+  }
+  if (m$n_wrong == 0L) {
+    return("Du hast bisher keine Aufgabe beim ersten Versuch falsch beantwortet.")
+  }
+  start <- sprintf("Von %s, die du beim ersten Versuch falsch hattest, ", aufgaben(m$n_wrong))
+  if (m$n_retried == 0L) {
+    return(paste0(start, "hast du noch keine erneut versucht."))
+  }
+  solved <- if (m$n_solved == m$n_retried) {
+    if (m$n_retried == 1L) "und dann gelöst" else sprintf("und alle %d dann gelöst", m$n_solved)
+  } else if (m$n_solved == 0L) {
+    "aber noch keine davon gelöst"
+  } else {
+    sprintf("und %d davon gelöst", m$n_solved)
+  }
+  open <- if (m$n_open > 0L) {
+    sprintf(" %d %s noch auf dich.", m$n_open, if (m$n_open == 1L) "wartet" else "warten")
+  } else {
+    ""
+  }
+  sep <- if (m$n_solved == 0L) ", " else " "
+  timing <- if (m$n_later_day == m$n_retried) {
+    if (m$n_retried == 1L) " (an einem späteren Tag)" else " (alle an einem späteren Tag)"
+  } else if (m$n_later_day == 0L) {
+    " (am selben Tag)"
+  } else {
+    sprintf(" (%d davon an einem späteren Tag)", m$n_later_day)
+  }
+  paste0(start, sprintf("hast du %d noch einmal versucht%s%s%s.", m$n_retried, timing, sep, solved), open)
+}
+
+answer_tree_label <- function(cat, attempt) {
+  switch(cat,
+    correct = "richtig",
+    wrong = "falsch",
+    none = if (attempt == 1L) "nicht bearbeitet" else "nicht wiederholt"
+  )
+}
+
+# A ring showing how a node splits into its children (correct/wrong/none)
+answer_tree_donut <- function(node) {
+  counts <- vapply(node$children, `[[`, integer(1), "n")
+  pct <- if (sum(counts) > 0L) 100 * cumsum(counts) / sum(counts) else c(0, 0, 0)
+  tags$span(
+    class = "lt-donut", `aria-hidden` = "true",
+    style = sprintf("--a:%.1f%%;--b:%.1f%%;", pct[1], pct[2])
+  )
+}
+
+# One node and (recursively) its branch, as a <li>. Nodes with children are
+# buttons; the client-side toggle in ui.R flips the <li>'s .is-open, which
+# shows or hides its child list — so any number of branches can be open.
+# `attempt` is the attempt this node stands for (0 = root).
+answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
+  expandable <- !is.null(node$children) && node$n > 0L
+  is_open <- expandable && attempt %in% open_attempts
+  share <- if (parent_n > 0L) sprintf("%d %%", round(100 * node$n / parent_n)) else NULL
+  # Donut left of the text, label and share on one line: keeps nodes flat
+  body <- tagList(
+    if (expandable) answer_tree_donut(node),
+    tags$span(
+      class = "lt-text",
+      tags$span(class = "lt-num", node$n),
+      tags$span(
+        class = "lt-lbl",
+        if (attempt == 0L) "Aufgaben" else answer_tree_label(cat, attempt),
+        if (!is.null(share)) tags$span(class = "lt-share", tags$span(class = "lt-dot", "\u00b7\u00a0"), share)
+      )
+    )
+  )
+  cls <- paste("lt-node", paste0("is-", cat), if (node$n == 0L) "is-empty")
+  el <- if (expandable && attempt > 0L) {
+    tags$button(
+      type = "button", class = paste(cls, "is-toggle"), `data-node` = "",
+      `aria-expanded` = if (is_open) "true" else "false", body,
+      tags$span(class = "lt-chevron", `aria-hidden` = "true", bsicons::bs_icon("chevron-right"))
+    )
+  } else {
+    div(class = cls, body)
+  }
+  tags$li(
+    class = if (is_open || attempt == 0L) "is-open",
+    el,
+    if (expandable) {
+      # Empty nodes are left out: at deeper attempts most would be 0
+      kids <- Filter(function(k) node$children[[k]]$n > 0L, names(node$children))
+      tags$ul(class = "lt-children", lapply(kids, function(k) {
+        answer_tree_item(node$children[[k]], k, attempt + 1L, node$n, open_attempts)
+      }))
+    }
+  )
+}
+
+# Items that were wrong at the first attempt and haven't been solved since —
+# the same set as the tree's "warten noch auf dich" — most recently answered
+# first. One row per item: id, area, type, date of the latest answer.
+open_items <- function(ud, data_item) {
+  a <- answered_rows(ud, data_item)
+  # Wrong first and never right since = no right answer at all
+  open <- Filter(function(d) !any(d$bool_correct), split(a, a$id_item))
+  if (length(open) == 0L) {
+    return(data.frame(id_item = integer(0), learning_area = character(0), type_item = character(0), last_date = as.Date(character(0))))
+  }
+  ids <- as.integer(names(open))
+  last_time <- vapply(open, function(d) max(d$id_datetime), numeric(1))
+  idx <- match(ids, data_item$id_item)
+  out <- data.frame(
+    id_item = ids,
+    learning_area = data_item$learning_area[idx],
+    type_item = data_item$type_item[idx],
+    last_date = as.Date(as.POSIXct(last_time, origin = "1970-01-01")),
+    stringsAsFactors = FALSE
+  )
+  out[order(-last_time, out$id_item), , drop = FALSE]
+}
+
+# Open mistakes that may be retried today: the latest answer is at least
+# RETRY_MIN_DAYS calendar days old (the time-out against redoing the same
+# items over and over)
+retry_eligible <- function(oi, today = Sys.Date()) {
+  oi[as.integer(today - oi$last_date) >= RETRY_MIN_DAYS, , drop = FALSE]
+}
+
+# The panel next to the tree, closing the loop back to practice: a button
+# that starts a practice queue with the retryable open mistakes
+# (`input$retry_open`; the dashboard server picks at most RETRY_MAX_ITEMS).
+# Deliberately no per-item list or solution lookup: looking up the answer
+# right before retrying it would defeat the retry. A plain button sending a
+# Shiny.setInputValue() event, not an actionButton(), since this panel
+# re-renders after every answer (see item_id_badge() for that quirk). `ns` is
+# the dashboard's.
+open_items_panel <- function(oi, ns, today = Sys.Date()) {
+  n_open <- nrow(oi)
+  n_ready <- nrow(retry_eligible(oi, today))
+  n_wait <- n_open - n_ready
   div(
-    class = "la-card",
-    div(class = "la-card-title", "Neue Aufgaben oder Wiederholungen?"),
+    class = "la-card oi-card",
     div(
-      class = "la-summary",
-      sprintf("%d Antworten: %d zu neuen Aufgaben, %d Wiederholungen", n_ans, st$n_new, st$n_repeat)
+      class = "la-card-title",
+      "Offene Fehler",
+      if (n_open > 0L) tags$span(class = "oi-count", n_open),
+      info_tip("Aufgaben, die du falsch beantwortet und noch nicht gelöst hast. Nochmal üben geht erst ab dem nächsten Tag: Mit etwas Abstand bleibt es besser hängen.")
     ),
-    div(
-      class = "rt-split", `aria-hidden` = "true",
-      tags$span(class = "rt-split-new", style = sprintf("width:%.1f%%;", pct_new)),
-      tags$span(class = "rt-split-rep")
-    ),
-    div(
-      class = "rt-split-legend",
-      tags$span(tags$span(class = "rt-swatch rt-split-new"), "neu"),
-      tags$span(tags$span(class = "rt-swatch rt-split-rep"), "wiederholt")
-    ),
-    div(class = "la-subtitle", "Lernst du aus Fehlern?"),
-    if (st$n_first_wrong == 0L) {
-      tags$p(class = "la-note mb-0", "Bisher hast du keine Aufgabe beim ersten Versuch falsch beantwortet.")
+    if (n_open == 0L) {
+      tags$p(class = "la-note mt-0", "Keine – alle Fehler hast du inzwischen gelöst.")
     } else {
       tagList(
-        div(
-          class = "rt-steps",
-          step(st$n_first_wrong, "beim ersten Versuch falsch"),
-          tags$span(class = "rt-arrow", `aria-hidden` = "true", bsicons::bs_icon("arrow-right")),
-          step(st$n_retried, "erneut versucht"),
-          tags$span(class = "rt-arrow", `aria-hidden` = "true", bsicons::bs_icon("arrow-right")),
-          step(st$n_solved, "inzwischen gelöst", "is-good")
-        ),
-        tags$p(
-          class = "la-note",
-          "Falsch beantwortete Aufgaben später noch einmal zu lösen, ist einer der wirksamsten Lernschritte."
-        )
+        if (n_ready > 0L) {
+          tags$button(
+            type = "button", class = "btn btn-sm btn-primary oi-retry",
+            onclick = sprintf("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", ns("retry_open")),
+            bsicons::bs_icon("arrow-repeat"),
+            if (n_ready > RETRY_MAX_ITEMS) sprintf("%d davon nochmal üben", RETRY_MAX_ITEMS) else sprintf("Alle %d nochmal üben", n_ready)
+          )
+        },
+        if (n_wait > 0L) {
+          tags$p(
+            class = "la-note oi-wait",
+            if (n_ready == 0L) "Alle von heute – nochmal üben kannst du sie ab morgen." else sprintf("%d von heute erst ab morgen", n_wait)
+          )
+        }
       )
     }
   )
 }
 
-behaviour_section <- function(ud, data_item, today = Sys.Date()) {
+answer_tree_card <- function(tree, depth = ANSWER_TREE_DEPTH) {
+  div(
+    class = "la-card lt-card",
+    div(
+      class = "la-card-title", "Was ist aus deinen Aufgaben geworden?",
+      info_tip(paste(
+        "Jede Spalte ist ein Versuch: ganz links alle Aufgaben, dann dein 1., 2. und 3. Versuch.",
+        "Der Ring in einem Kasten zeigt, wie es beim nächsten Versuch weiterging.",
+        "„Nicht wiederholt“ heißt: Diese Aufgabe hast du danach nicht mehr beantwortet.",
+        "Übersprungene Aufgaben zählen nicht."
+      ))
+    ),
+    div(class = "la-summary lt-takeaway", answer_tree_takeaway(tree)),
+    div(class = "la-note lt-hint", "Tippe auf einen Kasten mit Pfeil, um den nächsten Versuch zu sehen."),
+    div(
+      class = "lt-tree", lang = "de",
+      div(
+        class = "lt-inner",
+        # Narrow cards drop the root column (CSS) and show the total here
+        div(class = "lt-total", sprintf("%d Aufgaben insgesamt", tree$n)),
+        div(
+          class = "lt-head", `aria-hidden` = "true",
+          tags$span("Alle"),
+          lapply(seq_len(depth), function(i) tags$span(sprintf("%d. Versuch", i)))
+        ),
+        # The 1st attempt's branches are open by default, deeper ones on click
+        tags$ul(class = "lt-top", answer_tree_item(tree, "root", 0L, 0L, open_attempts = 1L))
+      )
+    ),
+    div(
+      class = "lt-legend",
+      tags$span(tags$span(class = "lt-swatch is-correct"), "richtig"),
+      tags$span(tags$span(class = "lt-swatch is-wrong"), "falsch"),
+      tags$span(tags$span(class = "lt-swatch is-none"), "nicht bearbeitet / wiederholt")
+    )
+  )
+}
+
+behaviour_section <- function(ud, data_item, ns = shiny::NS(NULL), today = Sys.Date()) {
   bslib::accordion_panel(
     title = "Dein Lernverhalten",
     value = "behaviour",
     icon = bsicons::bs_icon("calendar3"),
     div(
       class = "la-grid la-grid-behaviour",
-      calendar_card(ud, today),
-      coverage_card(coverage_by_area(ud, data_item)),
-      retry_card(retry_stats(ud))
+      # Narrow left column on wide screens: key numbers, calendar and the
+      # retry card; coverage and tree share the rest side by side (CSS)
+      div(
+        class = "la-side",
+        behaviour_tiles(behaviour_stats(ud, data_item, today), today),
+        calendar_card(ud, today),
+        open_items_panel(open_items(ud, data_item), ns, today = today)
+      ),
+      coverage_card(coverage_matrix(ud, data_item)),
+      answer_tree_card(answer_tree_stats(ud, data_item))
     )
   )
 }

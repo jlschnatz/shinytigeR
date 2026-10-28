@@ -122,3 +122,61 @@ test_that("login's silent ability catch-up does not block the dashboard button f
     })
   })
 })
+
+test_that("a retry queue from the dashboard is stored as 'retry' and returns to the dashboard", {
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    make_server_test_dbs(db_dir)
+    # Item 1 answered wrong long ago -> an open mistake past its time-out
+    wrong <- response_row(1L, dt = 1000L)
+    wrong$selected_option <- 2L
+    wrong$bool_correct <- FALSE
+    db_write_response("test", wrong, DB_USERS())
+
+    shiny::testServer(app_server, {
+      # Record the main tab switches (bslib::nav_select() sends them as input
+      # messages, which the mock session would otherwise drop)
+      tabs <- character(0)
+      unlockBinding("sendInputMessage", session)
+      session$sendInputMessage <- function(inputId, message) {
+        if (identical(inputId, "main_tabs")) tabs <<- c(tabs, message$value)
+      }
+      # The last row written (two answers within one second share id_datetime)
+      latest_mode <- function() {
+        ud <- db_get_userdata("test")
+        ud$practice_mode[nrow(ud)]
+      }
+
+      session$setInputs("login-user_name" = "test", "login-password" = "test123", "login-button" = 1)
+      session$flushReact()
+
+      # Retry queue: answer the one open item; finishing returns to the dashboard
+      tabs <- character(0)
+      session$setInputs("dashboard_1-retry_open" = 1)
+      session$flushReact()
+      expect_equal(utils::tail(tabs, 1), "train_panel")
+      session$setInputs("practice_1-answer_mc-answer" = "1")
+      session$setInputs("practice_1-check" = 1L)
+      session$flushReact()
+      expect_equal(latest_mode(), "retry")
+      session$setInputs("practice_1-next_item" = 2L)
+      session$flushReact()
+      expect_equal(utils::tail(tabs, 1), "progress_panel")
+
+      # A queue started from the selector is "standard" and stays on the Üben tab
+      tabs <- character(0)
+      session$setInputs("selector_1-cell_1_1" = TRUE)
+      session$setInputs("selector_1-submit" = 1L)
+      session$flushReact()
+      session$setInputs("practice_1-answer_mc-answer" = "1")
+      session$setInputs("practice_1-check" = 3L)
+      session$flushReact()
+      expect_equal(latest_mode(), "standard")
+      session$setInputs("practice_1-back" = 1L)
+      session$flushReact()
+      expect_false("progress_panel" %in% tabs)
+    })
+  })
+})

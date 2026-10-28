@@ -333,8 +333,20 @@ mod_dashboard_ui <- function(id) {
 
 # ── Server ────────────────────────────────────────────────────────────────────
 
-mod_dashboard_server <- function(id, data_item, credentials, write_trigger, ability_computed_this_session) {
+# `retry_items(ids)` (optional callback, wired in server.R): the "nochmal
+# üben" button of the "Offene Fehler" panel (dashboard_details.R). Starts a
+# practice queue with up to RETRY_MAX_ITEMS of the open mistakes that are past
+# their time-out (retry_eligible()), in random order. These answers count like
+# any other, also for the ability estimate; they're stored with
+# practice_mode = "retry".
+mod_dashboard_server <- function(id, data_item, credentials, write_trigger, ability_computed_this_session,
+                                 retry_items = NULL) {
   moduleServer(id, function(input, output, session) {
+    observeEvent(input$retry_open, {
+      ids <- retry_eligible(open_items(user_data(), data_item))$id_item
+      if (!is.null(retry_items) && length(ids) > 0L) retry_items(safe_sample(ids, RETRY_MAX_ITEMS))
+    })
+
     user_exists <- reactive({
       write_trigger()
       db_user_exists(credentials()$info$user_name)
@@ -530,7 +542,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
             multiple = TRUE,
             trajectory_section(trajectory_hist(), session$ns),
             detail_section(comp),
-            behaviour_section(ud, data_item)
+            behaviour_section(ud, data_item, session$ns)
           )
         )
       )

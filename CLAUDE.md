@@ -131,7 +131,8 @@ app_v3/
 │   ├── mod_mc_answer.R    # module: MC answer widget (radios) — child of mod_practice.R
 │   ├── mod_numeric_answer.R  # module: numeric answer widget (typed value, per-option range match) — child of mod_practice.R
 │   ├── mod_inspect.R      # module: read-only item overview (direct ID lookup)
-│   └── mod_dashboard.R    # module: progress dashboard
+│   ├── mod_dashboard.R    # module: progress dashboard
+│   └── dashboard_details.R  # dashboard's bottom sections: "Lernstand im Detail" + "Lernverhalten" (pure helpers, no module)
 │
 ├── dev/
 │   ├── run.R                    # local dev entrypoint — rv run dev/run.R
@@ -209,6 +210,7 @@ flowchart LR
 - **`practice_ids`** (`reactiveVal(NULL)`) drives the selector ↔ practice toggle. `NULL` means show the selector; an integer vector of item IDs means show the practice module. It lives in `server.R` and is passed by reference to both `mod_selector` and `mod_practice`.
 - **`inspect_id`** (`reactiveVal(NULL)`) is set when a student looks up a single item by ID in the selector (see `R/mod_selector.R` below). It routes to `mod_inspect` — a read-only overview — instead of the practice queue, and takes priority over `practice_ids` in the train-view switch. It never triggers a DB write.
 - **`write_trigger`** (`reactiveVal(0L)`) is incremented by `mod_practice` after every confirmed DB write. `mod_dashboard` uses it to invalidate its user-data cache without being directly coupled to the practice module. `mod_inspect` never touches it, since it never writes.
+- **`retry_active`** (`reactiveVal(FALSE)`) is `TRUE` while a practice queue started from the dashboard's "Offene Fehler" card runs (`mod_dashboard_server`'s `retry_items` callback sets it, plus `practice_ids`, and switches to the Üben tab). `mod_practice` stores those answers with `practice_mode = "retry"` and labels its back button „Zurück zum Fortschritt“; when the queue ends (finished or left), `server.R`'s view observer returns to the dashboard instead of the selector and clears the flag.
 - **`ability_computed_this_session`** (`reactiveVal(FALSE)`) latches `TRUE` once a fresh ability (θ) estimate has been computed and persisted to `db_ability.sqlite` during the current login — either by the silent auto-check that runs once right after login, or by `mod_dashboard`'s refresh button. It's declared in `server.R` alongside `write_trigger` and passed to `mod_dashboard_server`; see `R/mod_dashboard.R` below for why it exists (θ shouldn't be recomputed more than once per sitting).
 
 ### Authentication pattern
@@ -263,6 +265,8 @@ Single source of truth for:
 | `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: bounds of `estimate_theta()`, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
 | `CERTAINTY_HIGH` / `CERTAINTY_MED` | `numeric` | 2/3 and 1/3: cutoffs mapping the label probability to 3/2/1 certainty dots (IPCC calibrated probability language) |
 | `COMPETENCY_SCALE` | `data.frame` | θ interval → competency label + color for the dashboard's "Dein Lernstand" card — see `R/mod_dashboard.R` below |
+| `ESTIMATE_INTERVAL_LEVEL` | `numeric` | 0.8: coverage of the interval line in "Dein Lernstand im Detail" (normal approximation around θ̂) |
+| `RETRY_MAX_ITEMS` / `RETRY_MIN_DAYS` | `integer` | 10 and 1: "Offene Fehler" retry queue — at most 10 items per queue (drawn at random), and a mistake is only retryable once its latest answer is ≥ 1 calendar day old (time-out against redoing the same items within minutes). Random selector draws are unaffected |
 | `TRAJECTORY_COLOR` | `character` | Line/marker color of the "Fähigkeitsverlauf" panels — a dark neutral that stays readable on every competency band |
 | `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` | functions | Return full paths to the four SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
@@ -332,8 +336,8 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `parse_numeric_input(x)` | Numeric items only. Parses a typed string to a number, accepting both `.` and `,` as the decimal separator (`gsub(",", ".", ...)` before `as.numeric()`); returns `NA_real_` for empty/unparseable input |
 | `get_numeric_options(item)` | Numeric items only. One row per non-empty option: `idx` (the option's **column position** 1–6, not a compacted index — unlike `get_answeroptions()`, a gap in the option columns doesn't shift later options), `value`, `lower`, `upper`, `feedback`, `is_correct`. Bound columns missing from an unmigrated DB read as NA (= exact match) |
 | `evaluate_numeric_answer(item, typed_value)` | Numeric items only. Implements "Numeric item rules" (see Databases): an option matches if `lower ≤ typed ≤ upper`, or exactly its value if either bound is NA (a ~1e-9 relative epsilon only absorbs float noise). Overlapping ranges shouldn't exist in validated items; if they do, the lowest-numbered option wins. Returns `list(matched_idx, result)` where `matched_idx` is the column position and `result` is `"correct"` (option listed in `answer_correct`) / `"incorrect"` / `"unmatched"` (never `"skip"` — that's the caller's dedicated skip action, not a matching outcome) |
-| `build_response_row(item, answer_idx, user_id, session_token, typed_value = NA_real_, skipped = FALSE)` | Constructs the `data.frame` row written to `db_user.sqlite`. `answer_idx` is `NA` for an unmatched numeric answer or a skip; `typed_value` is numeric-only (`NA` for MC rows); `skipped` is passed as `TRUE` only for the skip button (MC and numeric alike) — never inferred from the selected option. `bool_correct` is `NA` whenever `skipped` or `is.na(answer_idx)` — i.e. skip and unmatched are both excluded from IRT scoring the same way |
-| `latest_attempts(user_data)` | Keeps only the most recent response per `id_item` (by `id_datetime`), not the first. Used exclusively to build the input to the ability estimate (`compute_and_save_ability()`) — unrelated to `mod_dashboard.R`'s own `first_attempts`, which still feeds the "Erstversuche" descriptive stats |
+| `build_response_row(item, answer_idx, user_id, session_token, typed_value = NA_real_, skipped = FALSE, practice_mode = "standard")` | Constructs the `data.frame` row written to `db_user.sqlite`. `practice_mode` is `"retry"` for answers from the dashboard's retry queue (see `retry_active`), metadata only. `answer_idx` is `NA` for an unmatched numeric answer or a skip; `typed_value` is numeric-only (`NA` for MC rows); `skipped` is passed as `TRUE` only for the skip button (MC and numeric alike) — never inferred from the selected option. `bool_correct` is `NA` whenever `skipped` or `is.na(answer_idx)` — i.e. skip and unmatched are both excluded from IRT scoring the same way |
+| `latest_attempts(user_data)` | Keeps only the most recent response per `id_item` (by `id_datetime`), not the first. Used exclusively to build the input to the ability estimate (`compute_and_save_ability()`) — unrelated to `mod_dashboard.R`'s own `first_attempts` (see that section) |
 | `build_ability_rows(competency, user_id, session_token)` | Reshapes an `estimate_competency()` result into the `data.frame` written to `db_ability.sqlite` — one row per learning area, all sharing a single `computed_at` timestamp (one "batch") |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `css_href(path, href)` | Appends the file's mtime as `?v=` for cache-busting the stylesheet link in `ui.R`; falls back to the bare `href` if the file isn't found |
@@ -415,10 +419,7 @@ The stimulus and all answer options render immediately, but the correct answer a
 
 > **Status: mockup.** The 1PL IRT competency estimate and its thresholds/labels below are a placeholder to demonstrate the dashboard concept, not an empirically validated model. Replacing it with an AI-assisted, empirically derived competency dashboard is the scope of the follow-up **"kiwi"** project — don't treat the current θ cutoffs or recommendation logic as settled design worth preserving during that work.
 
-**Descriptive stats** (accuracy %, days practiced, etc.) still use `user_data` (all attempts) and `first_attempts` (deduped to the first attempt per item) exactly as before — this reactive chain is unchanged:
-```
-write_trigger → user_data → first_attempts
-```
+**User data:** `write_trigger → user_data` (all responses, re-read after every answer). The bottom sections compute everything from `user_data()` via pure helpers in `R/dashboard_details.R`. The older `first_attempts` reactive (first attempt per item) is no longer read by the UI — only a test still uses it; remove both when next touching this module.
 
 **The ability (θ) estimate is persisted, not recomputed live.** It used to be computed straight from `first_attempts()` on every `write_trigger` tick — jittering after every single answered item, which isn't plausible (ability doesn't meaningfully shift within one sitting). It now works like this instead:
 
@@ -463,7 +464,20 @@ Snapshots saved before `se` was stored fall back to item-count dots (`evidence_l
 
 **"Persönliches Feedback" card** (top right, next to "Dein Lernstand") is rendered by `ai_feedback_card(feedback)`. It's currently a placeholder (`feedback = NULL`: explanatory text, a "Bald verfügbar" badge and shimmering skeleton lines, which stop animating under `prefers-reduced-motion`). Passing a Markdown string renders it via `render_md()` instead. Personalized LLM feedback is planned for the "kiwi" project, and this function is where it plugs in.
 
-There is no rule-based "Empfohlene nächste Schritte" card any more (`recommend_next()` was removed): the AI feedback card plus descriptive stats based on the items students did are meant to replace it.
+There is no rule-based "Empfohlene nächste Schritte" card any more (`recommend_next()` was removed): the AI feedback card plus the "Lernverhalten" section below are meant to replace it. There are no summary tiles in the top row either (removed on purpose; effort numbers live in "Lernverhalten").
+
+**Accordion below the top row** (`bslib::accordion`, `multiple = TRUE`): "Fähigkeitsverlauf" (open by default), "Dein Lernstand im Detail" and "Dein Lernverhalten" (both closed). The last two are built by `detail_section()` / `behaviour_section()` in **`R/dashboard_details.R`** — pure functions of the user's responses (testable without a session), each card answering one question in the student's words.
+
+**"Dein Lernstand im Detail"**: per area, the current estimate as a dot plus an interval *line* (`ESTIMATE_INTERVAL_LEVEL`) on the competency scale (`interval_strip()`), with the level names angled above and a θ axis below (`interval_axis()`), and a one-sentence reading (`interval_sentence()`); next to it a short explainer of how the estimate is computed. Caveat: with the MLE the "80 % Wahrscheinlichkeit" wording is formally a Bayesian statement — an EAP version (posterior mean/SD, N(0, 1) prior) is parked on branch `feature/eap-estimate`, undecided.
+
+**"Dein Lernverhalten"** — one definition of "worked on" throughout: an item counts once **answered** (right or wrong); skips and unrecognized numeric answers don't (`answered_rows()`, same rule as the estimate). Layout: from 1200 px three equal-height columns (`.la-grid-behaviour`): a narrow side column (`.la-side`) with three tiles (`behaviour_stats()`/`behaviour_tiles()`: items answered of the pool, days practised / this week, last practice day with "x von y richtig" — cumulative numbers that never go down, unlike the estimate), the calendar and the "Offene Fehler" card; then coverage; then the tree. 768–1200 px: tree full width below; phone: stacked. Columns stretch to the tallest one and distribute their content (no gaps under shorter cards).
+
+- **Calendar** (`calendar_card()`, `activity_calendar_data()`): one column per week (≤ 16), shaded by answers per day.
+- **Coverage** (`coverage_matrix()`/`coverage_card()`): learning area × item type, laid out like the selector; each cell's bar splits its items by their **latest** answer (zuletzt richtig / zuletzt falsch / noch offen).
+- **Answer tree** (`answer_tree_stats()`/`answer_tree_card()`): a left-to-right decision tree, one column per attempt (`ANSWER_TREE_DEPTH` = 3): root = every pool item, each node splits into richtig / falsch / nicht bearbeitet|wiederholt; empty nodes are hidden. Nodes are buttons; a click toggles its branch (`.is-open` on the `<li>`, client-side listener in `ui.R`, several branches can be open; the 1st attempt's branches are open by default). Each expandable node has a donut of how it splits next. Above it a takeaway sentence (`answer_tree_takeaway()`), counted over *all* later attempts, incl. whether retries happened on a later day. On narrow cards (container query) the root column is dropped and the total shown as a line.
+- **"Offene Fehler"** (`open_items()`, `retry_eligible()`, `open_items_panel()`): items wrong at the first attempt and never answered right since; the button starts a practice queue of up to `RETRY_MAX_ITEMS` of those past their time-out (`RETRY_MIN_DAYS`), via the `retry_items` callback (see `retry_active` above). These answers count like any other, also for the estimate (decided deliberately; `practice_mode` keeps them distinguishable for analyses). **No per-item list or solution lookup** on purpose: looking up an answer right before retrying it would defeat the retry.
+- **Tooltips:** any element with `data-tip` gets a shared tooltip from one script in `ui.R` (mouse hover, keyboard focus, tap on touch screens; fixed-positioned so the scrolling calendar can't clip it; follows its element on scroll). Calendar days and coverage cells use it (with `tabindex="-1"`, so a tap focuses them without adding Tab stops), and the (i) buttons next to card titles (`info_tip()`) hold the explanations that would otherwise take a line each. Prefer this over native `title`s (late, OS-styled, invisible on touch).
+- Clicks in this section are plain buttons sending `Shiny.setInputValue()` events (`retry_open`), not `actionButton()`s — the section re-renders after every answer (resend-`0` quirk, see `item_id_badge()`).
 
 ---
 
@@ -532,6 +546,7 @@ One table per user, named by `id_user`. Each row is one response:
 | `answer_correct` | text | The item's `answer_correct` at answer time, as-is (`"2"`, or `"1;3"` for a multi-correct numeric item) — denormalized, not used for scoring (`bool_correct` is). Tables created before multi-correct items declare this column INTEGER; `db_get_userdata()` reads it with `CAST(... AS TEXT)` so a `"1;3"` row isn't coerced to `1` |
 | `bool_correct` | logical | `TRUE`/`FALSE`/`NA` (`NA` = skipped **or** an unmatched numeric answer — both excluded from IRT scoring the same way) |
 | `skipped` | logical | `TRUE` if the skip button was clicked (MC or numeric; legacy MC rows: the old skip option was selected). The authoritative skip flag — the dashboard counts it |
+| `practice_mode` | text | `"standard"` (a queue from the selector) or `"retry"` (the dashboard's "Offene Fehler" retry). Metadata for analyses (who uses the retry, how successful are retries); scoring treats both the same. Added via the same auto-migrate-on-write, so older tables gain it on their next write and their older rows read as `NA` (= standard) |
 | `typed_value` | real | Numeric items only; `NA` for MC rows. The raw number the student typed, preserved even when it didn't match any distractor — otherwise that signal would be unrecoverable once discarded, and it's useful input for the kiwi project's item-generation/feedback work later. Added via `db_write_response()`'s auto-migrate-on-write (see `R/db.R` above), so pre-existing per-user tables don't need a manual migration |
 
 ### `db_ability.sqlite` — persisted ability (θ) snapshots (read-write at runtime)
@@ -589,7 +604,14 @@ Key CSS classes to be aware of when changing layout:
 | `.numeric-answer-card` / `.numeric-answer-label` / `.numeric-answer-input` / `.numeric-answer-hint` | Numeric item's pre-check answer widget — a bordered "answer card" purpose-built for a single field, not borrowed MC list-row styling |
 | `.numeric-result-correct/incorrect/skip` | Post-check border color on the (disabled, still-visible) numeric input — numeric counterpart of `.radio-result-*`; `skip` also covers the unmatched case |
 | `.feedback-card` | Per-answer feedback block with colored left border and shadow |
-| `.practice-stat` / `.practice-stat-val` / `.practice-stat-lbl` | Dashboard practice behaviour grid cells |
+| `.la-grid` / `.la-grid-behaviour` / `.la-side` / `.la-card` / `.la-card-title` / `.la-note` / `.la-info` | Dashboard bottom sections: card grids (equal-height columns in "Lernverhalten"), cards, notes, the (i) tooltip button |
+| `.la-tiles` / `.la-tile` | "Lernverhalten" key-number tiles (rows in the side column on wide screens, three across on phones) |
+| `.ivl-*` | "Lernstand im Detail": interval strips, level/θ axes, legend |
+| `.cal-*` | Activity calendar |
+| `.cov-*` | Coverage matrix (area × type), bars split richtig/falsch/offen |
+| `.lt-*` | Answer tree: nodes, connectors (pure CSS on `ul`/`li`), donuts, `.is-open` branches, container query for narrow cards |
+| `.oi-*` | "Offene Fehler" card |
+| `.tiger-tip` | The shared tooltip label created by the `data-tip` script in `ui.R` |
 | `.dashboard-comp-table` | "Dein Lernstand" table in dashboard |
 | `.comp-area` / `.comp-level` / `.comp-level-label` | Area-name cell / competency label + scale strip wrapper in that table (`.is-empty` = no data) |
 | `.comp-scale` / `.comp-seg` / `.is-filled` / `.is-current` | Segmented competency scale strip; filled color comes from the `--seg` inline CSS variable |

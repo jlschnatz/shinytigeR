@@ -134,7 +134,8 @@ build_response_row <- function(
   user_id,
   session_token,
   typed_value = NA_real_,
-  skipped = FALSE
+  skipped = FALSE,
+  practice_mode = "standard"
 ) {
   bool_correct <- if (skipped || is.na(answer_idx)) {
     NA
@@ -155,6 +156,9 @@ build_response_row <- function(
     bool_correct = bool_correct,
     skipped = skipped,
     typed_value = as.numeric(typed_value),
+    # "standard" (a queue from the selector) or "retry" (the dashboard's
+    # "nochmal üben") — metadata only, scoring treats both the same
+    practice_mode = as.character(practice_mode),
     stringsAsFactors = FALSE
   )
 }

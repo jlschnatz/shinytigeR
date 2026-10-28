@@ -154,6 +154,9 @@ test_that("build_response_row produces correct columns and types", {
   expect_equal(row$id_user, "user1")
   expect_true(isTRUE(row$bool_correct))
   expect_false(row$skipped)
+  expect_equal(row$practice_mode, "standard")
+  retry <- build_response_row(item, 1L, "user1", "tok", practice_mode = "retry")
+  expect_equal(retry$practice_mode, "retry")
 })
 
 test_that("build_response_row records an explicit skip", {
