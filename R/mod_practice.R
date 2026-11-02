@@ -86,7 +86,7 @@ mod_practice_ui <- function(id) {
           actionButton(
             ns("next_item"),
             div(tags$b("Weiter"), bsicons::bs_icon("arrow-right")),
-            class = "btn btn-success"
+            class = "btn btn-next"
           )
         )
       )

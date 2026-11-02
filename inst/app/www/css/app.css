@@ -229,21 +229,25 @@
   transform: scale(0.97);
 }
 
-/* Override Bootstrap green with a teal that sits between Goethe blue and the pink */
-.btn-success,
-.btn-success:focus {
-  background-color: #1a7a78 !important;
-  border-color:     #1a7a78 !important;
-  color: #fff !important;
+/* "Weiter" after the check: a light neutral grey with dark text (white text
+   on a grey this light would be too low in contrast), so it stays a clear
+   filled button without a signal color competing with the feedback */
+.btn-next,
+.btn-next:focus {
+  background-color: #d1d5db;
+  border-color:     #d1d5db;
+  color: #1f2937;
 }
-.btn-success:hover {
-  background-color: #155f5d !important;
-  border-color:     #155f5d !important;
+.btn-next:hover {
+  background-color: #bfc4cb;
+  border-color:     #bfc4cb;
+  color: #1f2937;
 }
-.btn-success:active,
-.btn-success.active {
-  background-color: #114d4b !important;
-  border-color:     #114d4b !important;
+.btn-next:active,
+.btn-next.active {
+  background-color: #aeb4bc !important;
+  border-color:     #aeb4bc !important;
+  color: #1f2937 !important;
 }
 
 /* ── Answer options — interactive ──────────────────────────────────────────── */
