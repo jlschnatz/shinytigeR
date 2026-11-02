@@ -259,11 +259,23 @@ behaviour_stats <- function(ud, data_item, today = Sys.Date()) {
   )
 }
 
+MONTHS_DE <- c(
+  "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"
+)
+
 # "27. Okt", with the year only if it isn't the current one
 format_date_short <- function(date, today = Sys.Date()) {
-  months <- c("Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez")
-  s <- sprintf("%d. %s", as.integer(format(date, "%d")), months[as.integer(format(date, "%m"))])
-  if (format(date, "%Y") != format(today, "%Y")) paste(s, format(date, "%Y")) else s
+  s <- sprintf(
+    "%d. %s",
+    as.integer(format(date, "%d")),
+    MONTHS_DE[as.integer(format(date, "%m"))]
+  )
+  if (format(date, "%Y") != format(today, "%Y")) {
+    paste(s, format(date, "%Y"))
+  } else {
+    s
+  }
 }
 
 # Three small tiles at the top of the section, side by side on every screen
@@ -326,16 +338,42 @@ activity_calendar_data <- function(dates, today = Sys.Date(), max_weeks = 16L) {
   )
 }
 
+# Month label per calendar row (week): the month whose 1st falls in that week
+# (past days only), "" otherwise; the top row also names its month unless the
+# next row does, so the oldest weeks are never unlabelled.
+CALENDAR_PHONE_WEEKS <- 8L # keep in sync with .cal-week:nth-last-child() in app.css
+
+calendar_month_labels <- function(days, today = Sys.Date()) {
+  mondays <- days[seq(1L, length(days), by = 7L)]
+  lab <- vapply(
+    mondays,
+    function(m) {
+      wk <- m + 0:6
+      first <- wk[format(wk, "%d") == "01" & wk <= today]
+      if (length(first)) MONTHS_DE[as.integer(format(first, "%m"))] else ""
+    },
+    character(1)
+  )
+  if (lab[1] == "" && (length(lab) < 2L || lab[2] == "")) {
+    lab[1] <- MONTHS_DE[as.integer(format(mondays[1], "%m"))]
+  }
+  lab
+}
+
 calendar_card <- function(ud, today = Sys.Date()) {
   ud <- answered_rows(ud)
   cal <- activity_calendar_data(ud$date, today)
   n_days <- length(unique(ud$date))
-  cells <- lapply(seq_len(nrow(cal)), function(i) {
-    d <- cal[i, ]
+  cell <- function(d) {
     tip <- sprintf(
       "%s, %s: %s",
-      WEEKDAYS_DE[as.integer(format(d$date, "%u"))], format(d$date, "%d.%m."),
-      if (d$n == 0L) "nicht geübt" else sprintf("%d Antwort%s", d$n, if (d$n == 1L) "" else "en")
+      WEEKDAYS_DE[as.integer(format(d$date, "%u"))],
+      format(d$date, "%d.%m."),
+      if (d$n == 0L) {
+        "nicht geübt"
+      } else {
+        sprintf("%d Antwort%s", d$n, if (d$n == 1L) "" else "en")
+      }
     )
     # tabindex -1: focusable by a tap (so the tooltip shows on touch screens)
     # but not a stop when tabbing through the page
@@ -344,17 +382,53 @@ calendar_card <- function(ud, today = Sys.Date()) {
       `data-tip` = if (!d$future) tip,
       tabindex = if (!d$future) "-1"
     )
+  }
+  # One row per week (oldest on top, like a wall calendar), so a long history
+  # grows downwards into the side column's free height instead of needing a
+  # horizontal scrollbar. On phones CSS keeps only the last 8 weeks.
+  week_idx <- split(seq_len(nrow(cal)), (seq_len(nrow(cal)) - 1L) %/% 7L)
+  months <- calendar_month_labels(cal$date, today)
+  # The top row on phones (the 8th-last week) names its month too, if it
+  # isn't labelled already: shown via CSS only there (data-alt)
+  k0 <- length(week_idx) - CALENDAR_PHONE_WEEKS + 1L
+  alt <- if (k0 > 1L && months[k0] == "" && (k0 == length(months) || months[k0 + 1L] == "")) {
+    MONTHS_DE[as.integer(format(cal$date[week_idx[[k0]][1]], "%m"))]
+  }
+  weeks <- lapply(seq_along(week_idx), function(k) {
+    div(
+      class = "cal-week",
+      tags$span(
+        class = "cal-month",
+        `aria-hidden` = "true",
+        `data-alt` = if (k == k0) alt,
+        months[k]
+      ),
+      lapply(week_idx[[k]], function(i) cell(cal[i, ]))
+    )
   })
   div(
-    class = "la-card",
+    class = "la-card cal-card",
     div(
-      class = "la-card-title", "Wann hast du geübt?",
-      info_tip("Jedes Kästchen ist ein Tag, je dunkler, desto mehr Antworten. Über mehrere Tage verteiltes Üben bleibt besser hängen als viel Üben an einem Tag.")
+      class = "la-card-title",
+      "Deine Übungsaktivität",
+      info_tip(
+        "Jedes Kästchen ist ein Tag, je dunkler, desto mehr Antworten. Wir empfehlen dir, über mehrere Tage verteilt zu lernen, statt an einem Tag sehr viele Aufgaben zu bearbeiten."
+      )
     ),
     div(
       class = "cal-wrap",
-      div(class = "cal-weekdays", `aria-hidden` = "true", lapply(WEEKDAYS_DE, function(w) tags$span(if (w %in% c("Mo", "Mi", "Fr")) w))),
-      div(class = "cal-grid", role = "img", `aria-label` = sprintf("Übungskalender: an %d Tagen geübt", n_days), cells)
+      div(
+        class = "cal-head",
+        `aria-hidden` = "true",
+        tags$span(),
+        lapply(WEEKDAYS_DE, function(w) tags$span(substr(w, 1, 1)))
+      ),
+      div(
+        class = "cal-weeks",
+        role = "img",
+        `aria-label` = sprintf("Übungskalender: an %d Tagen geübt", n_days),
+        weeks
+      )
     ),
     div(
       class = "cal-legend",

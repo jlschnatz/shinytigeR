@@ -462,6 +462,31 @@ test_that("open_items lists items whose latest answer is wrong, newest first", {
   expect_equal(nrow(open_items(tree_ud(c(1L, 1L, 1L), c(TRUE, FALSE, TRUE)), pool)), 0L)
 })
 
+test_that("calendar_month_labels marks the week of each month's 1st", {
+  today <- as.Date("2026-11-02") # a Monday
+  days <- seq(as.Date("2026-09-14"), as.Date("2026-11-08"), by = "day") # 8 weeks
+  # 1 Oct is in the week of 28 Sep, 1 Nov (a Sunday) in the week of 26 Oct;
+  # the top row names its month since the next row has no label
+  expect_equal(calendar_month_labels(days, today), c("Sep", "", "Okt", "", "", "", "Nov", ""))
+  # the next row is labelled: no top label (they'd collide)
+  expect_equal(calendar_month_labels(seq(as.Date("2026-09-21"), as.Date("2026-10-11"), by = "day"), today), c("", "Okt", ""))
+  # a 1st that is still in the future isn't labelled
+  expect_equal(calendar_month_labels(seq(as.Date("2026-11-23"), as.Date("2026-12-06"), by = "day"), as.Date("2026-11-30")), c("Nov", ""))
+})
+
+test_that("calendar_card has one row per week and a phone label for the 8th-last week", {
+  today <- as.Date("2026-11-02")
+  ud <- data.frame(
+    id_item = 1:2, bool_correct = c(TRUE, FALSE), skipped = FALSE,
+    id_datetime = as.numeric(as.POSIXct(c("2026-08-12 10:00", "2026-11-02 10:00")))
+  )
+  html <- as.character(calendar_card(ud, today))
+  # 10 Aug .. 8 Nov = 13 weeks
+  expect_equal(lengths(regmatches(html, gregexpr('class="cal-week"', html))), 13L)
+  # the 8th-last week (14 Sep) has no own label -> phone fallback "Sep"
+  expect_match(html, 'data-alt="Sep"')
+})
+
 test_that("retry_eligible applies the time-out of RETRY_MIN_DAYS calendar days", {
   today <- as.Date("2026-10-28")
   oi <- data.frame(id_item = 1:3, last_date = today - c(0L, 1L, 5L))
