@@ -32,19 +32,35 @@ interval_strip <- function(theta, se) {
     hi <- theta_pct(min(COMPETENCY_SCALE$upper[k], THETA_RANGE[2]))
     tags$span(
       class = "ivl-band",
-      style = sprintf("left:%.2f%%;width:%.2f%%;--seg:%s;", lo, hi - lo, COMPETENCY_SCALE$color_hex[k])
+      style = sprintf(
+        "left:%.2f%%;width:%.2f%%;--seg:%s;",
+        lo,
+        hi - lo,
+        COMPETENCY_SCALE$color_hex[k]
+      )
     )
   })
   marks <- if (!is.na(theta)) {
     tagList(
       if (!is.na(se) && is.finite(se)) {
         ivl <- theta_pct(estimate_interval(theta, se))
-        tags$span(class = "ivl-bar", style = sprintf("left:%.2f%%;width:%.2f%%;", ivl[1], ivl[2] - ivl[1]))
+        tags$span(
+          class = "ivl-bar",
+          style = sprintf("left:%.2f%%;width:%.2f%%;", ivl[1], ivl[2] - ivl[1])
+        )
       },
-      tags$span(class = "ivl-dot", style = sprintf("left:%.2f%%;", theta_pct(theta)))
+      tags$span(
+        class = "ivl-dot",
+        style = sprintf("left:%.2f%%;", theta_pct(theta))
+      )
     )
   }
-  div(class = "ivl-strip", `aria-hidden` = "true", tags$span(class = "ivl-bands", bands), marks)
+  div(
+    class = "ivl-strip",
+    `aria-hidden` = "true",
+    tags$span(class = "ivl-bands", bands),
+    marks
+  )
 }
 
 # Shared axes for all strips of the card: the level names above (angled, as
@@ -89,13 +105,18 @@ interval_sentence <- function(theta, se, n_items) {
   if (is.na(se) || !is.finite(se)) {
     return(sprintf(
       "Stufe „%s“ (%s). Die Unsicherheit erscheint nach der nächsten Aktualisierung.",
-      cl$label, aufgaben
+      cl$label,
+      aufgaben
     ))
   }
   ivl <- estimate_interval(theta, se)
   from <- scale_label_at(ivl[1])
   to <- scale_label_at(ivl[2])
-  range_txt <- if (from == to) sprintf("„%s“", from) else sprintf("zwischen „%s“ und „%s“", from, to)
+  range_txt <- if (from == to) {
+    sprintf("„%s“", from)
+  } else {
+    sprintf("zwischen „%s“ und „%s“", from, to)
+  }
   sprintf("Dein Stand liegt wahrscheinlich %s (%s).", range_txt, aufgaben)
 }
 
@@ -119,11 +140,18 @@ interval_card <- function(comp) {
     div(class = "la-card-title", "Wie sicher ist die Einschätzung?"),
     div(
       class = "ivl-legend",
-      tags$span(class = "ivl-legend-item", tags$span(class = "ivl-dot is-legend"), "Schätzung"),
+      tags$span(
+        class = "ivl-legend-item",
+        tags$span(class = "ivl-dot is-legend"),
+        "Schätzung"
+      ),
       tags$span(
         class = "ivl-legend-item",
         tags$span(class = "ivl-bar is-legend"),
-        sprintf("Bereich, in dem dein Stand mit %d %% Wahrscheinlichkeit liegt", round(100 * ESTIMATE_INTERVAL_LEVEL))
+        sprintf(
+          "Bereich, in dem dein Stand mit %d %% Wahrscheinlichkeit liegt",
+          round(100 * ESTIMATE_INTERVAL_LEVEL)
+        )
       )
     ),
     interval_axis("names"),
@@ -138,12 +166,24 @@ explainer_card <- function() {
     div(class = "la-card-title", "Wie wird dein Lernstand berechnet?"),
     tags$ul(
       class = "la-explain",
-      tags$li("Jede Aufgabe hat eine Schwierigkeit. Wer schwierige Aufgaben löst, wird höher eingeschätzt als jemand, der nur leichte löst."),
-      tags$li("Pro Aufgabe zählt deine letzte Antwort: Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung."),
-      tags$li("Übersprungene Aufgaben und nicht erkannte Zahleneingaben zählen nicht."),
-      tags$li("Je mehr Aufgaben du in einem Bereich bearbeitest, desto schmaler wird der Balken – die Einschätzung wird sicherer."),
-      tags$li("Neu berechnet wird höchstens einmal pro Sitzung: beim Anmelden oder über „Fähigkeitsverlauf aktualisieren“."),
-      tags$li("Die Einschätzung ist eine Orientierung für dein Üben, keine Note.")
+      tags$li(
+        "Jede Aufgabe hat eine Schwierigkeit. Wer schwierige Aufgaben löst, wird höher eingeschätzt als jemand, der nur leichte löst."
+      ),
+      tags$li(
+        "Pro Aufgabe zählt deine letzte Antwort: Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung."
+      ),
+      tags$li(
+        "Übersprungene Aufgaben und nicht erkannte Zahleneingaben zählen nicht."
+      ),
+      tags$li(
+        "Je mehr Aufgaben du in einem Bereich bearbeitest, desto schmaler wird der Balken – die Einschätzung wird sicherer."
+      ),
+      tags$li(
+        "Neu berechnet wird höchstens einmal pro Sitzung: beim Anmelden oder über „Fähigkeitsverlauf aktualisieren“."
+      ),
+      tags$li(
+        "Die Einschätzung ist eine Orientierung für dein Üben, keine Note."
+      )
     )
   )
 }
@@ -165,7 +205,10 @@ detail_section <- function(comp) {
 # hover, keyboard focus, and a tap on touch screens).
 info_tip <- function(text) {
   tags$button(
-    type = "button", class = "la-info", `data-tip` = text, `aria-label` = text,
+    type = "button",
+    class = "la-info",
+    `data-tip` = text,
+    `aria-label` = text,
     bsicons::bs_icon("info-circle")
   )
 }
@@ -177,13 +220,23 @@ info_tip <- function(text) {
 # `date` column if the caller hasn't.
 answered_rows <- function(ud, data_item = NULL) {
   if (nrow(ud) == 0L || is.null(ud$bool_correct)) {
-    return(data.frame(id_item = integer(0), bool_correct = logical(0), id_datetime = numeric(0), date = as.Date(character(0)), learning_area = character(0)))
+    return(data.frame(
+      id_item = integer(0),
+      bool_correct = logical(0),
+      id_datetime = numeric(0),
+      date = as.Date(character(0)),
+      learning_area = character(0)
+    ))
   }
   keep <- !is.na(ud$bool_correct) & !(ud$skipped %in% c(TRUE, 1L))
-  if (!is.null(data_item)) keep <- keep & ud$id_item %in% data_item$id_item
+  if (!is.null(data_item)) {
+    keep <- keep & ud$id_item %in% data_item$id_item
+  }
   a <- ud[keep, , drop = FALSE]
   a$bool_correct <- as.logical(a$bool_correct)
-  if (is.null(a$date)) a$date <- as.Date(as.POSIXct(a$id_datetime, origin = "1970-01-01"))
+  if (is.null(a$date)) {
+    a$date <- as.Date(as.POSIXct(a$id_datetime, origin = "1970-01-01"))
+  }
   a[order(a$id_item, a$id_datetime), , drop = FALSE]
 }
 
@@ -222,15 +275,29 @@ behaviour_tiles <- function(st, today = Sys.Date()) {
     ))
   }
   tile <- function(value, label, sub) {
-    div(class = "la-tile", div(class = "la-tile-val", value), div(class = "la-tile-lbl", label), div(class = "la-tile-sub", sub))
+    div(
+      class = "la-tile",
+      div(class = "la-tile-val", value),
+      div(class = "la-tile-lbl", label),
+      div(class = "la-tile-sub", sub)
+    )
   }
   plural <- function(n, one, many) if (n == 1L) one else many
   div(
     class = "la-tiles",
-    tile(st$n_items, plural(st$n_items, "Aufgabe beantwortet", "Aufgaben beantwortet"), sprintf("von %d", st$n_total)),
-    tile(st$n_days, plural(st$n_days, "Tag geübt", "Tage geübt"), sprintf("%d diese Woche", st$n_week)),
     tile(
-      format_date_short(st$last_date, today), "zuletzt geübt",
+      st$n_items,
+      plural(st$n_items, "Aufgabe beantwortet", "Aufgaben beantwortet"),
+      sprintf("von %d", st$n_total)
+    ),
+    tile(
+      st$n_days,
+      plural(st$n_days, "Tag geübt", "Tage geübt"),
+      sprintf("%d diese Woche", st$n_week)
+    ),
+    tile(
+      format_date_short(st$last_date, today),
+      "zuletzt geübt",
       sprintf("%d von %d richtig", st$last_correct, st$last_n)
     )
   )
@@ -247,7 +314,10 @@ activity_calendar_data <- function(dates, today = Sys.Date(), max_weeks = 16L) {
   first <- week_monday(if (length(dates) > 0L) min(dates) else today)
   first <- max(first, week_monday(today) - 7L * (max_weeks - 1L))
   days <- seq(first, week_monday(today) + 6L, by = "day")
-  n <- as.integer(table(factor(as.character(dates), levels = as.character(days))))
+  n <- as.integer(table(factor(
+    as.character(dates),
+    levels = as.character(days)
+  )))
   data.frame(
     date = days,
     n = n,
@@ -301,32 +371,58 @@ coverage_matrix <- function(ud, data_item) {
   a <- answered_rows(ud, data_item)
   latest <- a[!duplicated(a$id_item, fromLast = TRUE), , drop = FALSE]
   status <- latest$bool_correct[match(data_item$id_item, latest$id_item)]
-  grid <- expand.grid(type = unname(ITEM_TYPE_LABELS), learning_area = LEARNING_AREA_LEVELS, stringsAsFactors = FALSE)
-  counts <- t(mapply(function(area, type) {
-    in_cell <- data_item$learning_area == area & data_item$type_item == type
-    c(n_total = sum(in_cell), n_correct = sum(status[in_cell] %in% TRUE), n_wrong = sum(status[in_cell] %in% FALSE))
-  }, grid$learning_area, grid$type))
-  cbind(grid[, c("learning_area", "type")], as.data.frame(counts, row.names = NULL))
+  grid <- expand.grid(
+    type = unname(ITEM_TYPE_LABELS),
+    learning_area = LEARNING_AREA_LEVELS,
+    stringsAsFactors = FALSE
+  )
+  counts <- t(mapply(
+    function(area, type) {
+      in_cell <- data_item$learning_area == area & data_item$type_item == type
+      c(
+        n_total = sum(in_cell),
+        n_correct = sum(status[in_cell] %in% TRUE),
+        n_wrong = sum(status[in_cell] %in% FALSE)
+      )
+    },
+    grid$learning_area,
+    grid$type
+  ))
+  cbind(
+    grid[, c("learning_area", "type")],
+    as.data.frame(counts, row.names = NULL)
+  )
 }
 
 coverage_cell <- function(r) {
   if (r$n_total == 0L) {
-    return(div(class = "cov-cell is-empty", tags$span(class = "cov-count", "keine Aufgaben")))
+    return(div(
+      class = "cov-cell is-empty",
+      tags$span(class = "cov-count", "keine Aufgaben")
+    ))
   }
   n_open <- r$n_total - r$n_correct - r$n_wrong
   pct <- function(n) sprintf("width:%.1f%%;", 100 * n / r$n_total)
   div(
     class = "cov-cell",
-    `data-tip` = sprintf("Zuletzt %d richtig, %d falsch, %d noch offen", r$n_correct, r$n_wrong, n_open),
+    `data-tip` = sprintf(
+      "Zuletzt %d richtig, %d falsch, %d noch offen",
+      r$n_correct,
+      r$n_wrong,
+      n_open
+    ),
     tabindex = "-1",
     # "offen" on the count line, not below the bar, so all bars line up
     div(
       class = "cov-count",
       sprintf("%d von %d", r$n_correct + r$n_wrong, r$n_total),
-      if (n_open > 0L) tags$span(class = "cov-new", sprintf(" · %d offen", n_open))
+      if (n_open > 0L) {
+        tags$span(class = "cov-new", sprintf(" · %d offen", n_open))
+      }
     ),
     div(
-      class = "cov-bar", `aria-hidden` = "true",
+      class = "cov-bar",
+      `aria-hidden` = "true",
       tags$span(class = "is-correct", style = pct(r$n_correct)),
       tags$span(class = "is-wrong", style = pct(r$n_wrong))
     )
@@ -343,7 +439,12 @@ coverage_card <- function(cov) {
     ),
     div(
       class = "cov-grid",
-      div(class = "cov-head-row", `aria-hidden` = "true", tags$span(), lapply(types, tags$span)),
+      div(
+        class = "cov-head-row",
+        `aria-hidden` = "true",
+        tags$span(),
+        lapply(types, tags$span)
+      ),
       lapply(LEARNING_AREA_LEVELS, function(area) {
         div(
           class = "cov-row",
@@ -385,7 +486,11 @@ answer_tree_stats <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
   build <- function(s, attempt) {
     node <- list(n = length(s))
     if (attempt <= depth) {
-      at <- vapply(s, function(x) if (length(x) >= attempt) x[attempt] else NA, logical(1))
+      at <- vapply(
+        s,
+        function(x) if (length(x) >= attempt) x[attempt] else NA,
+        logical(1)
+      )
       node$children <- list(
         correct = build(s[at %in% TRUE], attempt + 1L),
         wrong = build(s[at %in% FALSE], attempt + 1L),
@@ -419,30 +524,49 @@ answer_tree_takeaway <- function(tree) {
   n_answered <- tree$n - tree$children$none$n
   aufgaben <- function(n) sprintf("%d Aufgabe%s", n, if (n == 1L) "" else "n")
   if (n_answered == 0L) {
-    return("Sobald du Aufgaben bearbeitest, siehst du hier, wie es nach dem ersten Versuch weiterging.")
+    return(
+      "Sobald du Aufgaben bearbeitest, siehst du hier, wie es nach dem ersten Versuch weiterging."
+    )
   }
   if (m$n_wrong == 0L) {
-    return("Du hast bisher keine Aufgabe beim ersten Versuch falsch beantwortet.")
+    return(
+      "Du hast bisher keine Aufgabe beim ersten Versuch falsch beantwortet."
+    )
   }
-  start <- sprintf("Von %s, die du beim ersten Versuch falsch hattest, ", aufgaben(m$n_wrong))
+  start <- sprintf(
+    "Von %s, die du beim ersten Versuch falsch hattest, ",
+    aufgaben(m$n_wrong)
+  )
   if (m$n_retried == 0L) {
     return(paste0(start, "hast du noch keine erneut versucht."))
   }
   solved <- if (m$n_solved == m$n_retried) {
-    if (m$n_retried == 1L) "und dann gelöst" else sprintf("und alle %d dann gelöst", m$n_solved)
+    if (m$n_retried == 1L) {
+      "und dann gelöst"
+    } else {
+      sprintf("und alle %d dann gelöst", m$n_solved)
+    }
   } else if (m$n_solved == 0L) {
     "aber noch keine davon gelöst"
   } else {
     sprintf("und %d davon gelöst", m$n_solved)
   }
   open <- if (m$n_open > 0L) {
-    sprintf(" %d %s noch auf dich.", m$n_open, if (m$n_open == 1L) "wartet" else "warten")
+    sprintf(
+      " %d %s noch auf dich.",
+      m$n_open,
+      if (m$n_open == 1L) "wartet" else "warten"
+    )
   } else {
     ""
   }
   sep <- if (m$n_solved == 0L) ", " else " "
   timing <- if (m$n_later_day == m$n_retried) {
-    if (m$n_retried == 1L) " (an einem späteren Tag)" else " (alle an einem späteren Tag)"
+    if (m$n_retried == 1L) {
+      " (an einem späteren Tag)"
+    } else {
+      " (alle an einem späteren Tag)"
+    }
   } else if (m$n_later_day == 0L) {
     " (am selben Tag)"
   } else {
@@ -462,9 +586,14 @@ answer_tree_label <- function(cat, attempt) {
 # A ring showing how a node splits into its children (correct/wrong/none)
 answer_tree_donut <- function(node) {
   counts <- vapply(node$children, `[[`, integer(1), "n")
-  pct <- if (sum(counts) > 0L) 100 * cumsum(counts) / sum(counts) else c(0, 0, 0)
+  pct <- if (sum(counts) > 0L) {
+    100 * cumsum(counts) / sum(counts)
+  } else {
+    c(0, 0, 0)
+  }
   tags$span(
-    class = "lt-donut", `aria-hidden` = "true",
+    class = "lt-donut",
+    `aria-hidden` = "true",
     style = sprintf("--a:%.1f%%;--b:%.1f%%;", pct[1], pct[2])
   )
 }
@@ -476,7 +605,11 @@ answer_tree_donut <- function(node) {
 answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
   expandable <- !is.null(node$children) && node$n > 0L
   is_open <- expandable && attempt %in% open_attempts
-  share <- if (parent_n > 0L) sprintf("%d %%", round(100 * node$n / parent_n)) else NULL
+  share <- if (parent_n > 0L) {
+    sprintf("%d %%", round(100 * node$n / parent_n))
+  } else {
+    NULL
+  }
   # Donut left of the text, label and share on one line: keeps nodes flat
   body <- tagList(
     if (expandable) answer_tree_donut(node),
@@ -493,9 +626,16 @@ answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
   cls <- paste("lt-node", paste0("is-", cat), if (node$n == 0L) "is-empty")
   el <- if (expandable && attempt > 0L) {
     tags$button(
-      type = "button", class = paste(cls, "is-toggle"), `data-node` = "",
-      `aria-expanded` = if (is_open) "true" else "false", body,
-      tags$span(class = "lt-chevron", `aria-hidden` = "true", bsicons::bs_icon("chevron-right"))
+      type = "button",
+      class = paste(cls, "is-toggle"),
+      `data-node` = "",
+      `aria-expanded` = if (is_open) "true" else "false",
+      body,
+      tags$span(
+        class = "lt-chevron",
+        `aria-hidden` = "true",
+        bsicons::bs_icon("chevron-right")
+      )
     )
   } else {
     div(class = cls, body)
@@ -521,7 +661,12 @@ open_items <- function(ud, data_item) {
   # Wrong first and never right since = no right answer at all
   open <- Filter(function(d) !any(d$bool_correct), split(a, a$id_item))
   if (length(open) == 0L) {
-    return(data.frame(id_item = integer(0), learning_area = character(0), type_item = character(0), last_date = as.Date(character(0))))
+    return(data.frame(
+      id_item = integer(0),
+      learning_area = character(0),
+      type_item = character(0),
+      last_date = as.Date(character(0))
+    ))
   }
   ids <- as.integer(names(open))
   last_time <- vapply(open, function(d) max(d$id_datetime), numeric(1))
@@ -569,10 +714,18 @@ open_items_panel <- function(oi, ns, today = Sys.Date()) {
       tagList(
         if (n_ready > 0L) {
           tags$button(
-            type = "button", class = "btn btn-sm btn-primary oi-retry",
-            onclick = sprintf("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", ns("retry_open")),
+            type = "button",
+            class = "btn btn-sm btn-primary oi-retry",
+            onclick = sprintf(
+              "Shiny.setInputValue('%s', Date.now(), {priority: 'event'})",
+              ns("retry_open")
+            ),
             bsicons::bs_icon("arrow-repeat"),
-            if (n_ready > RETRY_MAX_ITEMS) sprintf("%d davon nochmal üben", RETRY_MAX_ITEMS) else sprintf("Alle %d nochmal üben", n_ready)
+            if (n_ready > RETRY_MAX_ITEMS) {
+              sprintf("%d davon nochmal üben", RETRY_MAX_ITEMS)
+            } else {
+              sprintf("Alle %d nochmal üben", n_ready)
+            }
           )
         },
         if (n_wait > 0L) {
