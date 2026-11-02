@@ -508,8 +508,11 @@ coverage_card <- function(cov) {
   div(
     class = "la-card cov-card",
     div(
-      class = "la-card-title", "Wo hast du schon geübt?",
-      info_tip("Aufgeteilt wie die Auswahl unter „Üben“: Dort findest du die offenen Aufgaben jedes Bereichs. Ein Balken zeigt, ob deine letzte Antwort richtig oder falsch war.")
+      class = "la-card-title",
+      "Deine Themenabdeckung",
+      info_tip(
+        "Aufgeteilt wie die Auswahl unter „Üben“: Dort findest du die offenen Aufgaben jedes Bereichs. Ein Balken zeigt, ob deine letzte Antwort richtig oder falsch war."
+      )
     ),
     div(
       class = "cov-grid",

@@ -1028,7 +1028,7 @@
 .cov-bar { display: flex; height: 8px; margin-top: 0.2rem; border-radius: 4px; overflow: hidden; background: #e5e8ec; }
 .cov-bar .is-correct { background: var(--tiger-correct); }
 .cov-bar .is-wrong { background: var(--tiger-incorrect); }
-.cov-new { font-size: 0.7rem; font-weight: 600; color: #b26a00; }
+.cov-new { font-size: 0.7rem; color: #8a929c; }
 .cov-legend { justify-content: flex-start; }
 @container (max-width: 420px) {
   .cov-head-row,
