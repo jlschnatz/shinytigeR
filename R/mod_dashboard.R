@@ -363,17 +363,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       ud
     })
 
-    # First attempts per item feed the descriptive ("Erstversuche") stats below
-    # — this is unrelated to the ability estimate, which uses the *latest*
-    # attempt per item instead (see compute_and_save_ability() in R/irt.R).
-    first_attempts <- reactive({
-      ud <- user_data()
-      if (nrow(ud) == 0L) {
-        return(ud)
-      }
-      ud[!duplicated(ud[, c("id_user", "id_item")]), ]
-    })
-
     # Bumped after a successful compute_and_save_ability() call to force a
     # re-fetch of the persisted estimate below.
     ability_version <- reactiveVal(0L)
@@ -532,13 +521,13 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           )
         ),
 
-        # ── Expandable sections: trajectory (open by default), then the
+        # ── Expandable sections, all closed by default: trajectory, the
         # detailed estimate and the learning behaviour (R/dashboard_details.R)
         div(
           class = "mb-4",
           bslib::accordion(
             id = session$ns("dash_sections"),
-            open = "trajectory",
+            open = FALSE,
             multiple = TRUE,
             trajectory_section(trajectory_hist(), session$ns),
             detail_section(comp),

@@ -105,6 +105,37 @@ app_ui <- function() {
           "    }, 0);",
           "  });",
           "})();",
+          # The "Wie wird das berechnet?" button in "Dein Lernstand im Detail":
+          # opens/closes the explainer next to the strips (the grid's
+          # data-explain). Remembered for the page's lifetime and re-applied
+          # after a re-render, like the tree toggle.
+          "(function () {",
+          "  var open = false;",
+          "  function apply(grid) {",
+          "    grid.setAttribute('data-explain', open ? 'open' : 'closed');",
+          "    grid.querySelectorAll('[data-explain-toggle]').forEach(function (b) {",
+          "      b.setAttribute('aria-expanded', open ? 'true' : 'false');",
+          "    });",
+          "  }",
+          "  document.addEventListener('click', function (e) {",
+          "    var btn = e.target.closest('[data-explain-toggle]');",
+          "    if (!btn) return;",
+          "    var grid = btn.closest('[data-explain]');",
+          "    open = grid.getAttribute('data-explain') !== 'open';",
+          "    apply(grid);",
+          # Below 992 px it opens below all strips, out of sight: scroll to it
+          "    var ex = grid.querySelector('.la-explainer');",
+          "    if (open && ex && window.matchMedia('(max-width: 991.98px)').matches) {",
+          "      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;",
+          "      ex.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });",
+          "    }",
+          "  });",
+          "  $(document).on('shiny:value', function () {",
+          "    if (open) setTimeout(function () {",
+          "      document.querySelectorAll('[data-explain]').forEach(apply);",
+          "    }, 0);",
+          "  });",
+          "})();",
           # Tooltips for every element with data-tip (dashboard calendar days,
           # coverage cells, (i) buttons). One shared, fixed-position label
           # instead of native `title`s: those appear late, look like the OS

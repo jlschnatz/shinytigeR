@@ -814,9 +814,36 @@
 /* ── Dashboard — detail sections (R/dashboard_details.R) ─────────────────────── */
 .la-grid { display: grid; gap: 0.6rem; }
 .la-grid-detail { grid-template-columns: minmax(0, 1fr); }
+/* The explainer is closed by default; opened, it's a side column from 992 px
+   (the strips get narrower) and below the strips on narrower screens.
+   data-explain is set by the button in the interval card (script in ui.R). */
+.la-grid-detail[data-explain="closed"] > .la-explainer { display: none; }
 @media (min-width: 992px) {
-  .la-grid-detail { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .la-grid-detail[data-explain="open"] { grid-template-columns: minmax(0, 3fr) minmax(17rem, 1fr); }
 }
+.la-grid-detail[data-explain="open"] > .la-explainer { animation: la-fade-in 0.2s ease-out; }
+@keyframes la-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .la-grid-detail[data-explain="open"] > .la-explainer { animation: none; }
+}
+.ivl-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 1rem; }
+.ivl-explain-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid #d5dae0;
+  border-radius: 999px;
+  background: #f6f7f9;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #5b6470;
+  white-space: nowrap;
+}
+.ivl-explain-btn > span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ivl-explain-btn:hover { color: var(--tiger-primary); border-color: var(--tiger-primary); }
+.ivl-explain-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+.ivl-explain-btn[aria-expanded="false"] .ivl-explain-open,
+.ivl-explain-btn[aria-expanded="true"] .ivl-explain-closed { display: none; }
 /* Three columns from 1200 px: a narrow side column (tiles, calendar, retry),
    then coverage and tree side by side. Between 768 and 1200 px the tree goes
    full width below; on phones everything stacks. */
@@ -868,9 +895,25 @@
 .la-subtitle { font-size: 0.9rem; font-weight: 600; margin: 1.1rem 0 0.5rem; }
 .la-summary { font-size: 0.875rem; color: #374151; margin-bottom: 0.6rem; }
 .la-note { font-size: 0.78rem; color: #6b7280; margin: 0.5rem 0 0; }
-.la-explain { font-size: 0.875rem; padding-left: 1.1rem; margin: 0; }
-.la-explain li { margin-bottom: 0.45rem; }
-.la-explain li:last-child { margin-bottom: 0; }
+/* "Wie wird dein Lernstand berechnet?": four steps one below the other */
+.la-steps { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.6rem; }
+.la-step { display: flex; align-items: flex-start; gap: 0.6rem; }
+.la-step-num {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--tiger-primary);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.la-step-title { font-size: 0.875rem; font-weight: 600; color: #1f2937; }
+.la-step-text { font-size: 0.82rem; color: #4b5563; }
+.la-explainer-close { margin-top: 0.85rem; }
 
 /* Estimate with interval on the competency scale */
 .ivl-legend {
