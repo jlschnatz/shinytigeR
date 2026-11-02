@@ -855,7 +855,8 @@
 .cov-card,
 .lt-card { display: flex; flex-direction: column; }
 .cov-grid { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
-.lt-card .lt-tree { flex: 1; display: flex; align-items: center; }
+.lt-view { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.lt-view .lt-tree { flex: 1; display: flex; align-items: center; }
 .la-card {
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
@@ -1051,6 +1052,34 @@
 .oi-retry { display: flex; justify-content: center; align-items: center; gap: 0.35rem; width: 100%; }
 .oi-wait { margin-top: 0.3rem; }
 .lt-takeaway { font-weight: 600; }
+/* Toggle between the tree's two reading directions (segmented control) */
+.lt-switch {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 0.6rem;
+  padding: 2px;
+  border: 1px solid #d5dae0;
+  border-radius: 999px;
+  background: #f6f7f9;
+}
+.lt-switch-btn {
+  padding: 0.15rem 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.78rem;
+  color: #5b6470;
+  white-space: nowrap;
+  transition: background-color 0.12s, color 0.12s;
+}
+.lt-switch-btn:hover { color: var(--tiger-primary); }
+@media (max-width: 575.98px) {
+  .lt-switch-btn { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+}
+.lt-switch-btn[aria-pressed="true"] { background: var(--tiger-primary); color: #fff; }
+.lt-switch-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+.lt-card[data-view="forward"] > .lt-view[data-view="backward"],
+.lt-card[data-view="backward"] > .lt-view[data-view="forward"] { display: none; }
 .lt-hint { margin: 0.3rem 0 0.2rem; }
 .lt-tree { container-type: inline-size; overflow-x: auto; }
 .lt-inner {
@@ -1073,13 +1102,13 @@
 }
 .lt-inner ul { list-style: none; margin: 0; padding: 0; }
 .lt-inner li { display: flex; align-items: center; }
-.lt-inner .lt-children { position: relative; display: flex; flex-direction: column; padding-left: calc(var(--gap) / 2); }
-.lt-children > li { position: relative; padding: 0.1rem 0 0.1rem calc(var(--gap) / 2); }
+.lt-inner .lt-children { position: relative; display: flex; flex-direction: column; padding-inline-start: calc(var(--gap) / 2); }
+.lt-children > li { position: relative; padding-block: 0.1rem; padding-inline-start: calc(var(--gap) / 2); }
 /* parent -> spine */
-.lt-children::before { content: ""; position: absolute; left: 0; top: 50%; width: calc(var(--gap) / 2); border-top: 2px solid var(--line); margin-top: -1px; }
+.lt-children::before { content: ""; position: absolute; inset-inline-start: 0; top: 50%; width: calc(var(--gap) / 2); border-top: 2px solid var(--line); margin-top: -1px; }
 /* spine -> node, and the spine itself (half above/below the node centre) */
-.lt-children > li::before { content: ""; position: absolute; left: 0; top: 50%; width: calc(var(--gap) / 2); border-top: 2px solid var(--line); margin-top: -1px; }
-.lt-children > li::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 2px solid var(--line); margin-left: -1px; }
+.lt-children > li::before { content: ""; position: absolute; inset-inline-start: 0; top: 50%; width: calc(var(--gap) / 2); border-top: 2px solid var(--line); margin-top: -1px; }
+.lt-children > li::after { content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; border-inline-start: 2px solid var(--line); margin-inline-start: -1px; }
 .lt-children > li:first-child::after { top: 50%; }
 .lt-children > li:last-child::after { bottom: 50%; }
 .lt-children > li:only-child::after { display: none; }
@@ -1154,8 +1183,8 @@
   .lt-top > li > .lt-children::before,
   .lt-top > li > .lt-children > li::before,
   .lt-top > li > .lt-children > li::after { display: none; }
-  .lt-inner .lt-top > li > .lt-children { padding-left: 0; }
-  .lt-top > li > .lt-children > li { padding-left: 0; }
+  .lt-inner .lt-top > li > .lt-children { padding-inline-start: 0; }
+  .lt-top > li > .lt-children > li { padding-inline-start: 0; }
   .lt-donut { display: none; }
   .lt-node { text-align: center; }
   .lt-share { display: block; }
@@ -1163,6 +1192,29 @@
   .lt-node.is-toggle { padding-right: 0.3rem; padding-bottom: 1rem; }
   .lt-chevron { top: auto; right: auto; bottom: 0.15rem; left: 50%; transform: translateX(-50%) rotate(90deg); }
   .lt-node[aria-expanded="true"] .lt-chevron { transform: translateX(-50%) rotate(-90deg); }
+}
+
+/* "Ab letztem Versuch" is mirrored, so time runs left to right in both
+   views: root ("Alle") on the right, the latest answer next to it, older
+   attempts further left. rtl flips the columns, connectors (logical
+   properties above) and the scroll start; node contents stay ltr. */
+.lt-view[data-view="backward"] .lt-tree { direction: rtl; }
+.lt-view[data-view="backward"] .lt-node,
+.lt-view[data-view="backward"] .lt-head > span,
+.lt-view[data-view="backward"] .lt-total { direction: ltr; }
+.lt-view[data-view="backward"] .lt-node {
+  flex-direction: row-reverse;
+  text-align: right;
+  border-left-width: 1px;
+  border-right: 3px solid var(--cat);
+}
+@container not (max-width: 480px) {
+  .lt-view[data-view="backward"] .lt-node.is-toggle { padding-right: 0.3rem; padding-left: 0.9rem; }
+  .lt-view[data-view="backward"] .lt-chevron { right: auto; left: 0.2rem; transform: translateY(-50%) scaleX(-1); }
+  .lt-view[data-view="backward"] .lt-node[aria-expanded="true"] .lt-chevron { transform: translateY(-50%) scaleX(-1) rotate(180deg); }
+}
+@container (max-width: 480px) {
+  .lt-view[data-view="backward"] .lt-node { text-align: center; }
 }
 
 /* ── Tooltips (data-tip, script in ui.R) ─────────────────────────────────── */

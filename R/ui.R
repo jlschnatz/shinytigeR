@@ -81,6 +81,30 @@ app_ui <- function() {
           "  var open = btn.parentElement.classList.toggle('is-open');",
           "  btn.setAttribute('aria-expanded', open ? 'true' : 'false');",
           "});",
+          # Its toggle between the two reading directions (from the first
+          # attempt / from the latest one back). Both views are in the page;
+          # the card's data-view picks one. The choice is remembered for the
+          # page's lifetime and re-applied after each dashboard re-render.
+          "(function () {",
+          "  var view = null;",
+          "  function apply(card, v) {",
+          "    card.setAttribute('data-view', v);",
+          "    card.querySelectorAll('[data-lt-view]').forEach(function (b) {",
+          "      b.setAttribute('aria-pressed', b.getAttribute('data-lt-view') === v ? 'true' : 'false');",
+          "    });",
+          "  }",
+          "  document.addEventListener('click', function (e) {",
+          "    var btn = e.target.closest('[data-lt-view]');",
+          "    if (!btn) return;",
+          "    view = btn.getAttribute('data-lt-view');",
+          "    apply(btn.closest('.lt-card'), view);",
+          "  });",
+          "  $(document).on('shiny:value', function () {",
+          "    if (view) setTimeout(function () {",
+          "      document.querySelectorAll('.lt-card[data-view]').forEach(function (c) { apply(c, view); });",
+          "    }, 0);",
+          "  });",
+          "})();",
           # Tooltips for every element with data-tip (dashboard calendar days,
           # coverage cells, (i) buttons). One shared, fixed-position label
           # instead of native `title`s: those appear late, look like the OS

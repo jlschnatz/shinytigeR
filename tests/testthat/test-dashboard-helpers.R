@@ -353,6 +353,52 @@ test_that("answer_tree_takeaway puts the tree's message into one sentence", {
   )
 })
 
+test_that("answer_tree_stats backward reads each item from its latest answer", {
+  pool <- data.frame(id_item = 1:5)
+  ud <- tree_ud(
+    # 1: right; 2: wrong, then right (learned); 3: right, then wrong
+    # (regressed); 4: wrong, wrong; 5: not worked on
+    id_item      = c(1L, 2L, 2L, 3L, 3L, 4L, 4L),
+    bool_correct = c(TRUE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE)
+  )
+  tr <- answer_tree_stats(ud, pool, direction = "backward")
+  n <- function(node) unname(vapply(node$children, `[[`, integer(1), "n"))
+  expect_equal(tr$direction, "backward")
+  # latest answer: 1, 2 right; 3, 4 wrong; 5 not worked on
+  expect_equal(n(tr), c(2L, 2L, 1L))
+  # before a right latest answer: 2 was wrong, 1 had no earlier attempt
+  expect_equal(n(tr$children$correct), c(0L, 1L, 1L))
+  # before a wrong latest answer: 3 was right, 4 wrong
+  expect_equal(n(tr$children$wrong), c(1L, 1L, 0L))
+  expect_equal(tr$latest, list(n_correct = 2L, n_wrong = 2L, n_learned = 1L, n_regressed = 1L))
+  expect_null(tr$mistakes)
+  expect_equal(
+    answer_tree_takeaway(tr),
+    "Deine letzte Antwort war bei 2 Aufgaben richtig (1 davon nach einem früheren Fehler) und bei 2 falsch (1 davon hattest du früher schon einmal richtig)."
+  )
+  tk <- function(id, ok) answer_tree_takeaway(answer_tree_stats(tree_ud(id, ok), pool, direction = "backward"))
+  expect_match(tk(integer(0), logical(0)), "Sobald du Aufgaben bearbeitest")
+  expect_equal(tk(1L, TRUE), "Deine letzte Antwort war bei 1 Aufgabe richtig und bei keiner falsch.")
+  expect_equal(tk(1L, FALSE), "Deine letzte Antwort war bei keiner Aufgabe richtig und bei 1 falsch.")
+})
+
+test_that("answer_tree_card with a backward tree adds the toggle and both views", {
+  pool <- data.frame(id_item = 1:3)
+  ud <- tree_ud(id_item = c(1L, 1L, 2L), bool_correct = c(FALSE, TRUE, FALSE))
+  html <- as.character(answer_tree_card(
+    answer_tree_stats(ud, pool),
+    backward = answer_tree_stats(ud, pool, direction = "backward")
+  ))
+  expect_match(html, 'class="la-card lt-card" data-view="forward"', fixed = TRUE)
+  expect_match(html, 'data-lt-view="forward" aria-pressed="true"', fixed = TRUE)
+  expect_match(html, 'data-lt-view="backward" aria-pressed="false"', fixed = TRUE)
+  expect_match(html, 'class="lt-view" data-view="backward"', fixed = TRUE)
+  expect_match(html, "Vorletzter", fixed = TRUE)
+  expect_match(html, "erster Versuch", fixed = TRUE)
+  # without a backward tree: no toggle
+  expect_false(grepl("data-lt-view", as.character(answer_tree_card(answer_tree_stats(ud, pool))), fixed = TRUE))
+})
+
 test_that("answer_tree_stats counts retries on a later day than the first attempt", {
   day <- 86400
   ud <- data.frame(

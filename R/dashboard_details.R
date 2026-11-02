@@ -545,20 +545,31 @@ coverage_card <- function(cov) {
 
 # Counts for the answer tree, one level per attempt. Root = every item in the
 # pool; a node's children split its items by the next attempt: richtig /
-# falsch / none (no such attempt: "nicht bearbeitet" at the 1st attempt,
-# "nicht wiederholt" after that). Goes ANSWER_TREE_DEPTH attempts deep. Skips
-# and unrecognized numeric answers aren't answers here (same as for the
-# estimate), so an item that was only skipped counts as not worked on yet.
-# Returns a nested list(n, children = list(correct, wrong, none)); nodes at
-# the last level and "none" nodes have no children.
+# falsch / none (no such attempt: "nicht bearbeitet" at the 1st column,
+# "nicht wiederholt" / "erster Versuch" after that). Goes
+# ANSWER_TREE_DEPTH attempts deep. `direction = "forward"` reads each item's
+# answers from the first one on, `"backward"` from the latest one back in
+# time (the card's toggle shows both). Skips and unrecognized numeric answers
+# aren't answers here (same as for the estimate), so an item that was only
+# skipped counts as not worked on yet. Returns a nested
+# list(n, children = list(correct, wrong, none)); nodes at the last level and
+# "none" nodes have no children. Plus `direction` and the numbers for the
+# takeaway sentence: `$mistakes` (forward) or `$latest` (backward).
 ANSWER_TREE_DEPTH <- 3L
 
-answer_tree_stats <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
+answer_tree_stats <- function(
+  ud,
+  data_item,
+  depth = ANSWER_TREE_DEPTH,
+  direction = c("forward", "backward")
+) {
+  direction <- match.arg(direction)
   a <- answered_rows(ud, data_item)
   answered <- split(a$bool_correct, a$id_item)
   dates <- split(a$date, a$id_item)
   seqs <- lapply(as.character(data_item$id_item), function(id) {
-    if (is.null(answered[[id]])) logical(0) else answered[[id]]
+    x <- if (is.null(answered[[id]])) logical(0) else answered[[id]]
+    if (direction == "backward") rev(x) else x
   })
   build <- function(s, attempt) {
     node <- list(n = length(s))
@@ -577,6 +588,20 @@ answer_tree_stats <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
     node
   }
   tree <- build(seqs, 1L)
+  tree$direction <- direction
+  if (direction == "backward") {
+    # For the takeaway: the latest answers, and how the items got there
+    last <- vapply(answered, function(x) x[length(x)], logical(1))
+    before_wrong <- vapply(answered, function(x) any(!x[-length(x)]), logical(1))
+    before_right <- vapply(answered, function(x) any(x[-length(x)]), logical(1))
+    tree$latest <- list(
+      n_correct = sum(last),
+      n_wrong = sum(!last),
+      n_learned = sum(last & before_wrong),
+      n_regressed = sum(!last & before_right)
+    )
+    return(tree)
+  }
   # For the takeaway sentence: what became of the items that were wrong at
   # the first attempt, over ALL later attempts (not cut off at `depth`)
   wrong_first <- names(Filter(function(x) !x[1], answered))
@@ -597,6 +622,9 @@ answer_tree_stats <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
 # The tree's message in one sentence, so students who only skim get it too.
 # `tree` is answer_tree_stats()'s result.
 answer_tree_takeaway <- function(tree) {
+  if (identical(tree$direction, "backward")) {
+    return(answer_tree_takeaway_latest(tree))
+  }
   m <- tree$mistakes
   n_answered <- tree$n - tree$children$none$n
   aufgaben <- function(n) sprintf("%d Aufgabe%s", n, if (n == 1L) "" else "n")
@@ -649,14 +677,70 @@ answer_tree_takeaway <- function(tree) {
   } else {
     sprintf(" (%d davon an einem späteren Tag)", m$n_later_day)
   }
-  paste0(start, sprintf("hast du %d noch einmal versucht%s%s%s.", m$n_retried, timing, sep, solved), open)
+  paste0(
+    start,
+    sprintf(
+      "hast du %d noch einmal versucht%s%s%s.",
+      m$n_retried,
+      timing,
+      sep,
+      solved
+    ),
+    open
+  )
 }
 
-answer_tree_label <- function(cat, attempt) {
-  switch(cat,
+# The backward view's sentence: the latest answers, and how many of them
+# came after an earlier mistake / after the item was once right
+answer_tree_takeaway_latest <- function(tree) {
+  l <- tree$latest
+  if (l$n_correct + l$n_wrong == 0L) {
+    return(
+      "Sobald du Aufgaben bearbeitest, siehst du hier, wie es zu deinen letzten Antworten kam."
+    )
+  }
+  right <- if (l$n_correct == 0L) {
+    "bei keiner Aufgabe richtig"
+  } else {
+    sprintf(
+      "bei %d Aufgabe%s richtig%s",
+      l$n_correct,
+      if (l$n_correct == 1L) "" else "n",
+      if (l$n_learned > 0L) {
+        sprintf(" (%d davon nach einem früheren Fehler)", l$n_learned)
+      } else {
+        ""
+      }
+    )
+  }
+  wrong <- if (l$n_wrong == 0L) {
+    "bei keiner falsch"
+  } else {
+    sprintf(
+      "bei %d falsch%s",
+      l$n_wrong,
+      if (l$n_regressed > 0L) {
+        sprintf(" (%d davon hattest du früher schon einmal richtig)", l$n_regressed)
+      } else {
+        ""
+      }
+    )
+  }
+  sprintf("Deine letzte Antwort war %s und %s.", right, wrong)
+}
+
+answer_tree_label <- function(cat, attempt, direction = "forward") {
+  switch(
+    cat,
     correct = "richtig",
     wrong = "falsch",
-    none = if (attempt == 1L) "nicht bearbeitet" else "nicht wiederholt"
+    none = if (attempt == 1L) {
+      "nicht bearbeitet"
+    } else if (direction == "backward") {
+      "erster Versuch"
+    } else {
+      "nicht wiederholt"
+    }
   )
 }
 
@@ -679,7 +763,14 @@ answer_tree_donut <- function(node) {
 # buttons; the client-side toggle in ui.R flips the <li>'s .is-open, which
 # shows or hides its child list — so any number of branches can be open.
 # `attempt` is the attempt this node stands for (0 = root).
-answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
+answer_tree_item <- function(
+  node,
+  cat,
+  attempt,
+  parent_n,
+  open_attempts,
+  direction = "forward"
+) {
   expandable <- !is.null(node$children) && node$n > 0L
   is_open <- expandable && attempt %in% open_attempts
   share <- if (parent_n > 0L) {
@@ -695,8 +786,18 @@ answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
       tags$span(class = "lt-num", node$n),
       tags$span(
         class = "lt-lbl",
-        if (attempt == 0L) "Aufgaben" else answer_tree_label(cat, attempt),
-        if (!is.null(share)) tags$span(class = "lt-share", tags$span(class = "lt-dot", "\u00b7\u00a0"), share)
+        if (attempt == 0L) {
+          "Aufgaben"
+        } else {
+          answer_tree_label(cat, attempt, direction)
+        },
+        if (!is.null(share)) {
+          tags$span(
+            class = "lt-share",
+            tags$span(class = "lt-dot", "\u00b7\u00a0"),
+            share
+          )
+        }
       )
     )
   )
@@ -722,10 +823,23 @@ answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
     el,
     if (expandable) {
       # Empty nodes are left out: at deeper attempts most would be 0
-      kids <- Filter(function(k) node$children[[k]]$n > 0L, names(node$children))
-      tags$ul(class = "lt-children", lapply(kids, function(k) {
-        answer_tree_item(node$children[[k]], k, attempt + 1L, node$n, open_attempts)
-      }))
+      kids <- Filter(
+        function(k) node$children[[k]]$n > 0L,
+        names(node$children)
+      )
+      tags$ul(
+        class = "lt-children",
+        lapply(kids, function(k) {
+          answer_tree_item(
+            node$children[[k]],
+            k,
+            attempt + 1L,
+            node$n,
+            open_attempts,
+            direction
+          )
+        })
+      )
     }
   )
 }
@@ -827,45 +941,117 @@ open_items_panel <- function(oi, ns, today = Sys.Date()) {
   )
 }
 
-answer_tree_card <- function(tree, depth = ANSWER_TREE_DEPTH) {
+# One reading direction of the tree: takeaway, hint, the tree and its legend
+answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
+  backward <- identical(tree$direction, "backward")
+  heads <- if (backward) {
+    c("Letzter", "Vorletzter", "Drittletzter", sprintf("%d. letzter", 4:9))[seq_len(depth)]
+  } else {
+    sprintf("%d. Versuch", seq_len(depth))
+  }
   div(
-    class = "la-card lt-card",
-    div(
-      class = "la-card-title", "Was ist aus deinen Aufgaben geworden?",
-      info_tip(paste(
-        "Jede Spalte ist ein Versuch: ganz links alle Aufgaben, dann dein 1., 2. und 3. Versuch.",
-        "Der Ring in einem Kasten zeigt, wie es beim nächsten Versuch weiterging.",
-        "„Nicht wiederholt“ heißt: Diese Aufgabe hast du danach nicht mehr beantwortet.",
-        "Übersprungene Aufgaben zählen nicht."
-      ))
-    ),
+    class = "lt-view",
+    `data-view` = tree$direction,
     div(class = "la-summary lt-takeaway", answer_tree_takeaway(tree)),
-    div(class = "la-note lt-hint", "Tippe auf einen Kasten mit Pfeil, um den nächsten Versuch zu sehen."),
     div(
-      class = "lt-tree", lang = "de",
+      class = "la-note lt-hint",
+      sprintf(
+        "Tippe auf einen Kasten mit Pfeil, um %s zu sehen.",
+        if (backward) "den Versuch davor" else "den nächsten Versuch"
+      )
+    ),
+    div(
+      class = "lt-tree",
+      lang = "de",
       div(
         class = "lt-inner",
         # Narrow cards drop the root column (CSS) and show the total here
         div(class = "lt-total", sprintf("%d Aufgaben insgesamt", tree$n)),
         div(
-          class = "lt-head", `aria-hidden` = "true",
+          class = "lt-head",
+          `aria-hidden` = "true",
           tags$span("Alle"),
-          lapply(seq_len(depth), function(i) tags$span(sprintf("%d. Versuch", i)))
+          lapply(heads, tags$span)
         ),
-        # The 1st attempt's branches are open by default, deeper ones on click
-        tags$ul(class = "lt-top", answer_tree_item(tree, "root", 0L, 0L, open_attempts = 1L))
+        # The 1st column's branches are open by default, deeper ones on click
+        tags$ul(
+          class = "lt-top",
+          answer_tree_item(
+            tree,
+            "root",
+            0L,
+            0L,
+            open_attempts = 1L,
+            direction = tree$direction
+          )
+        )
       )
     ),
     div(
       class = "lt-legend",
       tags$span(tags$span(class = "lt-swatch is-correct"), "richtig"),
       tags$span(tags$span(class = "lt-swatch is-wrong"), "falsch"),
-      tags$span(tags$span(class = "lt-swatch is-none"), "nicht bearbeitet / wiederholt")
+      tags$span(
+        tags$span(class = "lt-swatch is-none"),
+        if (backward) {
+          "nicht bearbeitet / erster Versuch"
+        } else {
+          "nicht bearbeitet / wiederholt"
+        }
+      )
     )
   )
 }
 
-behaviour_section <- function(ud, data_item, ns = shiny::NS(NULL), today = Sys.Date()) {
+# The tree card. With `backward` (answer_tree_stats(direction = "backward"))
+# it gets a toggle between both reading directions: from the first attempt
+# on, or from the latest answer back. Both views are rendered; the switch is
+# client-side (ui.R), so it needs no round trip. The card's data-view says
+# which one is shown (forward by default).
+answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
+  switch_btn <- function(view, label, pressed) {
+    tags$button(
+      type = "button",
+      class = "lt-switch-btn",
+      `data-lt-view` = view,
+      `aria-pressed` = if (pressed) "true" else "false",
+      label
+    )
+  }
+  div(
+    class = "la-card lt-card",
+    `data-view` = "forward",
+    div(
+      class = "la-card-title",
+      "Deine Antwortverläufe",
+      info_tip(paste(
+        "Jede Spalte ist ein Versuch, die Zeit läuft von links nach rechts.",
+        "„Ab 1. Versuch“ beginnt links bei allen Aufgaben und zeigt deinen 1., 2. und 3. Versuch.",
+        "„Ab letztem Versuch“ beginnt rechts bei deiner letzten Antwort und geht zurück zu den Versuchen davor.",
+        "Der Ring in einem Kasten zeigt, wie er sich in der nächsten Spalte aufteilt.",
+        "Übersprungene Aufgaben zählen nicht."
+      ))
+    ),
+    if (!is.null(backward)) {
+      div(
+        class = "lt-switch",
+        role = "group",
+        `aria-label` = "Ansicht des Baums",
+        switch_btn("forward", "Ab 1. Versuch", TRUE),
+        switch_btn("backward", "Ab letztem Versuch", FALSE)
+      )
+    },
+    answer_tree_view(tree, depth),
+    if (!is.null(backward)) answer_tree_view(backward, depth)
+  )
+}
+
+behaviour_section <- function(
+  ud,
+  data_item,
+  ns = shiny::NS(NULL),
+  today = Sys.Date()
+) {
   bslib::accordion_panel(
     title = "Dein Lernverhalten",
     value = "behaviour",
@@ -881,7 +1067,10 @@ behaviour_section <- function(ud, data_item, ns = shiny::NS(NULL), today = Sys.D
         open_items_panel(open_items(ud, data_item), ns, today = today)
       ),
       coverage_card(coverage_matrix(ud, data_item)),
-      answer_tree_card(answer_tree_stats(ud, data_item))
+      answer_tree_card(
+        answer_tree_stats(ud, data_item),
+        backward = answer_tree_stats(ud, data_item, direction = "backward")
+      )
     )
   )
 }
