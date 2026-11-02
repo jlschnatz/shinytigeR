@@ -149,7 +149,7 @@ interval_card <- function(comp) {
         class = "ivl-legend-item",
         tags$span(class = "ivl-bar is-legend"),
         sprintf(
-          "Bereich, in dem dein Stand mit %d %% Wahrscheinlichkeit liegt",
+          "Unsicherheitsbereich (%d\u2011%%\u2011Konfidenzintervall)",
           round(100 * ESTIMATE_INTERVAL_LEVEL)
         )
       )
