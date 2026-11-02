@@ -460,6 +460,58 @@
   margin: 0.5rem -1rem -1rem -1rem;
   padding: 1rem 1rem 1rem;
 }
+/* Feedback after the check, full width below the item card */
+.practice-feedback .feedback-card { margin-top: 1rem; scroll-margin: 1rem 0 6rem; }
+/* Below the card: "Neue Auswahl" left, skip / check / next right */
+.practice-actions-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; margin-top: 1rem; }
+.practice-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-left: auto; }
+/* Sticky needs every ancestor without its own overflow (bslib cards and card
+   bodies set it by default) */
+.practice-card,
+.practice-card > .card-body { overflow: visible; }
+/* From 992 px: stimulus left (top-aligned), options right (vertically
+   centred). Both columns are sticky, so the shorter one stays in view while
+   the page scrolls through the longer one; the options stick to the bottom
+   too (above the sticky button bar), so centring never pushes them below
+   the screen. */
+@media (min-width: 992px) {
+  .practice-wrap { --actions-bar-h: 4.25rem; }
+  /* The options column is only as wide as its content (at most half): short
+     options like "A" to "D" get a narrow column and leave the width to the
+     stimulus, long text or image options take up to half */
+  .practice-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) fit-content(50%);
+    align-items: start;
+  }
+  .practice-stimulus-col {
+    position: sticky;
+    top: 1rem;
+    padding-right: 1.25rem;
+  }
+  .practice-layout > .practice-answers-section {
+    min-width: 14rem;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: -1rem -1rem -1rem 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .practice-answers-inner {
+    position: sticky;
+    top: 1rem;
+    bottom: calc(var(--actions-bar-h) + 1rem);
+  }
+  .practice-actions-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin-top: 0;
+    padding: 0.75rem 0;
+    background: #fff;
+  }
+}
 
 .practice-item-id {
   display: inline-block;

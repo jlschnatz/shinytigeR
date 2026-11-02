@@ -227,9 +227,8 @@ test_that("practice: checking an answer sets state$checked and writes to DB", {
 })
 
 test_that("practice: the MC feedback is typeset by MathJax after the check", {
-  # Regression test: after the check only the MC answer output re-renders (not
-  # the stimulus), so it has to trigger the typeset itself, or LaTeX in the
-  # feedback stays raw.
+  # Regression test: after the check the stimulus doesn't re-render, so the
+  # feedback output has to trigger the typeset itself, or LaTeX in it stays raw.
   data_item <- make_data_item()
   data_item$if_answeroption_01 <- "Richtig, $B_1 = b_1 \\cdot \\frac{s_x}{s_y}$."
 
@@ -256,15 +255,34 @@ test_that("practice: the MC feedback is typeset by MathJax after the check", {
         before <- typesets
 
         session$setInputs(`answer_mc-answer` = "1", check = 1L)
-        html <- output$`answer_mc-answer_ui`$html
+        html <- output$feedback$html
         session$flushReact()
 
         expect_match(html, "feedback-card", fixed = TRUE)
         expect_match(html, "\\(B_1", fixed = TRUE)
         expect_gt(typesets, before)
+        # the options only show the coloring, the card is the feedback output's
+        expect_false(grepl("feedback-card", output$`answer_mc-answer_ui`$html, fixed = TRUE))
       }
     )
   })
+})
+
+test_that("practice_feedback_card covers MC text, skip, numeric and unmatched", {
+  mc <- make_data_item()[1, ]
+  mc$if_answeroption_01 <- "Gut gemacht."
+  html <- function(x) as.character(x)
+  expect_match(html(practice_feedback_card(mc, list(category = "correct", answer_idx = 1L))), "Gut gemacht.")
+  expect_match(html(practice_feedback_card(mc, list(category = "skip", answer_idx = NA_integer_))), "Übersprungen")
+  # an MC item without feedback texts: no card
+  mc[grep("^if_answeroption_", names(mc))] <- NA
+  expect_null(practice_feedback_card(mc, list(category = "correct", answer_idx = 1L)))
+  num <- make_numeric_item(90001L, correct_value = 5, distractors = c(4.5))
+  expect_match(html(practice_feedback_card(num, list(category = "unmatched", answer_idx = NA_integer_))), "Antwort nicht erkannt")
+  # numeric: the header even without feedback text
+  num$if_answeroption_01 <- NA
+  expect_match(html(practice_feedback_card(num, list(category = "correct", answer_idx = 1L))), "Richtig!")
+  expect_null(practice_feedback_card(mc, NULL))
 })
 
 test_that("practice: next_item advances position", {

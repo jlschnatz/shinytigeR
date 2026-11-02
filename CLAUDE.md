@@ -372,6 +372,10 @@ Below the area list, a second `bslib::card` (same `card_header` + `card_body` pa
 
 `mod_practice_ui(id)` — mounted once at login and never remounted (see "Train panel view switching" above), so it holds no per-item or first-item state; it only sets the pre-first-item default (`num_wrap` `shinyjs::hidden()`).
 
+**Layout:** from 992 px the item card has two columns (`.practice-layout`): stimulus left (`.practice-stimulus-col`), answer options right (grey section). The options column is **only as wide as its content, at most half** (`fit-content(50%)`, at least 14rem): options like "A" to "D" get a narrow column and leave the width to the stimulus (a fixed half left a large empty grey area there), long text or image options take up to half. The stimulus is top-aligned; **the options are vertically centred** in their grey column. **Both columns are `position: sticky`** (on the right the inner `.practice-answers-inner`, so the grey section still reaches the card's end): whichever is shorter stays in view while the page scrolls through the longer one, so long or image answer options don't push the question out of view, and a long stimulus doesn't push the options away. The options stick to the bottom too (above the button bar), so centring never pushes them below the screen. No inner scrollbars on purpose. Narrower screens stack both. Below the card, the **feedback** after the check, full width (`.practice-feedback`; tried and rejected: under the stimulus in the left column — it kept the selected answer and the explanation side by side for long items, but full width reads in fewer lines and is in the same place for every item), then one button row (`.practice-actions-bar`): "Neue Auswahl" left, skip / check / next right (`.practice-actions`); from 992 px the row sticks to the bottom of the screen. After a check, a script in `ui.R` scrolls the feedback card into view if it lands below the screen. Sticky needs every ancestor without its own `overflow`, hence `overflow: visible` on `.practice-card` and its body (bslib sets it by default); a sticky column can only move within the card, so at the very end the shorter column's bottom lines up with the card's.
+
+**Feedback** is rendered by `mod_practice.R` itself (`output$feedback`, built by `practice_feedback_card(item, res)` for MC and numeric items alike: option feedback, `SKIP_FEEDBACK`, or the fixed "Antwort nicht erkannt" text), not by the answer modules, so the layout can place it on its own. MC shows no card for an option without feedback text, numeric always shows the header.
+
 Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 
 - **`output$item_stimulus`** — only invalidates when `current_item()` changes (i.e., when moving to a new item). Never re-renders on check.
@@ -379,7 +383,7 @@ Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 
 **Answer rendering is delegated**, not inline. `mod_practice_server` registers both `mod_mc_answer_server` and `mod_numeric_answer_server` as children — always both, regardless of the current item's mode, same "register once" pattern as the top-level modules — and the UI mounts both `mod_mc_answer_ui("answer_mc")`/`mod_numeric_answer_ui("answer_num")` inside `div(id=ns("mc_wrap"), ...)`/`div(id=ns("num_wrap"), ...)` wrappers. Only one is ever visible; `mod_practice_server` toggles that via `shinyjs::show()`/`hide()` on `mc_wrap`/`num_wrap` in an `observe()` keyed on the current item's `answer_mode`. Neither wrap is remounted per item — see `R/mod_numeric_answer.R` below for why that matters specifically for the numeric module's input field.
 
-**Child-module contract** (`mod_mc_answer_server`/`mod_numeric_answer_server`, see their own files): each takes `item` (reactive single-row item `data.frame`), `checked` (reactive logical), `result` (reactive list) from the parent, and returns `list(raw_answer, ready)`. The children are pure UI/input components — they render and report the raw input; `mod_practice.R` owns evaluation (`evaluate_answer()`/`evaluate_numeric_answer()`) and the DB write, so scoring logic lives in one place, not duplicated per answer mode.
+**Child-module contract** (`mod_mc_answer_server`/`mod_numeric_answer_server`, see their own files): each takes `item` (reactive single-row item `data.frame`), `checked` (reactive logical), `result` (reactive list) from the parent, and returns `list(raw_answer, ready)`. The children are pure UI/input components — they render and report the raw input, and after the check only color it (the feedback card is the parent's, see above); `mod_practice.R` owns evaluation (`evaluate_answer()`/`evaluate_numeric_answer()`) and the DB write, so scoring logic lives in one place, not duplicated per answer mode.
 
 **Answer coloring** is done via CSS classes:
 
@@ -390,7 +394,7 @@ Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 ```r
 state <- reactiveValues(pos = 1L, checked = FALSE, result = NULL)
 ```
-`pos` is the index into `practice_ids()`. `result` (once `checked` is `TRUE`) is `list(category, answer_idx, typed_value)` — `category` is `"correct"`/`"incorrect"`/`"skip"`/`"unmatched"` (the last only for numeric items); this is what the answer child modules read to render their post-check view. Moving to the next item increments `pos`; finishing all items sets `practice_ids(NULL)` to return to the selector.
+`pos` is the index into `practice_ids()`. `result` (once `checked` is `TRUE`) is `list(category, answer_idx, typed_value)` — `category` is `"correct"`/`"incorrect"`/`"skip"`/`"unmatched"` (the last only for numeric items); this is what the answer child modules read to color their post-check view, and what `practice_feedback_card()` is built from. Moving to the next item increments `pos`; finishing all items sets `practice_ids(NULL)` to return to the selector.
 
 ### `R/mod_mc_answer.R` / `R/mod_numeric_answer.R`
 
@@ -399,8 +403,8 @@ Child modules of `mod_practice.R` (see above for the contract and dispatch patte
 `mod_numeric_answer.R` is different in three ways:
 
 - The input is a plain **text** field (not `type="number"`), so both `"3.5"` and `"3,5"` are typeable; `parse_numeric_input()` normalizes the locale.
-- Its result can additionally be `"unmatched"` (typed value in no option's range), rendered with a fixed fallback message.
-- **Its input field is static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — only its post-check feedback panel (`output$feedback_ui`) re-renders. After check, the input row stays visible (like MC's radios): the field is `shinyjs::disable()`d with the typed value kept, gets a `.numeric-result-*` border class, and the feedback card renders below it; all of that is reset (cleared, re-enabled, un-colored) on the next item.
+- Its result can additionally be `"unmatched"` (typed value in no option's range); the parent's feedback card shows a fixed fallback message for it.
+- **Its input field is static UI**, never remounted per item (unlike `mod_mc_answer`'s radios) — nothing in this module re-renders. After check, the input row stays visible (like MC's radios): the field is `shinyjs::disable()`d with the typed value kept and gets a `.numeric-result-*` border class; all of that is reset (cleared, re-enabled, un-colored) on the next item.
 
 The **UI itself** is a purpose-built `.numeric-answer-card` (see CSS table below) — deliberately not styled to reuse MC's `.answer-option` list-row classes, since a single numeric field isn't a list of choices and looked like a bolted-on afterthought when it borrowed that styling.
 
@@ -597,7 +601,10 @@ Key CSS classes to be aware of when changing layout:
 | `.sel-direct-row` | Direct-ID-lookup card's input row below the selector; a Bootstrap `.input-group` |
 | `.practice-item-id` | Item ID badge — practice progress bar and inspect header |
 | `.practice-item-id-btn` / `.is-copied` | Clickable variant built by `item_id_badge()`; `.is-copied` is the transient post-copy state applied by the client-only success listener in `ui.R` |
-| `.practice-answers-section` | Gray tinted answers area below stimulus in practice card |
+| `.practice-layout` / `.practice-stimulus-col` / `.practice-answers-inner` / `.practice-card` | Practice card: two columns from 992 px (stimulus left and top-aligned, options right and centred, the shorter one sticky), stacked below |
+| `.practice-feedback` | Feedback card after the check, full width below the practice card |
+| `.practice-actions-bar` / `.practice-actions` | Button row below the practice card ("Neue Auswahl" left, skip / check / next right), sticky at the bottom from 992 px |
+| `.practice-answers-section` | Gray tinted answers area: below the stimulus, or its right column from 992 px |
 | `.answer-option` | Per-answer radio row; hover suppressed post-check via `:has(input:disabled)` |
 | `.answer-option.is-static` | Non-interactive variant used by `mod_inspect.R` — kills hover affordance only, must **not** set `background-color` in the base state or it silently overrides `.correct_answer_txt`/`.incorrect_answer_txt` (equal-or-higher specificity beats source order) |
 | `.radio-result-correct/incorrect/skip` | Post-check radio fill color (requires `!important`) |

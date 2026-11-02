@@ -16,6 +16,10 @@
 #   `answer_idx` (the evaluated index; NA for "skip") — populated by the caller
 #   once checked. Skipping is the caller's skip button (mod_practice.R), not an
 #   answer option, so after a skip no option is highlighted.
+#
+#   After the check this module only colors the selected option; the feedback
+#   card is the caller's (practice_feedback_card() in mod_practice.R), so it can
+#   sit in its own place in the layout (full width below the item card).
 mod_mc_answer_ui <- function(id) {
   ns <- NS(id)
   uiOutput(ns("answer_ui"))
@@ -31,8 +35,8 @@ mod_mc_answer_server <- function(id, item, checked, result) {
       it <- as.list(it[1, ])
       choices <- get_answeroptions(it)
 
-      # Re-typeset LaTeX after every render: after the check only this output
-      # re-renders (not the stimulus), so the feedback's math would stay raw
+      # Re-typeset LaTeX after every render: the options re-render on check
+      # (not the stimulus), so math in them would otherwise stay raw
       session$onFlushed(
         function() session$sendCustomMessage("mathjax_typeset", TRUE),
         once = TRUE
@@ -88,35 +92,9 @@ mod_mc_answer_server <- function(id, item, checked, result) {
       } else {
         res <- result()
         req(!is.null(res))
-        feedbacks <- get_feedbackoptions(it)
         sel <- res$answer_idx
-        fb_text <- if (res$category == "skip") {
-          SKIP_FEEDBACK
-        } else if (!is.na(sel) && sel <= length(feedbacks)) {
-          feedbacks[[sel]]
-        } else {
-          ""
-        }
         suffix <- if (it$type_answer == "image") "img" else "txt"
         hi_class <- paste0(res$category, "_answer_", suffix)
-        color_var <- switch(
-          res$category,
-          correct = "var(--tiger-correct)",
-          incorrect = "var(--tiger-incorrect)",
-          skip = "var(--tiger-skip)"
-        )
-        icon_name <- switch(
-          res$category,
-          correct = "check-circle-fill",
-          incorrect = "x-circle-fill",
-          skip = "skip-forward-fill"
-        )
-        title_str <- switch(
-          res$category,
-          correct = "Richtig!",
-          incorrect = "Leider falsch",
-          skip = "Übersprungen"
-        )
 
         div(
           class = "answer-options",
@@ -176,20 +154,7 @@ mod_mc_answer_server <- function(id, item, checked, result) {
                   )
                 )
               }
-            }),
-            if (nzchar(fb_text)) {
-              div(
-                class = "feedback-card mt-4",
-                style = sprintf("border-left: 4px solid %s;", color_var),
-                div(
-                  class = "feedback-header",
-                  style = sprintf("color: %s;", color_var),
-                  bsicons::bs_icon(icon_name),
-                  tags$b(title_str)
-                ),
-                div(class = "feedback-body mt-1", shiny::HTML(render_md(fb_text)))
-              )
-            }
+            })
           )
         )
       }

@@ -10,38 +10,64 @@ mod_practice_ui <- function(id) {
     div(id = ns("num_wrap"), mod_numeric_answer_ui(ns("answer_num")))
   )
 
+
   div(
     class = "practice-wrap",
     # ── Progress bar ──────────────────────────────────────────────────────────
     uiOutput(ns("progress_bar")),
     # ── Item card ─────────────────────────────────────────────────────────────
+    # From 992 px two columns, stimulus left (top-aligned), answer options
+    # right (vertically centred). Both are sticky, so the shorter one stays in
+    # view while the page scrolls through the longer one. Narrower screens
+    # stack both, as before.
     bslib::card(
+      class = "practice-card",
       bslib::card_body(
-        # Stimulus — only re-renders when item changes, NOT on check
-        shiny::withMathJax(uiOutput(ns("item_stimulus"))),
-        # Answers + feedback — both answer-mode child modules are mounted
-        # statically (never remounted per item); only their visibility is
-        # toggled, and only the numeric module's post-check panel re-renders
-        # via its own uiOutput. See mod_numeric_answer.R for why the numeric
-        # module's input field specifically must stay a stable DOM node.
+        fillable = FALSE,
         div(
-          class = "practice-answers-section",
-          shiny::withMathJax(
-            div(mc_ui, num_ui)
+          class = "practice-layout",
+          # Stimulus — only re-renders when item changes, NOT on check
+          div(
+            class = "practice-stimulus-col",
+            shiny::withMathJax(uiOutput(ns("item_stimulus")))
+          ),
+          # Answers — both answer-mode child modules are mounted statically
+          # (never remounted per item); only their visibility is toggled. See
+          # mod_numeric_answer.R for why the numeric module's input field
+          # specifically must stay a stable DOM node.
+          div(
+            class = "practice-answers-section",
+            # The sticky part; the section around it keeps the grey
+            # background down to the end of the card
+            div(
+              class = "practice-answers-inner",
+              shiny::withMathJax(
+                div(mc_ui, num_ui)
+              )
+            )
           )
         )
       )
     ),
-    # ── Action buttons ────────────────────────────────────────────────────────
+    # ── Feedback after the check, full width below the card ───────────────────
+    # (MC and numeric alike). Below the card rather than in a column: it reads
+    # in fewer lines and sits in the same place for every item.
     div(
-      class = "d-flex gap-2 justify-content-between mt-3",
+      class = "practice-feedback",
+      shiny::withMathJax(uiOutput(ns("feedback")))
+    ),
+    # ── Buttons: leave the queue left, the item's actions right ───────────────
+    # Outside the card; from 992 px it sticks to the bottom of the screen, so
+    # the buttons are reachable however long the stimulus or the options are.
+    div(
+      class = "practice-actions-bar",
       actionButton(
         ns("back"),
         div(bsicons::bs_icon("arrow-left"), tags$span(id = ns("back_label"), "Neue Auswahl")),
         class = "btn btn-outline-secondary"
       ),
       div(
-        class = "d-flex gap-2",
+        class = "practice-actions",
         # Skipping is an app action for every item, not an answer option
         # stored in the item DB. Shown/hidden together with "check".
         actionButton(
@@ -68,6 +94,71 @@ mod_practice_ui <- function(id) {
   )
 }
 
+# The feedback card after the check, for MC and numeric items: `item` is the
+# current single-row item, `res` the check result (state$result). NULL if
+# there is nothing to show (an MC option without feedback text). Lives here,
+# not in the answer modules, so the layout can place it on its own (full width
+# below the item card).
+practice_feedback_card <- function(item, res) {
+  if (is.null(res) || nrow(item) != 1L) {
+    return(NULL)
+  }
+  it <- as.list(item[1, ])
+  cat <- res$category
+  idx <- res$answer_idx
+  numeric <- identical(it$answer_mode, "num")
+  body <- if (cat == "skip") {
+    SKIP_FEEDBACK
+  } else if (cat == "unmatched") {
+    "Wir können anhand deiner Eingabe leider nicht nachvollziehen, wie du auf diese Zahl gekommen bist. Schau dir die Aufgabe noch einmal in Ruhe an oder sprich sie ggf. mit einer Betreuungsperson durch."
+  } else if (numeric) {
+    # answer_idx is the option's column position (see get_numeric_options())
+    opts <- get_numeric_options(it)
+    fb <- if (!is.na(idx) && idx %in% opts$idx) opts$feedback[opts$idx == idx] else NA
+    if (is.na(fb)) "" else fb
+  } else {
+    feedbacks <- get_feedbackoptions(it)
+    if (!is.na(idx) && idx <= length(feedbacks)) feedbacks[[idx]] else ""
+  }
+  # MC: no card without text (as before); numeric: always the header
+  if (!numeric && !nzchar(body)) {
+    return(NULL)
+  }
+  color_var <- switch(
+    cat,
+    correct = "var(--tiger-correct)",
+    incorrect = "var(--tiger-incorrect)",
+    "var(--tiger-skip)"
+  )
+  icon_name <- switch(
+    cat,
+    correct = "check-circle-fill",
+    incorrect = "x-circle-fill",
+    unmatched = "question-circle-fill",
+    "skip-forward-fill"
+  )
+  title_str <- switch(
+    cat,
+    correct = "Richtig!",
+    incorrect = "Leider falsch",
+    unmatched = "Antwort nicht erkannt",
+    "Übersprungen"
+  )
+  div(
+    class = "feedback-card",
+    style = sprintf("border-left: 4px solid %s;", color_var),
+    div(
+      class = "feedback-header",
+      style = sprintf("color: %s;", color_var),
+      bsicons::bs_icon(icon_name),
+      tags$b(title_str)
+    ),
+    if (nzchar(body)) {
+      div(class = "feedback-body mt-1", shiny::HTML(render_md(body)))
+    }
+  )
+}
+
 mod_practice_server <- function(
   id,
   data_item,
@@ -91,7 +182,8 @@ mod_practice_server <- function(
     # ("correct"/"incorrect"/"skip"/"unmatched" — the last only for numeric
     # items), `answer_idx` (matched distractor index, or NA), and `typed_value`
     # (numeric input only, NA otherwise) — this is what the answer child
-    # modules read to render their post-check view.
+    # modules read to color their post-check view, and what the feedback card
+    # (practice_feedback_card()) is built from.
     state <- reactiveValues(
       pos = 1L,
       checked = FALSE,
@@ -136,6 +228,18 @@ mod_practice_server <- function(
       item <- current_item()
       req(nrow(item) == 1L)
       identical(item$answer_mode[1], "num")
+    })
+
+    # ── Feedback after the check (placed by the layout, see the UI) ──────────
+    output$feedback <- renderUI({
+      req(isTRUE(state$checked))
+      card <- practice_feedback_card(current_item(), state$result)
+      req(card)
+      session$onFlushed(
+        function() session$sendCustomMessage("mathjax_typeset", TRUE),
+        once = TRUE
+      )
+      card
     })
 
     # ── Progress bar ──────────────────────────────────────────────────────────
