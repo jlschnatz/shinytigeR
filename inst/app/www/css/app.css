@@ -398,6 +398,10 @@
 
 /* ── Stimulus ──────────────────────────────────────────────────────────────── */
 .stimulus-text p { text-align: justify; line-height: 1.6; }
+/* Narrow screens: justified text leaves large gaps between words there */
+@media (max-width: 767.98px) {
+  .stimulus-text p { text-align: left; }
+}
 
 .stimulus-img {
   max-width: 100%;
