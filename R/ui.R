@@ -28,7 +28,11 @@ app_ui <- function() {
       shinyjs::useShinyjs(),
       rclipboard::rclipboardSetup(),
       tags$head(
-        tags$link(rel = "stylesheet", href = "css/app.css"),
+        # Cache-busting query: without it browsers keep serving a stale
+        # app.css after it changes, so new markup renders unstyled. runApp()
+        # sets the working directory to the app dir (inst/app, or the
+        # installed copy via run_app()), so this path resolves in both.
+        tags$link(rel = "stylesheet", href = css_href("www/css/app.css", "css/app.css")),
         tags$link(rel = "icon", type = "image/png", href = "img_app/favicon.png"),
         tags$script(shiny::HTML(
           "Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {",
@@ -66,7 +70,97 @@ app_ui <- function() {
           "    }, 1200);",
           "    e.clearSelection();",
           "  });",
-          "});"
+          "});",
+          # Dashboard answer tree (answer_tree_card() in dashboard_details.R):
+          # a click on a node opens or closes its branch (several can be open).
+          # Pure client-side state, delegated so it survives the dashboard's
+          # re-renders; a re-render resets the tree to its default branches.
+          "document.addEventListener('click', function (e) {",
+          "  var btn = e.target.closest('.lt-node[data-node]');",
+          "  if (!btn) return;",
+          "  var open = btn.parentElement.classList.toggle('is-open');",
+          "  btn.setAttribute('aria-expanded', open ? 'true' : 'false');",
+          "});",
+          # Its toggle between the two reading directions (from the first
+          # attempt / from the latest one back). Both views are in the page;
+          # the card's data-view picks one. The choice is remembered for the
+          # page's lifetime and re-applied after each dashboard re-render.
+          "(function () {",
+          "  var view = null;",
+          "  function apply(card, v) {",
+          "    card.setAttribute('data-view', v);",
+          "    card.querySelectorAll('[data-lt-view]').forEach(function (b) {",
+          "      b.setAttribute('aria-pressed', b.getAttribute('data-lt-view') === v ? 'true' : 'false');",
+          "    });",
+          "  }",
+          "  document.addEventListener('click', function (e) {",
+          "    var btn = e.target.closest('[data-lt-view]');",
+          "    if (!btn) return;",
+          "    view = btn.getAttribute('data-lt-view');",
+          "    apply(btn.closest('.lt-card'), view);",
+          "  });",
+          "  $(document).on('shiny:value', function () {",
+          "    if (view) setTimeout(function () {",
+          "      document.querySelectorAll('.lt-card[data-view]').forEach(function (c) { apply(c, view); });",
+          "    }, 0);",
+          "  });",
+          "})();",
+          # Tooltips for every element with data-tip (dashboard calendar days,
+          # coverage cells, (i) buttons). One shared, fixed-position label
+          # instead of native `title`s: those appear late, look like the OS
+          # default and never show on touch screens. Mouse: hover; keyboard
+          # and touch: focus (a tap focuses the element). Fixed positioning so
+          # a scrolling container (the calendar) can't clip it.
+          "(function () {",
+          "  var tip = null, current = null;",
+          "  function place() {",
+          "    if (!current || !tip) return;",
+          "    var r = current.getBoundingClientRect(), t = tip.getBoundingClientRect();",
+          "    var left = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), window.innerWidth - t.width - 8);",
+          "    var top = r.top - t.height - 8, below = top < 8;",
+          "    if (below) top = r.bottom + 8;",
+          "    tip.style.left = left + 'px';",
+          "    tip.style.top = top + 'px';",
+          "    tip.classList.toggle('is-below', below);",
+          "  }",
+          "  function show(el) {",
+          "    if (!tip) {",
+          "      tip = document.createElement('div');",
+          "      tip.className = 'tiger-tip';",
+          "      tip.setAttribute('role', 'tooltip');",
+          "      document.body.appendChild(tip);",
+          "    }",
+          "    current = el;",
+          "    tip.textContent = el.getAttribute('data-tip');",
+          "    place();",
+          "    tip.classList.add('is-visible');",
+          "  }",
+          "  function hide() {",
+          "    current = null;",
+          "    if (tip) tip.classList.remove('is-visible');",
+          "  }",
+          "  document.addEventListener('pointerover', function (e) {",
+          "    if (e.pointerType !== 'mouse') return;",
+          "    var el = e.target.closest('[data-tip]');",
+          "    if (el) show(el);",
+          "  });",
+          "  document.addEventListener('pointerout', function (e) {",
+          "    if (e.pointerType !== 'mouse') return;",
+          "    var el = e.target.closest('[data-tip]');",
+          "    if (el && !el.contains(e.relatedTarget)) hide();",
+          "  });",
+          "  document.addEventListener('focusin', function (e) {",
+          "    var el = e.target.closest && e.target.closest('[data-tip]');",
+          "    if (el) show(el);",
+          "  });",
+          "  document.addEventListener('focusout', hide);",
+          # Follow the element when the page scrolls or shifts (scroll events
+          # also fire on layout changes, so hiding on scroll would flicker)
+          "  window.addEventListener('scroll', function () {",
+          "    if (current && !document.body.contains(current)) hide(); else place();",
+          "  }, true);",
+          "  window.addEventListener('resize', place);",
+          "})();"
         ))
       )
     ),

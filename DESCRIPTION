@@ -26,4 +26,5 @@ Imports:
     sodium,
     ggplot2,
     markdown,
-    rclipboard
+    rclipboard,
+    plotly

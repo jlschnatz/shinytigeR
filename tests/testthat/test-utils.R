@@ -154,6 +154,9 @@ test_that("build_response_row produces correct columns and types", {
   expect_equal(row$id_user, "user1")
   expect_true(isTRUE(row$bool_correct))
   expect_false(row$skipped)
+  expect_equal(row$practice_mode, "standard")
+  retry <- build_response_row(item, 1L, "user1", "tok", practice_mode = "retry")
+  expect_equal(retry$practice_mode, "retry")
 })
 
 test_that("build_response_row records an explicit skip", {
@@ -336,6 +339,56 @@ test_that("safe_sample handles empty input without error", {
   expect_length(safe_sample(integer(0)), 0)
 })
 
+# ── latest_attempts ───────────────────────────────────────────────────────────
+
+test_that("latest_attempts keeps the most recent row per item, not the first", {
+  ud <- data.frame(
+    id_item = c(1L, 1L, 2L),
+    id_datetime = c(100L, 200L, 150L),
+    bool_correct = c(FALSE, TRUE, TRUE),
+    stringsAsFactors = FALSE
+  )
+  result <- latest_attempts(ud)
+  expect_equal(nrow(result), 2L)
+  expect_equal(result$bool_correct[result$id_item == 1L], TRUE)
+  expect_equal(result$id_datetime[result$id_item == 1L], 200L)
+})
+
+test_that("latest_attempts handles an empty data.frame", {
+  ud <- data.frame(id_item = integer(0), id_datetime = integer(0))
+  result <- latest_attempts(ud)
+  expect_equal(nrow(result), 0L)
+})
+
+test_that("latest_attempts is a no-op when each item was answered once", {
+  ud <- data.frame(
+    id_item = 1:3,
+    id_datetime = c(100L, 200L, 300L),
+    stringsAsFactors = FALSE
+  )
+  result <- latest_attempts(ud)
+  expect_equal(nrow(result), 3L)
+  expect_setequal(result$id_item, 1:3)
+})
+
+# ── build_ability_rows ────────────────────────────────────────────────────────
+
+test_that("build_ability_rows produces one row per learning area with a shared computed_at", {
+  comp <- data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = c(1.2, NA, 0, -0.5, NA, 0.3, 1.0),
+    n_items = c(5L, 0L, 2L, 3L, 0L, 4L, 6L),
+    stringsAsFactors = FALSE
+  )
+  rows <- build_ability_rows(comp, user_id = "alice", session_token = "tok1")
+
+  expect_equal(nrow(rows), length(LEARNING_AREA_LEVELS))
+  expect_true(all(rows$id_user == "alice"))
+  expect_true(all(rows$id_session == "tok1"))
+  expect_length(unique(rows$computed_at), 1L)
+  expect_equal(rows$theta, comp$theta)
+})
+
 # ── is_img_path ───────────────────────────────────────────────────────────────
 
 test_that("is_img_path detects common image extensions", {
@@ -344,4 +397,16 @@ test_that("is_img_path detects common image extensions", {
   expect_true(is_img_path("baz.svg"))
   expect_false(is_img_path("answer text"))
   expect_false(is_img_path(NA_character_))
+})
+
+# ── css_href ──────────────────────────────────────────────────────────────────
+
+test_that("css_href appends the file's mtime as a version query", {
+  f <- withr::local_tempfile(fileext = ".css")
+  writeLines("body{}", f)
+  expect_equal(css_href(f, "css/app.css"), paste0("css/app.css?v=", as.integer(file.mtime(f))))
+})
+
+test_that("css_href falls back to the bare href when the file is missing", {
+  expect_equal(css_href("does/not/exist.css", "css/app.css"), "css/app.css")
 })

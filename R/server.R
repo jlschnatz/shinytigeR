@@ -56,9 +56,30 @@ app_server <- function(input, output, session) {
     # overview instead of entering the practice queue. Takes priority over
     # practice_ids when both would otherwise apply.
     inspect_id <- reactiveVal(NULL)
+    # retry_active: TRUE while a practice queue started from the dashboard's
+    # "nochmal üben" runs. Its answers are stored with practice_mode = "retry",
+    # and leaving it returns to the dashboard instead of the selector (see the
+    # view observer below); the back button says so.
+    retry_active <- reactiveVal(FALSE)
     # write_trigger: incremented after each confirmed DB write so dashboard
     # knows to re-fetch user data without being tightly coupled to practice
     write_trigger <- reactiveVal(0L)
+    # ability_computed_this_session: latches TRUE once the dashboard's refresh
+    # button has been used during this login, so it's never clicked more than
+    # once per session even if new data keeps arriving — ability isn't
+    # expected to shift within a single sitting. Deliberately NOT set by the
+    # silent login catch-up below: that only clears out *stale* data from a
+    # prior session, and must not consume this session's one allowed
+    # button-triggered recompute for practice the student hasn't done yet.
+    ability_computed_this_session <- reactiveVal(FALSE)
+
+    # ── Ability auto-catch-up — silent, runs once at login ──────────────────
+    # If the student practiced last session without ever visiting the
+    # dashboard (or clicking its refresh button), catch the estimate up now.
+    uid <- credentials()$info$user_name
+    if (isTRUE(ability_needs_update(uid))) {
+      compute_and_save_ability(uid, session$token, data_item)
+    }
 
     # ── Train view — switches between selector, practice, and inspect ─────────
     # All three views are rendered ONCE (this renderUI has no reactive
@@ -91,6 +112,11 @@ app_server <- function(input, output, session) {
         "practice"
       }
       bslib::nav_select("train_nav", view)
+      # A retry queue from the dashboard has ended: go back there
+      if (view == "selector" && isolate(retry_active())) {
+        retry_active(FALSE)
+        bslib::nav_select("main_tabs", "progress_panel")
+      }
     })
 
     # ── Module wiring ─────────────────────────────────────────────────────────
@@ -126,7 +152,8 @@ app_server <- function(input, output, session) {
       data_item = data_item,
       practice_ids = practice_ids,
       credentials = credentials,
-      write_trigger = write_trigger
+      write_trigger = write_trigger,
+      retry_active = retry_active
     )
 
     mod_inspect_server(
@@ -139,7 +166,16 @@ app_server <- function(input, output, session) {
       "dashboard_1",
       data_item = data_item,
       credentials = credentials,
-      write_trigger = write_trigger
+      write_trigger = write_trigger,
+      ability_computed_this_session = ability_computed_this_session,
+      # "Offene Fehler": a practice queue of the open mistakes on the Üben tab
+      # (inspect_id would take priority over the queue, so it's cleared first)
+      retry_items = function(item_ids) {
+        retry_active(TRUE)
+        inspect_id(NULL)
+        practice_ids(item_ids)
+        bslib::nav_select("main_tabs", "train_panel", session = app_session)
+      }
     )
   })
 }

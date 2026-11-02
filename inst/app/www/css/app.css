@@ -649,50 +649,614 @@
 
 /* ── Dashboard — competency table ───────────────────────────────────────────── */
 .dashboard-comp-table th {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.85rem;
   color: #6c757d;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 0.6rem 1rem;
+}
+.dashboard-comp-table th,
+.dashboard-comp-table td { border-bottom: 1px solid #e5e7eb; }
+.dashboard-comp-table td {
+  vertical-align: middle;
+  padding: 0.7rem 1rem;
+}
+.dashboard-comp-table > :not(caption) > * > * { border-top: 0; }
+.dashboard-comp-table > thead { border-bottom: 0; }
+.dashboard-comp-table > tbody { border-top: 0; }
+/* Evidence + label columns hug their content; the area name takes the rest */
+.dashboard-comp-table th:not(:first-child),
+.dashboard-comp-table td:not(:first-child) { width: 1%; white-space: nowrap; }
+.dashboard-comp-table tbody tr:last-child td { border-bottom: 0; }
+.dashboard-comp-table .comp-area { font-weight: 600; }
+
+.comp-level { display: inline-flex; flex-direction: column; gap: 0.35rem; }
+.comp-level-label {
   font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  color: #1f2937;
+}
+.comp-level.is-empty .comp-level-label { color: #9aa1ab; font-weight: 500; }
+
+.comp-scale { display: inline-flex; align-items: center; gap: 3px; }
+.comp-seg {
+  width: 16px;
+  height: 6px;
+  border-radius: 3px;
+  background: #e6e9ee;
+}
+.comp-seg.is-filled { background: var(--seg); }
+.comp-seg.is-current {
+  height: 10px;
+  box-shadow: 0 0 0 2px #fff, 0 1px 3px 1px rgba(0, 0, 0, 0.18);
+}
+
+.ev-dots { display: inline-flex; gap: 0.3rem; }
+.ev-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1.5px solid #c3c8d0;
+}
+.ev-dot.is-filled { background: #5b6477; border-color: #5b6477; }
+
+/* Phone width: area names wrap, the two content-sized columns tighten */
+@media (max-width: 575.98px) {
+  .dashboard-comp-table th,
+  .dashboard-comp-table td { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .dashboard-comp-table .comp-area { font-size: 0.9rem; }
+  .comp-level-label { font-size: 0.82rem; }
+  .comp-seg { width: 11px; }
+  .comp-scale { gap: 2px; }
+  .ev-dots { gap: 0.2rem; }
+  .ev-dot { width: 0.6rem; height: 0.6rem; }
+}
+
+/* ── Dashboard — AI feedback card (placeholder) ────────────────────────────── */
+.ai-feedback-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tiger-primary);
+  background: #e8f0f7;
+  border-radius: 999px;
+  padding: 0.2em 0.75em;
   white-space: nowrap;
 }
-.dashboard-comp-table td { vertical-align: middle; font-size: 0.9rem; }
+.ai-feedback-skeleton { display: flex; flex-direction: column; gap: 0.75rem; }
+.ai-skel-line {
+  height: 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef1f4 25%, #f7f8fa 50%, #eef1f4 75%);
+  background-size: 200% 100%;
+  animation: ai-skel-shimmer 1.8s ease-in-out infinite;
+}
+@keyframes ai-skel-shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-skel-line { animation: none; }
+}
+.ai-feedback-text p:last-child { margin-bottom: 0; }
 
-/* ── Dashboard — recommendations ────────────────────────────────────────────── */
-.rec-item { align-items: flex-start; }
-
-.rec-num {
-  width: 1.6rem;
-  height: 1.6rem;
-  min-width: 1.6rem;
-  border-radius: 50%;
-  background: var(--tiger-primary);
-  color: white;
+/* ── Dashboard — ability trajectory (small multiples) ───────────────────────── */
+/* The legend is the grid's 8th tile (.traj-legend-panel). Below 532px (two
+   260px columns + the 12px gap) the grid has one column and the tile would
+   land under all 7 charts, so the row above the grid (.traj-legend-top)
+   takes over. A container query, not a media query, so the swap happens
+   exactly when the grid itself drops to one column. */
+.traj-wrap { container-type: inline-size; }
+/* Columns of at least 260px and at least a quarter of the width, so there are
+   never more than 4: with 7 charts + the legend tile that gives 4 + 4 on wide
+   screens instead of 5 + 3. Below 4 * 260px + 3 gaps it drops to 3, 2, 1. */
+.traj-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(max(min(260px, 100%), calc((100% - 2.25rem) / 4)), 1fr));
+}
+.traj-legend-top { display: none; margin-bottom: 0.85rem; }
+@container (max-width: 531.98px) {
+  .traj-legend-top { display: block; }
+  .traj-wrap .traj-legend-panel { display: none; }
+}
+.traj-legend { font-size: 0.8rem; color: #5b6477; }
+.traj-legend-items { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; }
+.traj-legend-panel {
+  padding: 0.5rem 0.5rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+}
+/* In the tile: one level per line, spread like the bands of a chart */
+.traj-legend-panel .traj-legend-items {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  flex: 1;
+  max-height: 170px;
+  padding: 0.25rem 0 0.25rem 0.15rem;
+}
+.traj-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+/* Same tint as the panels' background bands (competency_band_shapes()) */
+.traj-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 3px;
+  border: 1px solid var(--seg);
+  background: color-mix(in srgb, var(--seg) 25%, white);
+}
+.traj-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.5rem 0.35rem;
+  background: #fff;
+  min-width: 0;
+}
+.traj-panel-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.traj-empty {
+  height: 170px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  font-weight: 700;
-  margin-top: 2px;
-}
-
-/* ── Dashboard — practice-behaviour stats ───────────────────────────────────── */
-.practice-stat {
+  border-radius: 0.35rem;
   background: #f8f9fa;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
+  color: #9aa1ab;
+  font-size: 0.85rem;
+}
+
+/* ── Dashboard — detail sections (R/dashboard_details.R) ─────────────────────── */
+.la-grid { display: grid; gap: 0.6rem; }
+.la-grid-detail { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 992px) {
+  .la-grid-detail { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+/* Three columns from 1200 px: a narrow side column (tiles, calendar, retry),
+   then coverage and tree side by side. Between 768 and 1200 px the tree goes
+   full width below; on phones everything stacks. */
+/* Key numbers above the behaviour cards: small, three side by side even on
+   a phone (not bslib value boxes, which would dominate the section) */
+.la-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+.la-tile { padding: 0.6rem 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #fff; min-width: 0; }
+.la-tile-val { font-size: 1.4rem; font-weight: 700; line-height: 1.15; color: var(--tiger-primary); }
+.la-tile-lbl { font-size: 0.8rem; font-weight: 600; color: #374151; }
+.la-tile-sub { font-size: 0.72rem; color: #6b7280; }
+@media (max-width: 575.98px) {
+  .la-tiles { gap: 0.4rem; }
+  .la-tile { padding: 0.5rem; }
+  .la-tile-val { font-size: 1.1rem; }
+  .la-tile-lbl { font-size: 0.72rem; hyphens: auto; -webkit-hyphens: auto; }
+}
+.la-behaviour-empty { margin: 0 0 0.75rem; }
+.la-grid-behaviour { grid-template-columns: minmax(0, 1fr); }
+.la-side { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.la-side > .la-card { flex: none; }
+@media (min-width: 768px) {
+  .la-grid-behaviour { grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr); }
+  /* Tiles as compact rows in the side column: number left, text right */
+  .la-side .la-tiles { grid-template-columns: minmax(0, 1fr); gap: 0.35rem; margin-bottom: 0; }
+  .la-side .la-tile { display: grid; grid-template-columns: 4.3rem minmax(0, 1fr); column-gap: 0.4rem; align-items: center; padding: 0.3rem 0.65rem; }
+  .la-side .la-tile-val { grid-row: span 2; font-size: 1.15rem; }
+}
+@media (min-width: 1200px) {
+  .la-grid-behaviour { grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr) minmax(0, 1.25fr); }
+  .la-grid-behaviour > .lt-card { grid-column: auto; }
+}
+/* Equal-height columns without gaps below shorter cards: the columns stretch
+   to the tallest one, the last card of the side column grows to the bottom,
+   the coverage rows spread out and the tree centres vertically */
+.la-side > .la-card:last-child { flex: 1; }
+.cov-card,
+.lt-card { display: flex; flex-direction: column; }
+.cov-grid { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+.lt-view { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.lt-view .lt-tree { flex: 1; display: flex; align-items: center; }
+.la-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  background: #fff;
+  min-width: 0;
+}
+.la-card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
+.la-subtitle { font-size: 0.9rem; font-weight: 600; margin: 1.1rem 0 0.5rem; }
+.la-summary { font-size: 0.875rem; color: #374151; margin-bottom: 0.6rem; }
+.la-note { font-size: 0.78rem; color: #6b7280; margin: 0.5rem 0 0; }
+.la-explain { font-size: 0.875rem; padding-left: 1.1rem; margin: 0; }
+.la-explain li { margin-bottom: 0.45rem; }
+.la-explain li:last-child { margin-bottom: 0; }
+
+/* Estimate with interval on the competency scale */
+.ivl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 0.4rem;
+}
+.ivl-legend-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ivl-row {
+  display: grid;
+  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f0f1f3;
+}
+.ivl-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.ivl-area { font-size: 0.875rem; font-weight: 600; }
+.ivl-text { grid-column: 2; font-size: 0.8rem; color: #4b5563; }
+.ivl-strip { position: relative; height: 14px; }
+.ivl-bands { position: absolute; inset: 0; border-radius: 7px; overflow: hidden; background: #f3f4f6; }
+/* Same tint as the trajectory bands (competency_band_shapes()) */
+.ivl-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--seg) 25%, white); }
+/* Divider at every level boundary */
+.ivl-band + .ivl-band { border-left: 1px solid #fff; }
+/* Shared axes above/below the strips (interval_axis()) */
+.ivl-card { container-type: inline-size; }
+.ivl-axis-row { padding: 0; border-bottom: 0; }
+.ivl-axis-row + .ivl-row { padding-top: 0.25rem; }
+.ivl-axis { position: relative; font-size: 0.7rem; color: #6b7280; }
+.ivl-axis-names { height: 3.6rem; }
+.ivl-axis-names .ivl-axis-tick { position: absolute; bottom: 0.2rem; width: 0; }
+.ivl-axis-name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  white-space: nowrap;
+  transform: rotate(-40deg);
+  transform-origin: left bottom;
+}
+.ivl-axis-numbers { height: 1.3rem; margin-top: 0.3rem; border-top: 1px solid #d1d5db; }
+.ivl-axis-numbers .ivl-axis-tick {
+  position: absolute;
+  top: 0;
+  padding-top: 0.25rem;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+}
+.ivl-axis-numbers .ivl-axis-tick::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 4px;
+  border-left: 1px solid #9ca3af;
+}
+/* Narrow card: the middle levels are only ~20px apart, so angle steeper */
+@container (max-width: 480px) {
+  .ivl-axis-names { height: 4.8rem; }
+  .ivl-axis-name { transform: rotate(-65deg); }
+}
+/* Interval: a thin line range (no end caps), not a solid bar */
+.ivl-bar {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 1.5px;
+  background: #4b5563;
+}
+.ivl-dot {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2b3a4a;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  transform: translate(-50%, -50%);
+}
+.ivl-dot.is-legend,
+.ivl-bar.is-legend { position: static; display: inline-block; transform: none; flex: none; }
+.ivl-bar.is-legend { width: 22px; position: relative; top: 0; margin: 0 2px; }
+@media (max-width: 575.98px) {
+  .ivl-row { grid-template-columns: minmax(0, 1fr); }
+  .ivl-text { grid-column: 1; }
+  .ivl-axis-row .ivl-area { display: none; }
+}
+
+/* Activity calendar: one column per week, one cell per day */
+/* One row per week, oldest on top: a long history grows downwards (into the
+   side column's free height) instead of needing a horizontal scrollbar */
+.cal-card { --cal-cell: 14px; }
+.cal-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cal-weeks { display: flex; flex-direction: column; gap: 3px; }
+.cal-head,
+.cal-week {
+  display: grid;
+  grid-template-columns: 1.7rem repeat(7, var(--cal-cell));
+  column-gap: 3px;
+  align-items: center;
+}
+.cal-head,
+.cal-month {
+  font-size: 0.62rem;
+  line-height: var(--cal-cell);
+  color: #9aa1ab;
+}
+.cal-head > span { text-align: center; }
+.cal-month { white-space: nowrap; }
+.cal-week .cal-cell { width: var(--cal-cell); height: var(--cal-cell); }
+/* Phones: everything is stacked, so no free height to fill: last 8 weeks */
+@media (max-width: 767.98px) {
+  .cal-week:nth-last-child(n + 9) { display: none; }
+  .cal-month[data-alt]::after { content: attr(data-alt); }
+}
+.cal-cell { display: inline-block; width: 13px; height: 13px; border-radius: 3px; background: #eef1f4; }
+.cal-l1 { background: #c6dbea; }
+.cal-l2 { background: #8db6d3; }
+.cal-l3 { background: #4d88b5; }
+.cal-l4 { background: var(--tiger-primary); }
+.cal-cell.is-future { visibility: hidden; }
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: #9aa1ab;
+}
+.cal-card .cal-legend { justify-content: center; }
+
+/* Coverage: learning area x item type, laid out like the selector. Each
+   cell's bar splits its items by their latest answer (richtig / falsch); the
+   grey track is what's still open. On a narrow card the area name moves
+   above its two cells. */
+.cov-card { container-type: inline-size; }
+.cov-head-row,
+.cov-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr));
+  column-gap: 0.75rem;
+  align-items: center;
+}
+.cov-head-row { font-size: 0.72rem; font-weight: 600; color: #6b7280; margin-bottom: 0.2rem; }
+.cov-row { padding: 0.25rem 0; border-top: 1px solid #f0f1f3; }
+.cov-area { font-size: 0.825rem; font-weight: 600; min-width: 0; }
+.cov-cell { min-width: 0; }
+.cov-cell.is-empty .cov-count { color: #b8bec6; }
+.cov-count { font-size: 0.75rem; color: #6b7280; }
+.cov-bar { display: flex; height: 8px; margin-top: 0.2rem; border-radius: 4px; overflow: hidden; background: #e5e8ec; }
+.cov-bar .is-correct { background: var(--tiger-correct); }
+.cov-bar .is-wrong { background: var(--tiger-incorrect); }
+.cov-new { font-size: 0.7rem; color: #8a929c; }
+.cov-legend { justify-content: flex-start; }
+@container (max-width: 420px) {
+  .cov-head-row,
+  .cov-row { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 0.15rem; }
+  .cov-head-row > span:first-child { display: none; }
+  .cov-area { grid-column: 1 / -1; }
+}
+
+/* Answer tree (answer_tree_card()): a left-to-right decision tree, one
+   column per attempt. Every node has the same width (--w), so the columns line
+   up with the header; the connectors are drawn per <li> (stub from the spine
+   to the node) and per <ul> (stub from the parent to the spine), the classic
+   CSS tree technique. A branch shows when its <li> has .is-open (ui.R). */
+.lt-card { grid-column: 1 / -1; }
+/* "Offene Fehler": a small card in the left column */
+.oi-count { margin-left: 0.4rem; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; color: #fff; background: var(--tiger-incorrect); vertical-align: 1px; }
+/* When the card grows to the column bottom, keep its content in the middle */
+.oi-card { display: flex; flex-direction: column; justify-content: center; }
+.oi-card > .la-card-title { margin-bottom: 0.5rem; }
+.oi-retry { display: flex; justify-content: center; align-items: center; gap: 0.35rem; width: 100%; }
+.oi-wait { margin-top: 0.3rem; }
+.lt-takeaway { font-weight: 600; }
+/* Toggle between the tree's two reading directions (segmented control) */
+.lt-switch {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 0.6rem;
+  padding: 2px;
+  border: 1px solid #d5dae0;
+  border-radius: 999px;
+  background: #f6f7f9;
+}
+.lt-switch-btn {
+  padding: 0.15rem 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.78rem;
+  color: #5b6470;
+  white-space: nowrap;
+  transition: background-color 0.12s, color 0.12s;
+}
+.lt-switch-btn:hover { color: var(--tiger-primary); }
+@media (max-width: 575.98px) {
+  .lt-switch-btn { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+}
+.lt-switch-btn[aria-pressed="true"] { background: var(--tiger-primary); color: #fff; }
+.lt-switch-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+.lt-card[data-view="forward"] > .lt-view[data-view="backward"],
+.lt-card[data-view="backward"] > .lt-view[data-view="forward"] { display: none; }
+.lt-hint { margin: 0.3rem 0 0.2rem; }
+.lt-tree { container-type: inline-size; overflow-x: auto; }
+.lt-inner {
+  --gap: 1.6rem;
+  --w: min(9rem, calc((100cqi - 3 * var(--gap)) / 4));
+  --line: #c3c8cf;
+  width: fit-content;
+  margin: 0.5rem auto 0;
+}
+.lt-total { display: none; }
+.lt-head {
+  display: grid;
+  grid-template-columns: repeat(4, var(--w));
+  column-gap: var(--gap);
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
   text-align: center;
+  color: #6b7280;
+}
+.lt-inner ul { list-style: none; margin: 0; padding: 0; }
+.lt-inner li { display: flex; align-items: center; }
+.lt-inner .lt-children { position: relative; display: flex; flex-direction: column; padding-inline-start: calc(var(--gap) / 2); }
+.lt-children > li { position: relative; padding-block: 0.1rem; padding-inline-start: calc(var(--gap) / 2); }
+/* parent -> spine */
+.lt-children::before { content: ""; position: absolute; inset-inline-start: 0; top: 50%; width: calc(var(--gap) / 2); border-top: 2px solid var(--line); margin-top: -1px; }
+/* spine -> node, and the spine itself (half above/below the node centre) */
+.lt-children > li::before { content: ""; position: absolute; inset-inline-start: 0; top: 50%; width: calc(var(--gap) / 2); border-top: 2px solid var(--line); margin-top: -1px; }
+.lt-children > li::after { content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; border-inline-start: 2px solid var(--line); margin-inline-start: -1px; }
+.lt-children > li:first-child::after { top: 50%; }
+.lt-children > li:last-child::after { bottom: 50%; }
+.lt-children > li:only-child::after { display: none; }
+.lt-inner li:not(.is-open) > .lt-children { display: none; }
+.lt-node {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: var(--w);
+  padding: 0.2rem 0.3rem;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid var(--cat);
+  border-radius: 0.45rem;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+.lt-text { display: flex; flex-direction: column; min-width: 0; }
+.lt-node.is-root { --cat: var(--tiger-primary); }
+.lt-node.is-correct { --cat: var(--tiger-correct); }
+.lt-node.is-wrong { --cat: var(--tiger-incorrect); }
+.lt-node.is-none { --cat: #b8bec6; }
+.lt-node.is-empty { opacity: 0.5; }
+.lt-node.is-toggle { cursor: pointer; padding-right: 0.9rem; }
+.lt-node.is-toggle:hover { background: #f8f9fa; }
+.lt-node.is-toggle:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 2px; }
+.lt-node.is-toggle[aria-expanded="true"] { background: color-mix(in srgb, var(--cat) 8%, white); border-color: var(--cat); }
+.lt-num { font-size: 1.1rem; font-weight: 700; line-height: 1.1; }
+.lt-lbl { font-size: 0.7rem; line-height: 1.15; color: #4b5563; hyphens: auto; -webkit-hyphens: auto; }
+.lt-share { color: #6b7280; white-space: nowrap; }
+.lt-chevron {
+  position: absolute;
+  right: 0.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #6b7280;
+  transition: transform var(--anim-dur);
+}
+.lt-node[aria-expanded="true"] .lt-chevron { transform: translateY(-50%) rotate(180deg); }
+/* How a node splits into its children: correct | wrong | none */
+.lt-donut {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--tiger-correct) 0 var(--a),
+    var(--tiger-incorrect) var(--a) var(--b),
+    #d7dbe0 var(--b) 100%
+  );
+  -webkit-mask: radial-gradient(circle, transparent 46%, #000 48%);
+  mask: radial-gradient(circle, transparent 46%, #000 48%);
+}
+.lt-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280; }
+.lt-swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; border-radius: 2px; vertical-align: -1px; }
+.lt-swatch.is-correct { background: var(--tiger-correct); }
+.lt-swatch.is-wrong { background: var(--tiger-incorrect); }
+.lt-swatch.is-none { background: #d7dbe0; }
+/* Narrow card (phone): no root column, so three columns share the width; the
+   total moves into .lt-total, the arrow below the text, the donut goes */
+@container (max-width: 480px) {
+  .lt-inner { --gap: 0.9rem; --w: min(9rem, calc((100cqi - 2 * var(--gap)) / 3)); }
+  .lt-total { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; text-align: center; color: #6b7280; }
+  .lt-head { grid-template-columns: repeat(3, var(--w)); }
+  .lt-head > span:first-child,
+  .lt-top > li > .lt-node,
+  .lt-top > li > .lt-children::before,
+  .lt-top > li > .lt-children > li::before,
+  .lt-top > li > .lt-children > li::after { display: none; }
+  .lt-inner .lt-top > li > .lt-children { padding-inline-start: 0; }
+  .lt-top > li > .lt-children > li { padding-inline-start: 0; }
+  .lt-donut { display: none; }
+  .lt-node { text-align: center; }
+  .lt-share { display: block; }
+  .lt-dot { display: none; }
+  .lt-node.is-toggle { padding-right: 0.3rem; padding-bottom: 1rem; }
+  .lt-chevron { top: auto; right: auto; bottom: 0.15rem; left: 50%; transform: translateX(-50%) rotate(90deg); }
+  .lt-node[aria-expanded="true"] .lt-chevron { transform: translateX(-50%) rotate(-90deg); }
 }
 
-.practice-stat-val {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--tiger-primary);
+/* "Ab letztem Versuch" is mirrored, so time runs left to right in both
+   views: root ("Alle") on the right, the latest answer next to it, older
+   attempts further left. rtl flips the columns, connectors (logical
+   properties above) and the scroll start; node contents stay ltr. */
+.lt-view[data-view="backward"] .lt-tree { direction: rtl; }
+.lt-view[data-view="backward"] .lt-node,
+.lt-view[data-view="backward"] .lt-head > span,
+.lt-view[data-view="backward"] .lt-total { direction: ltr; }
+.lt-view[data-view="backward"] .lt-node {
+  flex-direction: row-reverse;
+  text-align: right;
+  border-left-width: 1px;
+  border-right: 3px solid var(--cat);
+}
+@container not (max-width: 480px) {
+  .lt-view[data-view="backward"] .lt-node.is-toggle { padding-right: 0.3rem; padding-left: 0.9rem; }
+  .lt-view[data-view="backward"] .lt-chevron { right: auto; left: 0.2rem; transform: translateY(-50%) scaleX(-1); }
+  .lt-view[data-view="backward"] .lt-node[aria-expanded="true"] .lt-chevron { transform: translateY(-50%) scaleX(-1) rotate(180deg); }
+}
+@container (max-width: 480px) {
+  .lt-view[data-view="backward"] .lt-node { text-align: center; }
+}
+
+/* ── Tooltips (data-tip, script in ui.R) ─────────────────────────────────── */
+.tiger-tip {
+  position: fixed;
+  z-index: 2000;
+  max-width: min(18rem, calc(100vw - 16px));
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+  background: #1f2937;
+  color: #fff;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.tiger-tip.is-below { transform: translateY(-4px); }
+.tiger-tip.is-visible { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .tiger-tip { transition: none; }
+}
+/* The (i) next to a card title */
+.la-info {
+  margin-left: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.8rem;
   line-height: 1;
+  color: #9aa1ab;
+  vertical-align: 0;
+  cursor: help;
 }
-
-.practice-stat-lbl {
-  font-size: 0.75rem;
-  color: #6c757d;
-  margin-top: 2px;
-}
+.la-info:hover,
+.la-info:focus-visible { color: var(--tiger-primary); }
+/* Hover affordance: these have a tooltip with the details */
+.cal-cell[data-tip] { cursor: default; transition: box-shadow 0.1s; }
+.cal-cell[data-tip]:hover,
+.cal-cell[data-tip]:focus { outline: none; box-shadow: 0 0 0 2px var(--tiger-primary); }
+.cov-cell[data-tip] { border-radius: 0.3rem; transition: background-color 0.1s; }
+.cov-cell[data-tip]:hover,
+.cov-cell[data-tip]:focus { outline: none; background: #f1f4f7; box-shadow: 0 0 0 4px #f1f4f7; }

@@ -200,13 +200,79 @@ test_that("db_write_response keeps data from different users separate", {
   expect_equal(db_get_userdata("bob", path)$id_item, 20L)
 })
 
+# ── db_get_ability / db_write_ability / ability_needs_update ──────────────────
+
+make_ability_rows <- function(user_id = "alice", computed_at = 1000L, theta = 0.5, n_items = 3L) {
+  data.frame(
+    id_user = user_id,
+    id_session = "sess1",
+    computed_at = computed_at,
+    learning_area = LEARNING_AREA_LEVELS[1],
+    theta = theta,
+    n_items = n_items,
+    stringsAsFactors = FALSE
+  )
+}
+
+test_that("db_get_ability returns empty data.frame for unknown user", {
+  path <- make_temp_db()
+  ab <- db_get_ability("nobody", path)
+  expect_s3_class(ab, "data.frame")
+  expect_equal(nrow(ab), 0L)
+})
+
+test_that("db_write_ability creates a user table and appends batches", {
+  path <- make_temp_db()
+  db_write_ability("alice", make_ability_rows(computed_at = 1000L), path)
+  db_write_ability("alice", make_ability_rows(computed_at = 2000L), path)
+
+  ab <- db_get_ability("alice", path)
+  expect_equal(nrow(ab), 2L)
+  expect_setequal(ab$computed_at, c(1000L, 2000L))
+})
+
+test_that("ability_needs_update is FALSE when the user has no responses", {
+  user_path <- make_temp_db()
+  ability_path <- make_temp_db()
+  expect_false(ability_needs_update("alice", user_path, ability_path))
+})
+
+test_that("ability_needs_update is TRUE on first-ever data with no prior snapshot", {
+  user_path <- make_temp_db()
+  ability_path <- make_temp_db()
+  db_write_response("alice", make_response_row("alice"), user_path)
+
+  expect_true(ability_needs_update("alice", user_path, ability_path))
+})
+
+test_that("ability_needs_update is FALSE when the snapshot is already caught up", {
+  user_path <- make_temp_db()
+  ability_path <- make_temp_db()
+  row <- make_response_row("alice")
+  db_write_response("alice", row, user_path)
+  db_write_ability("alice", make_ability_rows("alice", computed_at = row$id_datetime + 10L), ability_path)
+
+  expect_false(ability_needs_update("alice", user_path, ability_path))
+})
+
+test_that("ability_needs_update is TRUE when a new response postdates the last snapshot", {
+  user_path <- make_temp_db()
+  ability_path <- make_temp_db()
+  row <- make_response_row("alice")
+  db_write_response("alice", row, user_path)
+  db_write_ability("alice", make_ability_rows("alice", computed_at = row$id_datetime - 10L), ability_path)
+
+  expect_true(ability_needs_update("alice", user_path, ability_path))
+})
+
 # ── DB path env var ───────────────────────────────────────────────────────────
 
-test_that("DB_ITEMS/USERS/CREDS use TIGER_DB_DIR env var", {
+test_that("DB_ITEMS/USERS/CREDS/ABILITY use TIGER_DB_DIR env var", {
   withr::with_envvar(c(TIGER_DB_DIR = "/custom/path"), {
     expect_equal(DB_ITEMS(), "/custom/path/db_item.sqlite")
     expect_equal(DB_USERS(), "/custom/path/db_user.sqlite")
     expect_equal(DB_CREDS(), "/custom/path/db_credentials.sqlite")
+    expect_equal(DB_ABILITY(), "/custom/path/db_ability.sqlite")
   })
 })
 
@@ -214,4 +280,20 @@ test_that("DB path functions default to current directory when env var is unset"
   withr::with_envvar(c(TIGER_DB_DIR = ""), {
     expect_match(DB_ITEMS(), "db_item.sqlite$")
   })
+})
+
+# ── db_write_ability: schema migration ────────────────────────────────────────
+
+test_that("db_write_ability adds a missing `se` column to a pre-existing table", {
+  path <- make_ability_db("olduser") # old schema, no `se`
+  new_rows <- data.frame(
+    id_user = "olduser", id_session = "s2", computed_at = 2e9,
+    learning_area = LEARNING_AREA_LEVELS, theta = 0, se = 0.4, n_items = 5L,
+    stringsAsFactors = FALSE
+  )
+  db_write_ability("olduser", new_rows, path = path)
+  ab <- db_get_ability("olduser", path = path)
+  expect_true("se" %in% names(ab))
+  expect_true(all(is.na(ab$se[ab$computed_at != 2e9])))
+  expect_true(all(ab$se[ab$computed_at == 2e9] == 0.4))
 })
