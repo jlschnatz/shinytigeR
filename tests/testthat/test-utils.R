@@ -410,3 +410,12 @@ test_that("css_href appends the file's mtime as a version query", {
 test_that("css_href falls back to the bare href when the file is missing", {
   expect_equal(css_href("does/not/exist.css", "css/app.css"), "css/app.css")
 })
+
+test_that("local_date uses the local time zone, not UTC", {
+  withr::local_timezone("Europe/Berlin")
+  # 00:30 local time on 3 Nov is still 2 Nov in UTC
+  t <- as.POSIXct("2026-11-03 00:30:00", tz = "Europe/Berlin")
+  expect_equal(local_date(t), as.Date("2026-11-03"))
+  expect_equal(local_date(as.numeric(t)), as.Date("2026-11-03"))
+  expect_equal(local_date(as.integer(t)), as.Date("2026-11-03"))
+})

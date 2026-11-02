@@ -184,7 +184,7 @@ ability_trajectory_data <- function(ability_raw) {
     return(ab)
   }
   ab$time <- as.POSIXct(ab$computed_at, origin = "1970-01-01")
-  ab$date <- as.Date(ab$time)
+  ab$date <- local_date(ab$time)
   ab[order(ab$learning_area, ab$computed_at), ]
 }
 
@@ -359,7 +359,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
         return(ud)
       }
       ud$bool_correct <- as.logical(ud$bool_correct)
-      ud$date <- as.Date(as.POSIXct(ud$id_datetime, origin = "1970-01-01"))
+      ud$date <- local_date(ud$id_datetime)
       ud
     })
 
@@ -451,7 +451,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                 if (!is.null(comp)) {
                   tags$span(
                     class = "text-muted small",
-                    format_date_de(as.Date(as.POSIXct(comp$computed_at[1], origin = "1970-01-01")))
+                    format_date_de(local_date(comp$computed_at[1]))
                   )
                 }
               ),

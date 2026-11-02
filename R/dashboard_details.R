@@ -288,7 +288,7 @@ answered_rows <- function(ud, data_item = NULL) {
   a <- ud[keep, , drop = FALSE]
   a$bool_correct <- as.logical(a$bool_correct)
   if (is.null(a$date)) {
-    a$date <- as.Date(as.POSIXct(a$id_datetime, origin = "1970-01-01"))
+    a$date <- local_date(a$id_datetime)
   }
   a[order(a$id_item, a$id_datetime), , drop = FALSE]
 }
@@ -921,7 +921,7 @@ open_items <- function(ud, data_item) {
     id_item = ids,
     learning_area = data_item$learning_area[idx],
     type_item = data_item$type_item[idx],
-    last_date = as.Date(as.POSIXct(last_time, origin = "1970-01-01")),
+    last_date = local_date(last_time),
     stringsAsFactors = FALSE
   )
   out[order(-last_time, out$id_item), , drop = FALSE]

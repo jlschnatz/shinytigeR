@@ -267,6 +267,16 @@ evaluate_numeric_answer <- function(item, typed_value) {
   )
 }
 
+# Calendar date of a Unix timestamp (seconds, as stored in id_datetime /
+# computed_at) or POSIXct, in the local time zone — the same one Sys.Date()
+# uses. Plain as.Date() on a POSIXct counts in UTC, so right after local
+# midnight it returned the previous day (e.g. a mistake from 00:30 counted as
+# "yesterday" and was retryable at once).
+local_date <- function(x) {
+  if (!inherits(x, "POSIXct")) x <- as.POSIXct(x, origin = "1970-01-01")
+  as.Date(x, tz = "")
+}
+
 safe_sample <- function(x, size = length(x)) {
   if (length(x) == 0L) {
     return(x)
