@@ -839,7 +839,7 @@ test_that("dashboard: user_exists becomes TRUE after a response is written", {
   })
 })
 
-test_that("dashboard: first_attempts de-duplicates repeated items", {
+test_that("dashboard: user_data keeps every attempt, also repeats", {
   data_item <- make_data_item()
   write_trigger <- reactiveVal(0L)
   db_dir <- tempfile("tiger_test")
@@ -864,12 +864,9 @@ test_that("dashboard: first_attempts de-duplicates repeated items", {
       ),
       {
         ud <- user_data()
-        fa <- first_attempts()
 
-        expect_equal(nrow(ud), 3L) # all attempts
-        expect_equal(nrow(fa), 2L) # only first per item
-        # First attempt at item 1 was correct
-        expect_true(fa$bool_correct[fa$id_item == 1L])
+        expect_equal(nrow(ud), 3L) # all attempts, the repeat of item 1 too
+        expect_equal(ud$bool_correct[ud$id_item == 1L], c(TRUE, FALSE))
       }
     )
   })
