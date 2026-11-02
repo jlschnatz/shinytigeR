@@ -136,6 +136,22 @@ app_ui <- function() {
           "    }, 0);",
           "  });",
           "})();",
+          # Practice: after the check, bring the feedback card into view if it
+          # lands below the screen (a long stimulus above it, or stacked below
+          # the options on narrow screens). Its scroll-margin (app.css) keeps
+          # it clear of the sticky button bar.
+          "$(document).on('shiny:value', function (e) {",
+          "  if (!$(e.target).closest('.practice-feedback').length) return;",
+          "  setTimeout(function () {",
+          "    var card = e.target.querySelector('.feedback-card');",
+          "    if (!card) return;",
+          "    var bar = document.querySelector('.practice-actions-bar');",
+          "    var limit = window.innerHeight - (bar ? bar.offsetHeight : 0);",
+          "    if (card.getBoundingClientRect().bottom <= limit) return;",
+          "    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;",
+          "    card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });",
+          "  }, 50);",
+          "});",
           # Tooltips for every element with data-tip (dashboard calendar days,
           # coverage cells, (i) buttons). One shared, fixed-position label
           # instead of native `title`s: those appear late, look like the OS
