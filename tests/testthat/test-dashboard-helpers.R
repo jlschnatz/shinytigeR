@@ -162,10 +162,21 @@ test_that("trajectory_panel_fig plots the saved estimates with the competency la
   expect_equal(as.numeric(markers$y), c(-0.5, 1.2))
   line <- Filter(function(tr) identical(tr$mode, "lines"), b$x$data)[[1]]
   expect_equal(as.numeric(line$y), c(-0.5, 1.2)) # not smoothed
-  expect_match(markers$text[1], "Basis")
-  expect_match(markers$text[2], "Fortgeschritten")
-  expect_match(markers$text[2], "1.20", fixed = TRUE)
+  txt <- unlist(markers$text)
+  expect_match(txt[1], "Basis")
+  expect_match(txt[2], "Fortgeschritten")
+  expect_match(txt[2], "1.20", fixed = TRUE)
   expect_length(b$x$layout$shapes, nrow(COMPETENCY_SCALE))
+})
+
+test_that("trajectory_panel_fig sends the hover text as an array also for a single estimate", {
+  h <- traj_hist(times = 1700000000, theta = 0.3)
+  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
+  markers <- Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]
+  json <- as.character(plotly:::to_JSON(markers["text"]))
+  # an array, not a plain string: otherwise %{text} shows placeholders
+  expect_match(json, '"text":["', fixed = TRUE)
+  expect_match(json, "Solide", fixed = TRUE)
 })
 
 test_that("trajectory_section asks for a second estimate before showing panels", {

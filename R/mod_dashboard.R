@@ -241,7 +241,10 @@ trajectory_panel_fig <- function(d, x_range) {
       line = list(color = TRAJECTORY_COLOR, width = 2)
     ) |>
     plotly::add_markers(
-      x = d$time, y = d$theta, text = hover, hovertemplate = "%{text}<extra></extra>",
+      # as.list(): with a single estimate, plotly would otherwise send `text`
+      # as a plain string instead of an array, and the hover template
+      # %{text} then shows placeholders instead of the text
+      x = d$time, y = d$theta, text = as.list(hover), hovertemplate = "%{text}<extra></extra>",
       marker = list(color = TRAJECTORY_COLOR, size = 7, line = list(color = "white", width = 1))
     ) |>
     plotly::layout(
