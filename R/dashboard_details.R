@@ -137,7 +137,28 @@ interval_card <- function(comp) {
   })
   div(
     class = "la-card ivl-card",
-    div(class = "la-card-title", "Wie sicher ist die Einschätzung?"),
+    div(
+      class = "la-card-title ivl-title",
+      tags$span("Wie sicher ist die Einschätzung?"),
+      # Opens/closes the explainer next to the strips (client-side, ui.R)
+      tags$button(
+        type = "button",
+        class = "ivl-explain-btn",
+        `data-explain-toggle` = "",
+        `aria-expanded` = "false",
+        `aria-controls` = "la-explainer",
+        tags$span(
+          class = "ivl-explain-closed",
+          bsicons::bs_icon("info-circle"),
+          "Wie wird das berechnet?"
+        ),
+        tags$span(
+          class = "ivl-explain-open",
+          bsicons::bs_icon("x-lg"),
+          "Erklärung schließen"
+        )
+      )
+    ),
     div(
       class = "ivl-legend",
       tags$span(
@@ -160,30 +181,57 @@ interval_card <- function(comp) {
   )
 }
 
+# How the estimate works: four short steps one below the other, a closing
+# sentence underneath. Closed by default (the text never changes, so after one
+# read it's noise); the button in the interval card's title opens it as a side
+# column next to the strips, or below them on narrow screens.
 explainer_card <- function() {
-  div(
-    class = "la-card",
-    div(class = "la-card-title", "Wie wird dein Lernstand berechnet?"),
-    tags$ul(
-      class = "la-explain",
-      tags$li(
-        "Jede Aufgabe hat eine Schwierigkeit. Wer schwierige Aufgaben löst, wird höher eingeschätzt als jemand, der nur leichte löst."
-      ),
-      tags$li(
-        "Pro Aufgabe zählt deine letzte Antwort: Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung."
-      ),
-      tags$li(
-        "Übersprungene Aufgaben und nicht erkannte Zahleneingaben zählen nicht."
-      ),
-      tags$li(
-        "Je mehr Aufgaben du in einem Bereich bearbeitest, desto schmaler wird der Balken – die Einschätzung wird sicherer."
-      ),
-      tags$li(
-        "Neu berechnet wird höchstens einmal pro Sitzung: beim Anmelden oder über „Fähigkeitsverlauf aktualisieren“."
-      ),
-      tags$li(
-        "Die Einschätzung ist eine Orientierung für dein Üben, keine Note."
+  pct <- round(100 * ESTIMATE_INTERVAL_LEVEL)
+  step <- function(num, title, text) {
+    div(
+      class = "la-step",
+      tags$span(class = "la-step-num", num),
+      div(
+        div(class = "la-step-title", title),
+        div(class = "la-step-text", text)
       )
+    )
+  }
+  div(
+    id = "la-explainer",
+    class = "la-card la-explainer",
+    div(class = "la-card-title", "Wie wird dein Lernstand berechnet?"),
+    div(
+      class = "la-steps",
+      step(
+        1,
+        "Richtige Antworten, gemessen an der Schwierigkeit",
+        # Rasch: given the items worked on, the number correct is sufficient,
+        # so which of them were solved doesn't matter, only how hard the set is
+        "Gezählt wird, wie viele Aufgaben du richtig hast. Was das bedeutet, hängt davon ab, wie schwer die bearbeiteten Aufgaben sind: 7\u00a0von\u00a010 richtig bei schweren Aufgaben ergibt eine höhere Einschätzung als 7\u00a0von\u00a010 bei leichten."
+      ),
+      step(
+        2,
+        "Deine letzte Antwort zählt",
+        "Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung. Übersprungene Aufgaben und nicht erkannte Zahleneingaben zählen nicht."
+      ),
+      step(
+        3,
+        "Mehr Aufgaben, schmalerer Balken",
+        sprintf(
+          "Der Balken ist ein %d\u2011%%\u2011Konfidenzintervall: Er zeigt, wie ungenau die Schätzung noch ist. Je mehr Aufgaben du in einem Bereich bearbeitest, desto schmaler wird er.",
+          pct
+        )
+      ),
+      step(
+        4,
+        "Einmal pro Sitzung neu berechnet",
+        "Beim Anmelden oder über „Fähigkeitsverlauf aktualisieren“. Deshalb ändert sich die Einschätzung nicht nach jeder einzelnen Aufgabe."
+      )
+    ),
+    tags$p(
+      class = "la-note la-explainer-close",
+      "Die Einschätzung ist eine Orientierung für dein Üben, keine Note."
     )
   )
 }
@@ -193,7 +241,12 @@ detail_section <- function(comp) {
     title = "Dein Lernstand im Detail",
     value = "detail",
     icon = bsicons::bs_icon("bullseye"),
-    div(class = "la-grid la-grid-detail", interval_card(comp), explainer_card())
+    div(
+      class = "la-grid la-grid-detail",
+      `data-explain` = "closed",
+      interval_card(comp),
+      explainer_card()
+    )
   )
 }
 

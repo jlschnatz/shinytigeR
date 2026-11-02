@@ -562,3 +562,16 @@ test_that("open_items_panel offers the retry only for mistakes past their time-o
   expect_false(grepl("oi-item", html, fixed = TRUE))
   expect_match(as.character(open_items_panel(oi(integer(0)), ns, today)), "überall richtig")
 })
+
+test_that("the detail section labels the interval as a confidence interval and explains it in four steps", {
+  html <- as.character(detail_section(NULL))
+  expect_match(html, "Konfidenzintervall", fixed = TRUE)
+  # the explainer is closed by default, opened by the button in the title
+  expect_match(html, 'data-explain="closed"', fixed = TRUE)
+  expect_match(html, 'data-explain-toggle="" aria-expanded="false" aria-controls="la-explainer"', fixed = TRUE)
+  expect_false(grepl("Wahrscheinlichkeit liegt", html, fixed = TRUE))
+  ex <- as.character(explainer_card())
+  expect_match(ex, '^<div id="la-explainer" class="la-card la-explainer">')
+  expect_equal(lengths(regmatches(ex, gregexpr('class="la-step"', ex))), 4L)
+  expect_match(ex, "gemessen an der Schwierigkeit", fixed = TRUE)
+})
