@@ -438,25 +438,28 @@ test_that("coverage_matrix splits each area x type cell by the latest answer", {
 })
 
 
-test_that("open_items lists first-wrong items never solved since, newest first", {
+test_that("open_items lists items whose latest answer is wrong, newest first", {
   pool <- data.frame(
-    id_item = 1:5,
-    learning_area = c("Regression", "Regression", "Poweranalyse", "Regression", "Regression"),
-    type_item = c("content", "coding", "content", "content", "content")
+    id_item = 1:6,
+    learning_area = c("Regression", "Regression", "Poweranalyse", "Regression", "Regression", "Regression"),
+    type_item = c("content", "coding", "content", "content", "content", "content")
   )
   ud <- tree_ud(
     # 1: wrong, then right -> solved; 2: wrong (earlier); 3: wrong twice
-    # (latest answer last); 4: right; 5: only skipped
-    id_item      = c(1L, 1L, 2L, 3L, 4L, 3L, 5L),
-    bool_correct = c(FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, NA),
-    skipped      = c(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
+    # (latest answer last); 4: right; 5: only skipped; 6: right, then wrong
+    # (regressed -> open again), then skipped (doesn't count)
+    id_item      = c(1L, 1L, 2L, 6L, 3L, 4L, 6L, 3L, 5L, 6L),
+    bool_correct = c(FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, NA, NA),
+    skipped      = c(rep(FALSE, 8), TRUE, TRUE)
   )
   oi <- open_items(ud, pool)
-  expect_equal(oi$id_item, c(3L, 2L))
-  expect_equal(oi$type_item, c("content", "coding"))
-  # same count as the tree's "warten noch auf dich"
-  expect_equal(nrow(oi), answer_tree_stats(ud, pool)$mistakes$n_open)
+  expect_equal(oi$id_item, c(3L, 6L, 2L))
+  expect_equal(oi$type_item, c("content", "content", "coding"))
+  # same count as the coverage card's "zuletzt falsch"
+  expect_equal(nrow(oi), sum(coverage_matrix(ud, pool)$n_wrong))
   expect_equal(nrow(open_items(tree_ud(1L, TRUE), pool)), 0L)
+  # wrong, then right again -> solved
+  expect_equal(nrow(open_items(tree_ud(c(1L, 1L, 1L), c(TRUE, FALSE, TRUE)), pool)), 0L)
 })
 
 test_that("retry_eligible applies the time-out of RETRY_MIN_DAYS calendar days", {
@@ -486,5 +489,5 @@ test_that("open_items_panel offers the retry only for mistakes past their time-o
   expect_match(html, "Alle von heute", fixed = TRUE)
   # no item list or solution lookup
   expect_false(grepl("oi-item", html, fixed = TRUE))
-  expect_match(as.character(open_items_panel(oi(integer(0)), ns, today)), "inzwischen gelöst")
+  expect_match(as.character(open_items_panel(oi(integer(0)), ns, today)), "überall richtig")
 })

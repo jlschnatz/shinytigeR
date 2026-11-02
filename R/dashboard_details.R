@@ -653,13 +653,15 @@ answer_tree_item <- function(node, cat, attempt, parent_n, open_attempts) {
   )
 }
 
-# Items that were wrong at the first attempt and haven't been solved since —
-# the same set as the tree's "warten noch auf dich" — most recently answered
-# first. One row per item: id, area, type, date of the latest answer.
+# Items whose latest answer is wrong — including ones answered right before
+# and wrong later — most recently answered first. The same set as the
+# coverage card's "zuletzt falsch" and as what the estimate counts as wrong
+# (latest attempt). One row per item: id, area, type, date of the latest answer.
 open_items <- function(ud, data_item) {
   a <- answered_rows(ud, data_item)
-  # Wrong first and never right since = no right answer at all
-  open <- Filter(function(d) !any(d$bool_correct), split(a, a$id_item))
+  # answered_rows() sorts by time, so the last row is the latest answer
+  # (same rule as coverage_matrix(), also for answers in the same second)
+  open <- Filter(function(d) !d$bool_correct[nrow(d)], split(a, a$id_item))
   if (length(open) == 0L) {
     return(data.frame(
       id_item = integer(0),
@@ -706,10 +708,15 @@ open_items_panel <- function(oi, ns, today = Sys.Date()) {
       class = "la-card-title",
       "Offene Fehler",
       if (n_open > 0L) tags$span(class = "oi-count", n_open),
-      info_tip("Aufgaben, die du falsch beantwortet und noch nicht gelöst hast. Nochmal üben geht erst ab dem nächsten Tag: Mit etwas Abstand bleibt es besser hängen.")
+      info_tip(
+        "Aufgaben, die du zuletzt falsch beantwortet hast (auch wenn du sie früher schon einmal richtig hattest). Du kannst diese Aufgaben frühestens 24 Stunden nach deiner letzten Antwort nochmal versuchen."
+      )
     ),
     if (n_open == 0L) {
-      tags$p(class = "la-note mt-0", "Keine – alle Fehler hast du inzwischen gelöst.")
+      tags$p(
+        class = "la-note mt-0",
+        "Keine! Deine letzte Antwort war überall richtig."
+      )
     } else {
       tagList(
         if (n_ready > 0L) {
@@ -731,7 +738,11 @@ open_items_panel <- function(oi, ns, today = Sys.Date()) {
         if (n_wait > 0L) {
           tags$p(
             class = "la-note oi-wait",
-            if (n_ready == 0L) "Alle von heute – nochmal üben kannst du sie ab morgen." else sprintf("%d von heute erst ab morgen", n_wait)
+            if (n_ready == 0L) {
+              "Alle von heute, nochmal üben kannst du sie ab morgen."
+            } else {
+              sprintf("%d von heute erst ab morgen", n_wait)
+            }
           )
         }
       )
