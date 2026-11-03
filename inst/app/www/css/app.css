@@ -525,7 +525,7 @@
 
 .practice-item-id {
   display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--bs-font-monospace);
   font-size: 0.85rem;
   color: #6c757d;
   background-color: #f1f3f5;
