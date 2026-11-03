@@ -845,7 +845,7 @@
   height: 0.8rem;
   border-radius: 3px;
   border: 1px solid var(--seg);
-  background: color-mix(in srgb, var(--seg) 25%, white);
+  background: color-mix(in srgb, var(--seg) 20%, white);
 }
 .traj-panel {
   border: 1px solid #e5e7eb;
@@ -1002,7 +1002,7 @@
 .ivl-strip { position: relative; height: 14px; }
 .ivl-bands { position: absolute; inset: 0; border-radius: 7px; overflow: hidden; background: #f3f4f6; }
 /* Same tint as the trajectory bands (competency_band_shapes()) */
-.ivl-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--seg) 25%, white); }
+.ivl-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--seg) 20%, white); }
 /* Divider at every level boundary */
 .ivl-band + .ivl-band { border-left: 1px solid #fff; }
 /* Shared axes above/below the strips (interval_axis()) */

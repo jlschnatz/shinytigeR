@@ -169,6 +169,20 @@ test_that("trajectory_panel_fig plots the saved estimates with the competency la
   expect_length(b$x$layout$shapes, nrow(COMPETENCY_SCALE))
 })
 
+test_that("trajectory_panel_fig shows how many items each estimate is based on", {
+  h <- traj_hist(theta = c(-0.5, 1.2))
+  h$n_items <- c(1L, 12L)
+  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
+  txt <- unlist(Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]$text)
+  expect_match(txt[1], "Basierend auf 1 Aufgabe", fixed = TRUE)
+  expect_false(grepl("1 Aufgaben", txt[1], fixed = TRUE))
+  expect_match(txt[2], "Basierend auf 12 Aufgaben", fixed = TRUE)
+  h$n_items <- NA_integer_
+  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
+  txt <- unlist(Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]$text)
+  expect_false(any(grepl("Basierend", txt, fixed = TRUE)))
+})
+
 test_that("trajectory_panel_fig sends the hover text as an array also for a single estimate", {
   h <- traj_hist(times = 1700000000, theta = 0.3)
   b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
