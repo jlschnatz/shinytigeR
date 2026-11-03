@@ -196,7 +196,7 @@ TRAJECTORY_Y_RANGE <- THETA_RANGE + c(-0.25, 0.25)
 # (the outer ones run to the panel edge) in its scale color, so a point reads
 # as "in which competency zone", the same scale as the strips in "Dein
 # Lernstand".
-competency_band_shapes <- function(opacity = 0.25) {
+competency_band_shapes <- function(opacity = 0.2) {
   lapply(seq_len(nrow(COMPETENCY_SCALE)), function(k) {
     list(
       type = "rect", layer = "below", xref = "paper", x0 = 0, x1 = 1, yref = "y",
