@@ -28,3 +28,11 @@ test_that("faq_section renders one closed accordion per topic, in topic order", 
   expect_gt(n_links, 0L)
   expect_equal(n_blank, n_links)
 })
+
+test_that("the access answer matches the registration rules", {
+  a <- Filter(function(e) e$q == "Wie bekomme ich einen Zugang?", faq_entries())[[1]]$a
+  # keep in sync with REG_USERNAME_PATTERN and REG_PW_MIN_LENGTH
+  expect_identical(REG_USERNAME_PATTERN, "^[a-zA-Z0-9_.-]{3,30}$")
+  expect_match(a, "3 bis 30 Zeichen", fixed = TRUE)
+  expect_match(a, sprintf("mindestens %d Zeichen", REG_PW_MIN_LENGTH), fixed = TRUE)
+})

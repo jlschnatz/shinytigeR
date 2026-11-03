@@ -129,15 +129,17 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
         "Mit etwas Abstand bleibt die Lösung besser hängen, als wenn du dieselbe Aufgabe gleich noch einmal machst."
       )
     ),
+    # ── Konto und Daten ───────────────────────────────────────────────────────
     list(
-      topic = "Fortschritt",
-      q = "Ist mein Lernstand eine Note?",
+      topic = "Konto und Daten",
+      q = "Wie bekomme ich einen Zugang?",
       a = paste(
-        "Nein. Die Einschätzung ist eine Orientierung für dein Üben: Sie zeigt, wo du schon sicher bist und wo sich Üben noch lohnt.",
-        "Sie hat keinen Einfluss auf Prüfungen oder Noten."
+        "Unter **Login** klickst du bei „Noch kein Konto?“ auf **Registriere** und legst ein Konto an:",
+        "mit einem Benutzernamen (3 bis 30 Zeichen: Buchstaben, Ziffern, Punkt, Binde- oder Unterstrich),",
+        "einem Passwort (mindestens 8 Zeichen) und dem **Semester-Code**.",
+        "Den Semester-Code bekommst du im Praktikum."
       )
     ),
-    # ── Konto und Daten ───────────────────────────────────────────────────────
     list(
       topic = "Konto und Daten",
       q = "Ich habe mein Passwort vergessen. Was nun?",
@@ -157,9 +159,9 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
     # ── Hilfe ─────────────────────────────────────────────────────────────────
     list(
       topic = "Hilfe",
-      q = "Ich habe einen Fehler in einer Aufgabe gefunden. Was tun?",
+      q = "Ich habe einen Fehler in einer Aufgabe gefunden. Was kann ich machen?",
       a = sprintf(
-        "Notier dir die **ID** der Aufgabe (sie steht über der Aufgabe, ein Klick kopiert sie) und schreib uns kurz, was dir aufgefallen ist, an %s.",
+        "Notiere dir die **ID** der Aufgabe (sie steht über der Aufgabe, ein Klick kopiert sie) und schreib uns kurz, was dir aufgefallen ist, an %s.",
         mail
       )
     ),
@@ -167,23 +169,21 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
       topic = "Hilfe",
       q = "Wo finde ich Informationen zu den Datensätzen in den R-Aufgaben?",
       a = paste(
-        "Viele R-Aufgaben arbeiten mit Datensätzen aus pandaR.",
-        "Was in einem Datensatz steckt, steht in der",
-        "[Dokumentation der Datensätze](https://pandar.netlify.app/daten/datensaetze/)."
+        "Die Dokumentation zu den Datensätzen findest du auf [pandaR](https://pandar.netlify.app/daten/datensaetze/)."
       )
     ),
     list(
       topic = "Hilfe",
       q = "Wo kann ich die Grundlagen von R üben?",
       a = paste(
-        "Wenn dir für die R-Code-Aufgaben noch Grundlagen fehlen, kannst du sie mit",
-        "[otter](https://meikesteinhilber.github.io/otter/) üben, bevor du hier weitermachst."
+        "Wenn dir für die R-Code-Aufgaben noch Grundlagen fehlen, kannst du sie z.B. mit",
+        "[otter](https://meikesteinhilber.github.io/otter/) üben."
       )
     ),
     list(
       topic = "Hilfe",
       q = "Funktioniert tigeR auch auf dem Handy oder Tablet?",
-      a = "Ja, die Ansicht passt sich der Bildschirmgröße an. Für Aufgaben mit großen Abbildungen ist ein größerer Bildschirm angenehmer."
+      a = "Ja, die Ansicht passt sich der Bildschirmgröße an. Für ein optimales User Interface empfehlen wir dir jedoch die Nutzung eines Laptops."
     )
   )
 }
