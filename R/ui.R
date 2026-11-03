@@ -21,8 +21,10 @@ app_ui <- function() {
     theme = bslib::bs_theme(
       version = 5,
       primary = PRIMARY_COLOR,
-      font_scale = 1.0,
-      base_font = bslib::font_google("Source Sans 3")
+      font_scale = 1,
+      base_font = bslib::font_google("Fira Sans"),
+      # Fira Mono, not Fira Code: its ligatures would show R's `<-` as an arrow
+      code_font = bslib::font_google("Fira Mono")
     ),
     header = tagList(
       shinyjs::useShinyjs(),
