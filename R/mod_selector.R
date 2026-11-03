@@ -214,6 +214,9 @@ mod_selector_server <- function(
 
     # ── Derived state ─────────────────────────────────────────────────────────
 
+    # Items already ANSWERED (right or wrong), with the dashboard's definition
+    # (answered_rows()): an item that was only skipped stays "neu", so "Nur
+    # neue Aufgaben" can still draw it, matching the coverage card's "offen"
     answered_ids <- reactive({
       write_trigger()
       uid <- credentials()$info$user_name
@@ -221,7 +224,7 @@ mod_selector_server <- function(
       if (nrow(ud) == 0L) {
         return(integer(0))
       }
-      unique(as.integer(ud$id_item))
+      unique(as.integer(answered_rows(ud)$id_item))
     })
 
     new_counts <- reactive({

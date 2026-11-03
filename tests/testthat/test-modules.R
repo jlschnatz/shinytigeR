@@ -146,6 +146,38 @@ test_that("selector: only_new excludes already-answered items", {
   })
 })
 
+test_that("selector: only_new still offers items that were only skipped", {
+  data_item <- make_data_item()
+  # item 1 answered, item 2 only skipped -> 2 and 3 count as new (same as the
+  # dashboard's "noch offen")
+  db_path <- make_user_db("testuser", item_ids = 1:2)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
+  DBI::dbExecute(con, "UPDATE testuser SET skipped = 1, bool_correct = NULL WHERE id_item = 2")
+  DBI::dbDisconnect(con)
+
+  withr::with_envvar(list(TIGER_DB_DIR = dirname(db_path)), {
+    file.rename(db_path, DB_USERS())
+
+    testServer(
+      mod_selector_server,
+      args = list(
+        data_item = data_item,
+        practice_ids = reactiveVal(NULL),
+        inspect_id = reactiveVal(NULL),
+        credentials = fake_credentials(),
+        write_trigger = reactiveVal(0L)
+      ),
+      {
+        do.call(
+          session$setInputs,
+          selector_cell_inputs(area_vals = "Regression", only_new = TRUE)
+        )
+        expect_setequal(filtered_items()$id_item, c(2L, 3L))
+      }
+    )
+  })
+})
+
 # ── mod_practice_server ───────────────────────────────────────────────────────
 
 test_that("practice: starts at position 1", {
