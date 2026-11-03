@@ -226,10 +226,16 @@ trajectory_x_range <- function(hist) {
 trajectory_panel_fig <- function(d, x_range) {
   d <- d[order(d$time), ]
   lbl <- COMPETENCY_SCALE$label[findInterval(d$theta, COMPETENCY_SCALE$lower)]
+  n <- as.integer(d$n_items)
+  basis <- ifelse(
+    is.na(n), "",
+    sprintf("<br>Basierend auf %d %s", n, ifelse(n == 1L, "Aufgabe", "Aufgaben"))
+  )
   hover <- sprintf(
-    "%s<br><b>%s</b> (\u03b8 = %s)",
+    "%s<br><b>%s</b> (\u03b8 = %s)%s",
     format_date_de(d$date), lbl,
-    formatC(d$theta, format = "f", digits = 2, decimal.mark = ".")
+    formatC(d$theta, format = "f", digits = 2, decimal.mark = "."),
+    basis
   )
   axis <- list(
     title = "", fixedrange = TRUE, showgrid = FALSE, zeroline = FALSE,
@@ -238,7 +244,7 @@ trajectory_panel_fig <- function(d, x_range) {
   plotly::plot_ly() |>
     plotly::add_lines(
       x = d$time, y = d$theta, hoverinfo = "skip",
-      line = list(color = TRAJECTORY_COLOR, width = 2)
+      line = list(color = TRAJECTORY_COLOR, width = 3)
     ) |>
     plotly::add_markers(
       # as.list(): with a single estimate, plotly would otherwise send `text`
@@ -250,6 +256,9 @@ trajectory_panel_fig <- function(d, x_range) {
     plotly::layout(
       shapes = competency_band_shapes(),
       showlegend = FALSE,
+      # plotly doesn't inherit the page font; keep in sync with base_font in ui.R
+      font = list(family = "'Fira Sans', sans-serif"),
+      hoverlabel = list(font = list(family = "'Fira Sans', sans-serif")),
       xaxis = c(axis, list(type = "date", range = x_range, tickformat = "%d.%m.", nticks = 4)),
       yaxis = c(axis, list(range = TRAJECTORY_Y_RANGE, showticklabels = FALSE, ticks = "")),
       margin = list(l = 4, r = 4, t = 4, b = 4),
