@@ -44,7 +44,7 @@ mod_home_ui <- function(id) {
               tags$b("FAQ"),
               tags$p(
                 class = "text-muted mb-0",
-                "Finde Antworten auf häufige Fragen sowie weiterführende Links zu Aufgabenpool und Dokumentation."
+                "Finde Antworten auf häufige Fragen, zum Beispiel zu deiner Einschätzung, und Links zu weiteren Materialien."
               )
             )
           )

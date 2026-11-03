@@ -132,6 +132,8 @@ app_v3/
 │   ├── mod_numeric_answer.R  # module: numeric answer widget (typed value, per-option range match) — child of mod_practice.R
 │   ├── mod_inspect.R      # module: read-only item overview (direct ID lookup)
 │   ├── mod_dashboard.R    # module: progress dashboard
+│   ├── mod_faq.R          # module: FAQ tab (static UI: contact line, questions from faq.R)
+│   ├── faq.R              # FAQ entries as data: faq_entries(), FAQ_TOPICS, faq_section()
 │   └── dashboard_details.R  # dashboard's bottom sections: "Lernstand im Detail" + "Lernverhalten" (pure helpers, no module)
 │
 ├── dev/
@@ -215,7 +217,7 @@ flowchart LR
 
 ### Authentication pattern
 
-All modules are registered **inside** an `observeEvent(credentials()$user_auth, {...})` block in `server.R`. This means modules only activate after a successful login. Navbar tabs for protected panels are hidden via CSS on startup and revealed with `shinyjs::show()` post-login.
+All modules are registered **inside** an `observeEvent(credentials()$user_auth, {...})` block in `server.R`. This means modules only activate after a successful login. Navbar tabs for protected panels (Üben, Fortschritt) are hidden via CSS on startup and revealed with `shinyjs::show()` post-login. The **FAQ tab is public**: it's static UI with no server part (`mod_faq.R`), so it works before login too, where questions like the forgotten password or the stored data matter most.
 
 `mod_register_server` is the one exception — it's registered **before** the auth gate (self-registration has to work for users who don't have credentials yet). Its UI (`mod_register_ui`) sits in the login panel alongside the login form; `input$show_register`/`input$show_login` toggle between them via `shinyjs::runjs()` in `server.R` (`toggle_login_register()`), not `bslib::nav_select()` — this is a same-panel show/hide, not a tab switch. See `R/mod_register.R` below.
 
@@ -347,7 +349,11 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 
 ### `R/mod_home.R`
 
-Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation, pool stats, and links to pandar dataset documentation, otter (R practice), and the contact email. The "Jetzt üben" button calls the `go_train` callback passed from `server.R`, which uses `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
+Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation and the "Jetzt üben" button (the links to pandar and otter are FAQ answers, see `R/faq.R`). The "Jetzt üben" button calls the `go_train` callback passed from `server.R`, which uses `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
+
+### `R/mod_faq.R` / `R/faq.R`
+
+The FAQ tab. The questions are **data** in `R/faq.R`: `faq_entries()` returns a list of `list(topic, q, a)` (answer in Markdown, rendered with `render_md()`; `CONTACT_EMAIL` is filled in via the function's `contact` argument), `FAQ_TOPICS` fixes the topic order, and `faq_section()` renders one closed `bslib::accordion` per topic. **To add a question, add an entry**, nothing else. Keep the wording in sync with the app's labels, and keep the data-protection answer to what the app itself stores: the server (ShinyProxy) is run by the university, so the FAQ makes no claims about it, and it doesn't promise anonymity (username + responses are pseudonymous under the GDPR; details belong in a privacy policy). The links to pandaR (dataset documentation) and otter (R basics) are answers too; above the questions `mod_faq.R` shows the contact line. Static UI, no server part. Tests: `tests/testthat/test-faq.R`.
 
 ### `R/mod_register.R`
 
@@ -620,6 +626,7 @@ Key CSS classes to be aware of when changing layout:
 | `.cov-*` | Coverage matrix (area × type), bars split richtig/falsch/offen |
 | `.lt-*` | Answer tree: nodes, connectors (pure CSS on `ul`/`li`), donuts, `.is-open` branches, container query for narrow cards |
 | `.oi-*` | "Offene Fehler" card |
+| `.faq-topic` / `.faq-accordion` / `.faq-answer` | FAQ tab: one titled accordion per topic |
 | `.tiger-tip` | The shared tooltip label created by the `data-tip` script in `ui.R` |
 | `.dashboard-comp-table` | "Dein Lernstand" table in dashboard |
 | `.comp-area` / `.comp-level` / `.comp-level-label` | Area-name cell / competency label + scale strip wrapper in that table (`.is-empty` = no data) |

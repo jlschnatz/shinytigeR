@@ -41,7 +41,8 @@ app_server <- function(input, output, session) {
     # Reveal authenticated tabs; hide login; show logout button
     # home_panel is deliberately excluded — it's not a tab, only reachable via
     # the navbar brand/logo link (see input$brand_home below).
-    protected <- c("train_panel", "progress_panel", "faq_panel")
+    # (faq_panel isn't protected: it's static and visible before login too)
+    protected <- c("train_panel", "progress_panel")
     lapply(protected, function(p) {
       shinyjs::show(selector = sprintf('.navbar-nav a[data-value="%s"]', p))
     })
@@ -136,7 +137,6 @@ app_server <- function(input, output, session) {
       bslib::nav_select("main_tabs", "home_panel", session = app_session)
     })
 
-    mod_faq_server("faq_1", data_item = data_item)
 
     mod_selector_server(
       "selector_1",

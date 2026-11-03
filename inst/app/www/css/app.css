@@ -20,9 +20,10 @@
 }
 
 /* ── Hide protected nav tabs until authenticated ────────────────────────────── */
+/* (FAQ is public: questions like the forgotten password or the stored data
+   matter before logging in or registering) */
 .navbar-nav a[data-value="train_panel"],
-.navbar-nav a[data-value="progress_panel"],
-.navbar-nav a[data-value="faq_panel"] {
+.navbar-nav a[data-value="progress_panel"] {
   display: none;
 }
 
@@ -1363,3 +1364,11 @@
 .cov-cell[data-tip] { border-radius: 0.3rem; transition: background-color 0.1s; }
 .cov-cell[data-tip]:hover,
 .cov-cell[data-tip]:focus { outline: none; background: #f1f4f7; box-shadow: 0 0 0 4px #f1f4f7; }
+
+/* ── FAQ (R/faq.R, mod_faq.R) ───────────────────────────────────────────────── */
+.faq-topic + .faq-topic { margin-top: 1.5rem; }
+.faq-topic-title { font-size: 1rem; font-weight: 600; color: var(--tiger-primary); margin-bottom: 0.5rem; }
+.faq-accordion .accordion-button { font-weight: 500; }
+.faq-answer { font-size: 0.95rem; }
+.faq-answer p:last-child,
+.faq-answer ul:last-child { margin-bottom: 0; }
