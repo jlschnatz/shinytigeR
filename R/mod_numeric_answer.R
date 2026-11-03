@@ -68,7 +68,8 @@ mod_numeric_answer_server <- function(id, item, checked, result) {
         shinyjs::disable("num_value")
         res <- result()
         if (!is.null(res)) {
-          suffix <- if (res$category %in% c("unmatched", "skip")) "skip" else res$category
+          # unmatched counts as wrong, so it's colored like a wrong answer
+          suffix <- switch(res$category, unmatched = "incorrect", res$category)
           shinyjs::addClass("num_value", paste0("numeric-result-", suffix))
         }
       } else {

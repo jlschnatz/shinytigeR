@@ -331,7 +331,8 @@
 
 /* Post-check: the (disabled) input keeps the typed value, its border colored
    by result — the numeric counterpart of MC's .radio-result-* fills. Set by
-   mod_numeric_answer_server(); "skip" also covers the unmatched case. */
+   mod_numeric_answer_server(); an unmatched value counts as wrong, so it
+   gets "incorrect". */
 .numeric-answer-input:disabled {
   background-color: #fff;
   opacity: 1;

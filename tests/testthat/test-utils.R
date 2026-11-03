@@ -159,6 +159,15 @@ test_that("build_response_row produces correct columns and types", {
   expect_equal(retry$practice_mode, "retry")
 })
 
+test_that("build_response_row stores an unmatched numeric answer as wrong, a skip as NA", {
+  item <- make_numeric_item(200L, correct_value = 5, distractors = c(4.5))
+  unmatched <- build_response_row(item, NA_integer_, "u", "s", typed_value = 999)
+  expect_false(unmatched$bool_correct)
+  expect_false(unmatched$skipped)
+  skip <- build_response_row(item, NA_integer_, "u", "s", skipped = TRUE)
+  expect_true(is.na(skip$bool_correct))
+})
+
 test_that("build_response_row records an explicit skip", {
   item <- make_item(n_options = 4, correct = 1L)
   item$id_item <- 1L

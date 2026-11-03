@@ -305,7 +305,7 @@ test_that("answer_tree_stats splits the pool attempt by attempt", {
   expect_null(tr$children$wrong$children$wrong$children$correct$children)
 })
 
-test_that("answer_tree_stats ignores skips, unmatched answers and items outside the pool", {
+test_that("answer_tree_stats ignores rows without a result and items outside the pool", {
   pool <- data.frame(id_item = 1:3)
   ud <- tree_ud(
     id_item      = c(1L, 1L, 2L, 99L),
@@ -314,7 +314,7 @@ test_that("answer_tree_stats ignores skips, unmatched answers and items outside 
   )
   tr <- answer_tree_stats(ud, pool)
   # item 1: skip then wrong -> wrong at the 1st attempt, not repeated; item 2
-  # only an unmatched numeric answer -> not worked on; 99 isn't in the pool
+  # only a row without a result -> not worked on; 99 isn't in the pool
   expect_equal(unname(vapply(tr$children, `[[`, integer(1), "n")), c(0L, 1L, 2L))
   expect_equal(tr$children$wrong$children$none$n, 1L)
 })
@@ -433,7 +433,7 @@ test_that("answered_rows keeps only real answers to items in the pool", {
     skipped      = c(TRUE, FALSE, FALSE, FALSE, FALSE)
   )
   a <- answered_rows(ud, data.frame(id_item = 1:3))
-  # the skip, the unmatched numeric answer (item 2) and item 99 are dropped
+  # the skip, the row without a result (item 2) and item 99 are dropped
   expect_equal(a$id_item, c(1L, 3L))
   expect_s3_class(a$date, "Date")
   expect_equal(nrow(answered_rows(data.frame())), 0L)

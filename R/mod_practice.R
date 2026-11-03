@@ -110,7 +110,7 @@ practice_feedback_card <- function(item, res) {
   body <- if (cat == "skip") {
     SKIP_FEEDBACK
   } else if (cat == "unmatched") {
-    "Wir können anhand deiner Eingabe leider nicht nachvollziehen, wie du auf diese Zahl gekommen bist. Schau dir die Aufgabe noch einmal in Ruhe an oder sprich sie ggf. mit einer Betreuungsperson durch."
+    "Deine Antwort ist leider falsch. Sie passt zu keinem der typischen Fehler, die für diese Aufgabe hinterlegt sind, deshalb können wir nicht nachvollziehen, wie du auf diese Zahl gekommen bist. Schau dir die Aufgabe noch einmal in Ruhe an."
   } else if (numeric) {
     # answer_idx is the option's column position (see get_numeric_options())
     opts <- get_numeric_options(it)
@@ -124,10 +124,13 @@ practice_feedback_card <- function(item, res) {
   if (!numeric && !nzchar(body)) {
     return(NULL)
   }
+  # Unmatched counts as wrong, so it gets the "wrong" color (title and icon
+  # stay its own: "Antwort nicht erkannt")
   color_var <- switch(
     cat,
     correct = "var(--tiger-correct)",
-    incorrect = "var(--tiger-incorrect)",
+    incorrect = ,
+    unmatched = "var(--tiger-incorrect)",
     "var(--tiger-skip)"
   )
   icon_name <- switch(

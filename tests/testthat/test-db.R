@@ -297,3 +297,19 @@ test_that("db_write_ability adds a missing `se` column to a pre-existing table",
   expect_true(all(is.na(ab$se[ab$computed_at != 2e9])))
   expect_true(all(ab$se[ab$computed_at == 2e9] == 0.4))
 })
+
+test_that("db_get_userdata reads old unmatched numeric answers as wrong, skips stay NA", {
+  path <- tempfile(fileext = ".sqlite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), path)
+  # rows as written before unmatched answers counted as wrong: an unmatched
+  # numeric answer (typed value, not skipped), a skip, an MC answer
+  DBI::dbWriteTable(con, "olduser", data.frame(
+    id_item = c(1L, 2L, 3L),
+    bool_correct = c(NA, NA, 1L),
+    skipped = c(0L, 1L, 0L),
+    typed_value = c(7.5, NA, NA)
+  ))
+  DBI::dbDisconnect(con)
+  ud <- db_get_userdata("olduser", path = path)
+  expect_identical(as.logical(ud$bool_correct), c(FALSE, NA, TRUE))
+})

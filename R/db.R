@@ -41,13 +41,28 @@ db_get_userdata <- function(user_id, path = DB_USERS()) {
         "CAST(answer_correct AS TEXT) AS answer_correct",
         sprintf('"%s"', cols)
       )
-      DBI::dbGetQuery(
+      score_legacy_unmatched(DBI::dbGetQuery(
         con,
         sprintf('SELECT %s FROM "%s"', paste(sel, collapse = ", "), user_id)
-      )
+      ))
     },
     wal = TRUE
   )
+}
+
+# Unmatched numeric answers (a typed number that matched no option) count as
+# wrong. Rows written before that rule have bool_correct NULL although they
+# weren't skipped; they're recognisable by their typed_value. Read them as
+# wrong, like new rows (build_response_row()), so the estimate and the
+# dashboard treat old and new answers alike without migrating any table.
+score_legacy_unmatched <- function(ud) {
+  if (nrow(ud) == 0L || is.null(ud$bool_correct) || is.null(ud$typed_value)) {
+    return(ud)
+  }
+  skipped <- if (is.null(ud$skipped)) FALSE else ud$skipped %in% c(TRUE, 1L)
+  legacy <- is.na(ud$bool_correct) & !skipped & !is.na(ud$typed_value)
+  ud$bool_correct[legacy] <- FALSE
+  ud
 }
 
 db_user_exists <- function(user_id, path = DB_USERS()) {

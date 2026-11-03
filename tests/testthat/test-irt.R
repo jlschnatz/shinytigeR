@@ -100,12 +100,10 @@ test_that("estimate_competency returns NA theta for areas with no responses", {
   expect_false(is.na(result$theta[1]))
 })
 
-test_that("estimate_competency excludes an unmatched numeric response (bool_correct = NA)", {
-  # A numeric item with an unmatched typed value is written with
-  # bool_correct = NA (see build_response_row's skipped/is.na(answer_idx)
-  # handling) — same treatment as skip, and estimate_competency already
-  # filters on !is.na(bool_correct), so it should be excluded from theta
-  # estimation just like a skipped MC response.
+test_that("estimate_competency excludes a response without a result (bool_correct = NA)", {
+  # Only skips are stored with bool_correct = NA (an unmatched numeric answer
+  # is stored as wrong, see build_response_row()); estimate_competency filters
+  # on !is.na(bool_correct), so such a row is excluded from theta estimation.
   responses <- data.frame(
     id_item = c(1L, 2L),
     learning_area = LEARNING_AREA_LEVELS[c(1, 1)],

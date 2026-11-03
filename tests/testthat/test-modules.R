@@ -591,7 +591,7 @@ test_that("practice: numeric item — comma decimal is parsed and matched", {
   })
 })
 
-test_that("practice: numeric item — unmatched value is NA-scored, not incorrect", {
+test_that("practice: numeric item — an unmatched value is stored as wrong, not skipped", {
   data_item <- make_numeric_item(id_item = 200L, correct_value = 5, distractors = c(4.5, 6, 20))
   practice_ids <- reactiveVal(c(200L))
   write_trigger <- reactiveVal(0L)
@@ -613,9 +613,11 @@ test_that("practice: numeric item — unmatched value is NA-scored, not incorrec
         expect_equal(state$result$category, "unmatched")
 
         ud <- db_get_userdata("testuser", DB_USERS())
-        expect_true(is.na(ud$bool_correct))
+        expect_false(as.logical(ud$bool_correct))
         expect_false(as.logical(ud$skipped))
         expect_equal(ud$typed_value, 999)
+        # and the feedback card says it's wrong
+        expect_match(output$feedback$html, "Deine Antwort ist leider falsch.", fixed = TRUE)
       }
     )
   })

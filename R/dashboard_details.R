@@ -213,7 +213,7 @@ explainer_card <- function() {
       step(
         2,
         "Deine letzte Antwort zählt",
-        "Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung. Übersprungene Aufgaben und nicht erkannte Zahleneingaben zählen nicht."
+        "Löst du eine Aufgabe nach einem Fehler richtig, zählt die richtige Lösung. Übersprungene Aufgaben zählen nicht, nicht erkannte Zahleneingaben zählen als falsch."
       ),
       step(
         3,
@@ -267,8 +267,9 @@ info_tip <- function(text) {
 }
 
 # One definition of "worked on" for the whole section: an item counts once it
-# has been ANSWERED (right or wrong). Skips and unrecognized numeric answers
-# (bool_correct NA) don't count — the same rule as the ability estimate. With
+# has been ANSWERED (right or wrong; an unrecognized numeric answer counts as
+# wrong). Skips (bool_correct NA) don't count — the same rule as the ability
+# estimate. With
 # `data_item`, answers to items no longer in the pool are dropped too. Adds a
 # `date` column if the caller hasn't.
 answered_rows <- function(ud, data_item = NULL) {
@@ -602,9 +603,9 @@ coverage_card <- function(cov) {
 # "nicht wiederholt" / "erster Versuch" after that). Goes
 # ANSWER_TREE_DEPTH attempts deep. `direction = "forward"` reads each item's
 # answers from the first one on, `"backward"` from the latest one back in
-# time (the card's toggle shows both). Skips and unrecognized numeric answers
-# aren't answers here (same as for the estimate), so an item that was only
-# skipped counts as not worked on yet. Returns a nested
+# time (the card's toggle shows both). Skips aren't answers here (same as for
+# the estimate), so an item that was only skipped counts as not worked on
+# yet; an unrecognized numeric answer counts as wrong. Returns a nested
 # list(n, children = list(correct, wrong, none)); nodes at the last level and
 # "none" nodes have no children. Plus `direction` and the numbers for the
 # takeaway sentence: `$mistakes` (forward) or `$latest` (backward).

@@ -44,6 +44,7 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
       q = "Was bedeutet „Antwort nicht erkannt“?",
       a = paste(
         "Deine Zahl passt zu keiner der Antworten, die für diese Aufgabe hinterlegt sind, weder zur richtigen noch zu einem typischen Fehler.",
+        "Eine nicht erkannte Antwort zählt als falsch, auch für deine Einschätzung.",
         "Prüfe am besten deinen Rechenweg und die Rundung. Wenn du gar nicht weiter weißt, kannst du im Tab „Üben“ auf „Spezifische Aufgabe auswählen“, um dir die korrekte Lösung anzeigen zu lassen."
       )
     ),

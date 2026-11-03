@@ -128,6 +128,9 @@ evaluate_answer <- function(item, answer_idx) {
 # numeric item whose typed value matched nothing. `typed_value` is only
 # meaningful for numeric items (NA for MC rows and for skips). `skipped` is
 # TRUE only for the skip button, for MC and numeric items alike.
+# `bool_correct` is NA only for a skip: an unmatched numeric answer counts as
+# wrong (it was definitely not the right value). Rows written before that
+# rule have NA there; db_get_userdata() reads them as wrong too.
 build_response_row <- function(
   item,
   answer_idx,
@@ -137,7 +140,7 @@ build_response_row <- function(
   skipped = FALSE,
   practice_mode = "standard"
 ) {
-  bool_correct <- if (skipped || is.na(answer_idx)) {
+  bool_correct <- if (skipped) {
     NA
   } else {
     answer_idx %in% parse_answer_correct(item$answer_correct)
