@@ -1225,8 +1225,28 @@
 }
 .lt-switch-btn[aria-pressed="true"] { background: var(--tiger-primary); color: #fff; }
 .lt-switch-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
-.lt-card[data-view="forward"] > .lt-view[data-view="backward"],
-.lt-card[data-view="backward"] > .lt-view[data-view="forward"] { display: none; }
+/* Direction switch, below it the learning-area chips (wrapping); which view
+   shows is set by the script in ui.R (`hidden`) */
+.lt-controls { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; }
+.lt-controls > .lt-switch { margin-bottom: 0; }
+.lt-areas { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.lt-area-chip {
+  padding: 0.15rem 0.65rem;
+  border: 1px solid #d5dae0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.78rem;
+  color: #5b6470;
+  white-space: nowrap;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+.lt-area-chip:hover { border-color: var(--tiger-primary); color: var(--tiger-primary); }
+.lt-area-chip[aria-pressed="true"] { background: var(--tiger-primary); border-color: var(--tiger-primary); color: #fff; }
+.lt-area-chip:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+@media (max-width: 575.98px) {
+  .lt-area-chip { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+}
+.lt-view[hidden] { display: none; }
 .lt-hint { margin: 0.3rem 0 0.2rem; }
 .lt-tree { container-type: inline-size; overflow-x: auto; }
 /* --cols (root + one column per attempt) is set inline by answer_tree_view() */

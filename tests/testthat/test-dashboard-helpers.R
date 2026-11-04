@@ -703,3 +703,30 @@ test_that("trajectory_ticks spreads 4 day labels over the range", {
   expect_equal(b$x$layout$xaxis$tickmode, "array")
   expect_length(b$x$layout$xaxis$ticktext, 4L)
 })
+
+test_that("answer_tree_by_area restricts each area's trees to its items", {
+  pool <- data.frame(id_item = 1:3, learning_area = LEARNING_AREA_LEVELS[c(1, 1, 3)])
+  ud <- tree_ud(id_item = c(1L, 3L, 3L), bool_correct = c(TRUE, FALSE, TRUE))
+  ba <- answer_tree_by_area(ud, pool)
+  expect_equal(names(ba), LEARNING_AREA_LEVELS[c(1, 3)])
+  expect_equal(ba[[1]]$forward$n, 2L)
+  expect_equal(ba[[2]]$forward$children$wrong$n, 1L)
+  expect_equal(ba[[2]]$backward$direction, "backward")
+})
+
+test_that("answer_tree_card with by_area adds the area chips and hides all but the default view", {
+  pool <- data.frame(id_item = 1:3, learning_area = LEARNING_AREA_LEVELS[c(1, 1, 3)])
+  ud <- tree_ud(id_item = c(1L, 3L), bool_correct = c(TRUE, FALSE))
+  html <- as.character(answer_tree_card(
+    answer_tree_stats(ud, pool),
+    backward = answer_tree_stats(ud, pool, direction = "backward"),
+    by_area = answer_tree_by_area(ud, pool)
+  ))
+  expect_match(html, 'data-lt-area="all" aria-pressed="true" title="Alle Themenbereiche">Alle</button>', fixed = TRUE)
+  expect_match(html, 'data-lt-area="3" aria-pressed="false" title="Grundlagen der Inferenzstatistik">Inferenz</button>', fixed = TRUE)
+  expect_equal(lengths(regmatches(html, gregexpr("lt-area-chip", html, fixed = TRUE))), 3L) # Alle + 2 areas
+  views <- regmatches(html, gregexpr('<div class="lt-view"[^>]*>', html))[[1]]
+  expect_length(views, 6L) # (all + 2 areas) x 2 directions
+  expect_equal(sum(!grepl("hidden", views)), 1L)
+  expect_match(views[!grepl("hidden", views)], 'data-view="forward" data-area="all"', fixed = TRUE)
+})

@@ -1040,7 +1040,10 @@ fixed_mistakes <- function(ud, data_item) {
 }
 
 # One reading direction of the tree: takeaway, hint, the tree and its legend
-answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
+# `area` is the key of the learning-area filter ("all" or the area's index in
+# LEARNING_AREA_LEVELS); only the forward view of all areas is visible at
+# first, the client-side script in ui.R shows the chosen one (`hidden`).
+answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all") {
   backward <- identical(tree$direction, "backward")
   heads <- if (backward) {
     c("Letzter", "Vorletzter", "Drittletzter", "Viertletzter", "Fünftletzter",
@@ -1051,6 +1054,8 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
   div(
     class = "lt-view",
     `data-view` = tree$direction,
+    `data-area` = area,
+    hidden = if (backward || area != "all") NA,
     div(class = "la-summary lt-takeaway", answer_tree_takeaway(tree)),
     div(
       class = "la-note lt-hint",
@@ -1107,10 +1112,12 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
 
 # The tree card. With `backward` (answer_tree_stats(direction = "backward"))
 # it gets a toggle between both reading directions: from the first attempt
-# on, or from the latest answer back. Both views are rendered; the switch is
-# client-side (ui.R), so it needs no round trip. The card's data-view says
-# which one is shown (forward by default).
-answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
+# on, or from the latest answer back. With `by_area` (a list named by
+# learning area of list(forward, backward), see answer_tree_by_area()) it
+# also gets a learning-area filter. Every view is rendered; switching is
+# client-side (ui.R), so it needs no round trip. The card's data-view and
+# data-area say which one is shown (forward, all areas by default).
+answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, by_area = NULL) {
   switch_btn <- function(view, label, pressed) {
     tags$button(
       type = "button",
@@ -1120,9 +1127,17 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
       label
     )
   }
+  area_key <- function(area) as.character(match(area, LEARNING_AREA_LEVELS))
+  area_views <- lapply(names(by_area), function(area) {
+    tagList(
+      answer_tree_view(by_area[[area]]$forward, depth, area_key(area)),
+      if (!is.null(backward)) answer_tree_view(by_area[[area]]$backward, depth, area_key(area))
+    )
+  })
   div(
     class = "la-card lt-card",
     `data-view` = "forward",
+    `data-area` = "all",
     div(
       class = "la-card-title",
       "Deine Antwortverläufe",
@@ -1137,18 +1152,61 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
         "Übersprungene Aufgaben zählen nicht."
       ))
     ),
-    if (!is.null(backward)) {
+    if (!is.null(backward) || length(by_area) > 0L) {
       div(
-        class = "lt-switch",
-        role = "group",
-        `aria-label` = "Ansicht des Baums",
-        switch_btn("forward", "Ab 1. Versuch", TRUE),
-        switch_btn("backward", "Ab letztem Versuch", FALSE)
+        class = "lt-controls",
+        if (!is.null(backward)) {
+          div(
+            class = "lt-switch",
+            role = "group",
+            `aria-label` = "Ansicht des Baums",
+            switch_btn("forward", "Ab 1. Versuch", TRUE),
+            switch_btn("backward", "Ab letztem Versuch", FALSE)
+          )
+        },
+        # One chip per area (short label, full name on hover) plus "Alle";
+        # plain buttons like the switch, handled by the script in ui.R
+        if (length(by_area) > 0L) {
+          area_chip <- function(key, label, title, pressed = FALSE) {
+            tags$button(
+              type = "button",
+              class = "lt-area-chip",
+              `data-lt-area` = key,
+              `aria-pressed` = if (pressed) "true" else "false",
+              title = title,
+              label
+            )
+          }
+          div(
+            class = "lt-areas",
+            role = "group",
+            `aria-label` = "Themenbereich",
+            area_chip("all", "Alle", "Alle Themenbereiche", pressed = TRUE),
+            lapply(names(by_area), function(area) {
+              short <- names(LEARNING_AREA_LABELS)[match(area, LEARNING_AREA_LABELS)]
+              area_chip(area_key(area), if (is.na(short)) area else short, area)
+            })
+          )
+        }
       )
     },
     answer_tree_view(tree, depth),
-    if (!is.null(backward)) answer_tree_view(backward, depth)
+    if (!is.null(backward)) answer_tree_view(backward, depth),
+    area_views
   )
+}
+
+# The trees of each learning area in the pool (both directions), for the
+# card's filter: the same counts, restricted to that area's items.
+answer_tree_by_area <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
+  areas <- intersect(LEARNING_AREA_LEVELS, data_item$learning_area)
+  stats::setNames(lapply(areas, function(area) {
+    pool <- data_item[data_item$learning_area %in% area, , drop = FALSE]
+    list(
+      forward = answer_tree_stats(ud, pool, depth),
+      backward = answer_tree_stats(ud, pool, depth, direction = "backward")
+    )
+  }), areas)
 }
 
 behaviour_section <- function(
@@ -1178,7 +1236,8 @@ behaviour_section <- function(
       ),
       answer_tree_card(
         answer_tree_stats(ud, data_item),
-        backward = answer_tree_stats(ud, data_item, direction = "backward")
+        backward = answer_tree_stats(ud, data_item, direction = "backward"),
+        by_area = answer_tree_by_area(ud, data_item)
       )
     )
   )

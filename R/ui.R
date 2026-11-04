@@ -89,26 +89,44 @@ app_ui <- function() {
           "  btn.setAttribute('aria-expanded', open ? 'true' : 'false');",
           "});",
           # Its toggle between the two reading directions (from the first
-          # attempt / from the latest one back). Both views are in the page;
-          # the card's data-view picks one. The choice is remembered for the
-          # page's lifetime and re-applied after each dashboard re-render.
+          # attempt / from the latest one back) and its learning-area filter.
+          # Every view is in the page; the one matching the card's data-view
+          # and data-area is shown, the others get `hidden`. The choice is
+          # remembered for the page's lifetime and re-applied after each
+          # dashboard re-render.
           "(function () {",
-          "  var view = null;",
-          "  function apply(card, v) {",
+          "  var view = null, area = null;",
+          "  function apply(card) {",
+          "    var v = view || card.getAttribute('data-view');",
+          "    var a = area || card.getAttribute('data-area');",
+          "    if (!card.querySelector('.lt-view[data-area=\"' + a + '\"]')) a = 'all';",
           "    card.setAttribute('data-view', v);",
+          "    card.setAttribute('data-area', a);",
           "    card.querySelectorAll('[data-lt-view]').forEach(function (b) {",
           "      b.setAttribute('aria-pressed', b.getAttribute('data-lt-view') === v ? 'true' : 'false');",
+          "    });",
+          "    card.querySelectorAll('[data-lt-area]').forEach(function (b) {",
+          "      b.setAttribute('aria-pressed', b.getAttribute('data-lt-area') === a ? 'true' : 'false');",
+          "    });",
+          "    card.querySelectorAll('.lt-view').forEach(function (el) {",
+          "      el.hidden = !(el.getAttribute('data-view') === v && el.getAttribute('data-area') === a);",
           "    });",
           "  }",
           "  document.addEventListener('click', function (e) {",
           "    var btn = e.target.closest('[data-lt-view]');",
           "    if (!btn) return;",
           "    view = btn.getAttribute('data-lt-view');",
-          "    apply(btn.closest('.lt-card'), view);",
+          "    apply(btn.closest('.lt-card'));",
+          "  });",
+          "  document.addEventListener('click', function (e) {",
+          "    var chip = e.target.closest('[data-lt-area]');",
+          "    if (!chip) return;",
+          "    area = chip.getAttribute('data-lt-area');",
+          "    apply(chip.closest('.lt-card'));",
           "  });",
           "  $(document).on('shiny:value', function () {",
-          "    if (view) setTimeout(function () {",
-          "      document.querySelectorAll('.lt-card[data-view]').forEach(function (c) { apply(c, view); });",
+          "    if (view || area) setTimeout(function () {",
+          "      document.querySelectorAll('.lt-card[data-view]').forEach(apply);",
           "    }, 0);",
           "  });",
           "})();",
