@@ -36,6 +36,10 @@ ANSWER_COLORS <- list(
 # would vanish on the blue bands at the top of the scale).
 TRAJECTORY_COLOR <- "#2b3a4a"
 
+# Time windows of the "Fähigkeitsverlauf" switch: days back from today (NA =
+# the whole history). The names are the button labels; the first is the default.
+TRAJECTORY_WINDOWS <- c("Gesamt" = NA, "4 Wochen" = 28, "2 Wochen" = 14)
+
 # Feedback shown after the "Aufgabe überspringen" button (MC and numeric items
 # alike). Skipping is an app action, not an answer option stored in the item DB.
 SKIP_FEEDBACK <- "Alles klar! Du hast die Aufgabe übersprungen."

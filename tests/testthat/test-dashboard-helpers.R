@@ -617,3 +617,28 @@ test_that("latest_ability takes each area's latest row, not the latest batch", {
   expect_equal(comp$computed_at[1], 200L)
   expect_null(latest_ability(data.frame()))
 })
+
+test_that("trajectory_x_range with a window covers the last days up to now", {
+  h <- traj_hist()
+  now <- as.POSIXct(1700086400, origin = "1970-01-01")
+  r <- trajectory_x_range(h, days = 14, now = now)
+  expect_equal(r[1], now - 14 * 86400)
+  expect_true(r[2] > now)
+  expect_equal(trajectory_x_range(h, NA), trajectory_x_range(h))
+})
+
+test_that("trajectory_panel_fig notes an area without estimates in the window", {
+  h <- traj_hist()
+  far <- trajectory_x_range(h, days = 14, now = max(h$time) + 60 * 86400)
+  b <- plotly::plotly_build(trajectory_panel_fig(h, far))
+  expect_match(b$x$layout$annotations[[1]]$text, "nicht geübt", fixed = TRUE)
+  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
+  expect_length(b$x$layout$annotations, 0L)
+})
+
+test_that("trajectory_section shows the time-window switch with the panels", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  expect_match(html, 'data-traj-input="d-traj_window"', fixed = TRUE)
+  for (lbl in names(TRAJECTORY_WINDOWS)) expect_match(html, lbl, fixed = TRUE)
+  expect_match(html, 'data-traj-window="all" aria-pressed="true"', fixed = TRUE)
+})

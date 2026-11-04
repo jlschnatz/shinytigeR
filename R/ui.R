@@ -112,6 +112,31 @@ app_ui <- function() {
           "    }, 0);",
           "  });",
           "})();",
+          # The time-window switch of "Fähigkeitsverlauf": sends the chosen
+          # window (days, or "all") to the server, which redraws the panels.
+          # Remembered for the page's lifetime and re-applied after a
+          # re-render; the input keeps its value, so the panels match.
+          "(function () {",
+          "  var win = null;",
+          "  function apply(group, w) {",
+          "    group.querySelectorAll('[data-traj-window]').forEach(function (b) {",
+          "      b.setAttribute('aria-pressed', b.getAttribute('data-traj-window') === w ? 'true' : 'false');",
+          "    });",
+          "  }",
+          "  document.addEventListener('click', function (e) {",
+          "    var btn = e.target.closest('[data-traj-window]');",
+          "    if (!btn) return;",
+          "    var group = btn.closest('[data-traj-input]');",
+          "    win = btn.getAttribute('data-traj-window');",
+          "    apply(group, win);",
+          "    Shiny.setInputValue(group.getAttribute('data-traj-input'), win);",
+          "  });",
+          "  $(document).on('shiny:value', function () {",
+          "    if (win) setTimeout(function () {",
+          "      document.querySelectorAll('[data-traj-input]').forEach(function (g) { apply(g, win); });",
+          "    }, 0);",
+          "  });",
+          "})();",
           # The "Wie wird das berechnet?" button in "Dein Lernstand im Detail":
           # opens/closes the explainer next to the strips (the grid's
           # data-explain). Remembered for the page's lifetime and re-applied

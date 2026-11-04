@@ -209,8 +209,14 @@ competency_band_shapes <- function(opacity = 0.2) {
 }
 
 # Shared time axis for all trajectory panels (so they line up), padded so the
-# first and last points aren't cut off at the panel edge.
-trajectory_x_range <- function(hist) {
+# first and last points aren't cut off at the panel edge. With `days` (one of
+# TRAJECTORY_WINDOWS) it's the last `days` days up to now instead, starting
+# exactly at the window's start: a line from an earlier estimate then enters
+# from the left edge, so the panel still shows where the student came from.
+trajectory_x_range <- function(hist, days = NA, now = Sys.time()) {
+  if (!is.na(days)) {
+    return(c(now - days * 86400, now + days * 86400 * 0.03))
+  }
   r <- range(hist$time)
   pad <- max(as.numeric(diff(r), units = "secs") * 0.06, 12 * 3600)
   r + c(-pad, pad)
@@ -279,6 +285,15 @@ trajectory_panel_fig <- function(d, x_range) {
     ) |>
     plotly::layout(
       shapes = competency_band_shapes(),
+      # In a short time window an area may have no estimate at all
+      annotations = if (!any(d$time >= x_range[1] & d$time <= x_range[2])) {
+        list(list(
+          text = "In diesem Zeitraum nicht geübt", showarrow = FALSE,
+          xref = "paper", yref = "paper", x = 0.5, y = 0.5,
+          font = list(size = 12, color = "#5b6477"),
+          bgcolor = "rgba(255,255,255,0.85)", borderpad = 4
+        ))
+      },
       showlegend = FALSE,
       # plotly doesn't inherit the page font; keep in sync with base_font in ui.R
       font = list(family = "'Fira Sans', sans-serif"),
@@ -316,6 +331,29 @@ trajectory_legend <- function(class) {
   )
 }
 
+# Time-window switch above the trajectory grid (TRAJECTORY_WINDOWS), styled
+# like the answer tree's toggle. Plain buttons, not an input widget: a click
+# sends Shiny.setInputValue(input_id, days) (script in ui.R, which also keeps
+# the choice across dashboard re-renders); "all" stands for NA.
+trajectory_window_switch <- function(input_id) {
+  div(
+    class = "lt-switch traj-switch",
+    role = "group",
+    `aria-label` = "Zeitraum des Verlaufs",
+    `data-traj-input` = input_id,
+    lapply(seq_along(TRAJECTORY_WINDOWS), function(k) {
+      days <- TRAJECTORY_WINDOWS[[k]]
+      tags$button(
+        type = "button",
+        class = "lt-switch-btn",
+        `data-traj-window` = if (is.na(days)) "all" else days,
+        `aria-pressed` = if (k == 1L) "true" else "false",
+        names(TRAJECTORY_WINDOWS)[k]
+      )
+    })
+  )
+}
+
 # The "Fähigkeitsverlauf" accordion panel: one small chart per learning area
 # in a wrapping grid of at most 4 columns (see .traj-grid in app.css: 4 on a
 # laptop, 2 on a tablet, 1 on a phone).
@@ -348,6 +386,7 @@ trajectory_section <- function(hist, ns) {
     })
     div(
       class = "traj-wrap",
+      trajectory_window_switch(ns("traj_window")),
       trajectory_legend("traj-legend-top"),
       div(class = "traj-grid", panels, trajectory_legend("traj-legend-panel"))
     )
@@ -566,7 +605,11 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
         hist <- trajectory_hist()
         d <- hist[hist$learning_area == LEARNING_AREA_LEVELS[k], ]
         req(nrow(d) > 0L)
-        trajectory_panel_fig(d, trajectory_x_range(hist))
+        # input$traj_window: days of the time-window switch, "all" or NULL
+        # (before the first click) for the whole history
+        days <- suppressWarnings(as.numeric(input$traj_window))
+        if (length(days) != 1L) days <- NA
+        trajectory_panel_fig(d, trajectory_x_range(hist, days))
       })
     })
   })
