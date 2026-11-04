@@ -798,19 +798,14 @@ answer_tree_label <- function(cat, attempt, direction = "forward") {
   )
 }
 
-# A ring showing how a node splits into its children (correct/wrong/none);
-# all grey for a node without children
-answer_tree_donut <- function(node) {
+# A ring showing how a node splits into its children (correct/wrong/none),
+# all grey for a node without children. As a string, see answer_tree_item_html()
+answer_tree_donut_html <- function(node) {
   counts <- vapply(node$children, `[[`, integer(1), "n")
-  pct <- if (sum(counts) > 0L) {
-    100 * cumsum(counts) / sum(counts)
-  } else {
-    c(0, 0, 0)
-  }
-  tags$span(
-    class = "lt-donut",
-    `aria-hidden` = "true",
-    style = sprintf("--a:%.1f%%;--b:%.1f%%;", pct[1], pct[2])
+  pct <- if (sum(counts) > 0L) 100 * cumsum(counts) / sum(counts) else c(0, 0, 0)
+  sprintf(
+    '<span class="lt-donut" aria-hidden="true" style="--a:%.1f%%;--b:%.1f%%;"></span>',
+    pct[1], pct[2]
   )
 }
 
@@ -818,86 +813,74 @@ answer_tree_donut <- function(node) {
 # buttons; the client-side toggle in ui.R flips the <li>'s .is-open, which
 # shows or hides its child list — so any number of branches can be open.
 # `attempt` is the attempt this node stands for (0 = root).
+#
+# Built as an HTML string, not with htmltools tags: the card holds 16 trees
+# (2 directions x all + 7 areas), and building and rendering that many tag
+# objects (each with its own bs_icon() arrow) took about half of the
+# dashboard's render time. The markup is the same as the tag version had.
 answer_tree_item <- function(
   node,
   cat,
   attempt,
   parent_n,
   open_attempts,
-  direction = "forward"
+  direction = "forward",
+  chevron = as.character(bsicons::bs_icon("chevron-right"))
 ) {
+  HTML(answer_tree_item_html(node, cat, attempt, parent_n, open_attempts, direction, chevron))
+}
+
+answer_tree_item_html <- function(node, cat, attempt, parent_n, open_attempts, direction, chevron) {
   expandable <- !is.null(node$children) && node$n > 0L
   is_open <- expandable && attempt %in% open_attempts
   share <- if (parent_n > 0L) {
-    sprintf("%d %%", round(100 * node$n / parent_n))
+    sprintf(
+      # the spaces as the tag version had them: "richtig · 68 %"
+      ' <span class="lt-share"><span class="lt-dot">\u00b7\u00a0</span> %d %%</span>',
+      round(100 * node$n / parent_n)
+    )
   } else {
-    NULL
+    ""
   }
+  label <- if (attempt == 0L) "Aufgaben" else answer_tree_label(cat, attempt, direction)
   # Donut left of the text, label and share on one line: keeps nodes flat.
   # "none" nodes (nicht bearbeitet / nicht wiederholt / erster Versuch) get a
   # plain grey ring: nothing follows them, and the column stays aligned.
-  body <- tagList(
-    if (expandable || cat == "none") answer_tree_donut(node),
-    tags$span(
-      class = "lt-text",
-      tags$span(class = "lt-num", node$n),
-      tags$span(
-        class = "lt-lbl",
-        if (attempt == 0L) {
-          "Aufgaben"
-        } else {
-          answer_tree_label(cat, attempt, direction)
-        },
-        if (!is.null(share)) {
-          tags$span(
-            class = "lt-share",
-            tags$span(class = "lt-dot", "\u00b7\u00a0"),
-            share
-          )
-        }
-      )
-    )
+  donut <- if (expandable || cat == "none") answer_tree_donut_html(node) else ""
+  body <- sprintf(
+    '%s<span class="lt-text"><span class="lt-num">%d</span><span class="lt-lbl">%s%s</span></span>',
+    donut, node$n, label, share # fixed labels (answer_tree_label()), no user text to escape
   )
   cls <- paste("lt-node", paste0("is-", cat), if (node$n == 0L) "is-empty")
   el <- if (expandable && attempt > 0L) {
-    tags$button(
-      type = "button",
-      class = paste(cls, "is-toggle"),
-      `data-node` = "",
-      `aria-expanded` = if (is_open) "true" else "false",
-      body,
-      tags$span(
-        class = "lt-chevron",
-        `aria-hidden` = "true",
-        bsicons::bs_icon("chevron-right")
-      )
+    sprintf(
+      paste0(
+        '<button type="button" class="%s is-toggle" data-node="" aria-expanded="%s">',
+        '%s<span class="lt-chevron" aria-hidden="true">%s</span></button>'
+      ),
+      cls, if (is_open) "true" else "false", body, chevron
     )
   } else {
-    div(class = cls, body)
+    sprintf('<div class="%s">%s</div>', cls, body)
   }
-  tags$li(
-    class = if (is_open || attempt == 0L) "is-open",
-    el,
-    if (expandable) {
-      # Empty nodes are left out: at deeper attempts most would be 0
-      kids <- Filter(
-        function(k) node$children[[k]]$n > 0L,
-        names(node$children)
-      )
-      tags$ul(
-        class = "lt-children",
-        lapply(kids, function(k) {
-          answer_tree_item(
-            node$children[[k]],
-            k,
-            attempt + 1L,
-            node$n,
-            open_attempts,
-            direction
-          )
-        })
-      )
-    }
+  kids <- ""
+  if (expandable) {
+    # Empty nodes are left out: at deeper attempts most would be 0
+    keep <- Filter(function(k) node$children[[k]]$n > 0L, names(node$children))
+    kids <- paste0(
+      '<ul class="lt-children">',
+      paste(vapply(keep, function(k) {
+        answer_tree_item_html(
+          node$children[[k]], k, attempt + 1L, node$n, open_attempts, direction, chevron
+        )
+      }, character(1)), collapse = ""),
+      "</ul>"
+    )
+  }
+  sprintf(
+    "<li%s>%s%s</li>",
+    if (is_open || attempt == 0L) ' class="is-open"' else "",
+    el, kids
   )
 }
 
@@ -1043,7 +1026,8 @@ fixed_mistakes <- function(ud, data_item) {
 # `area` is the key of the learning-area filter ("all" or the area's index in
 # LEARNING_AREA_LEVELS); only the forward view of all areas is visible at
 # first, the client-side script in ui.R shows the chosen one (`hidden`).
-answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all") {
+answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all",
+                             chevron = as.character(bsicons::bs_icon("chevron-right"))) {
   backward <- identical(tree$direction, "backward")
   heads <- if (backward) {
     c("Letzter", "Vorletzter", "Drittletzter", "Viertletzter", "Fünftletzter",
@@ -1089,7 +1073,8 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all") {
             0L,
             0L,
             open_attempts = integer(0),
-            direction = tree$direction
+            direction = tree$direction,
+            chevron = chevron
           )
         )
       )
@@ -1128,10 +1113,12 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, b
     )
   }
   area_key <- function(area) as.character(match(area, LEARNING_AREA_LEVELS))
+  # the arrow's SVG once for all nodes of all views
+  chevron <- as.character(bsicons::bs_icon("chevron-right"))
   area_views <- lapply(names(by_area), function(area) {
     tagList(
-      answer_tree_view(by_area[[area]]$forward, depth, area_key(area)),
-      if (!is.null(backward)) answer_tree_view(by_area[[area]]$backward, depth, area_key(area))
+      answer_tree_view(by_area[[area]]$forward, depth, area_key(area), chevron),
+      if (!is.null(backward)) answer_tree_view(by_area[[area]]$backward, depth, area_key(area), chevron)
     )
   })
   div(
@@ -1190,8 +1177,8 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, b
         }
       )
     },
-    answer_tree_view(tree, depth),
-    if (!is.null(backward)) answer_tree_view(backward, depth),
+    answer_tree_view(tree, depth, chevron = chevron),
+    if (!is.null(backward)) answer_tree_view(backward, depth, chevron = chevron),
     area_views
   )
 }
