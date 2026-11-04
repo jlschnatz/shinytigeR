@@ -140,7 +140,7 @@ interval_card <- function(comp) {
     div(
       class = "la-card-title ivl-title",
       tags$span("Wie sicher ist die Einschätzung?"),
-      # Opens/closes the explainer next to the strips (client-side, ui.R)
+      # Opens/closes the explainer next to the strips (client-side, www/js/dashboard.js)
       tags$button(
         type = "button",
         class = "ivl-explain-btn",
@@ -254,7 +254,7 @@ detail_section <- function(comp) {
 
 # A small (i) button next to a card title that shows `text` as a tooltip —
 # the explanations that would otherwise take a line of their own. Tooltips
-# are any element with `data-tip`, shown by one shared script in ui.R (mouse
+# are any element with `data-tip`, shown by one shared script, www/js/tooltips.js (mouse
 # hover, keyboard focus, and a tap on touch screens).
 info_tip <- function(text) {
   tags$button(
@@ -810,7 +810,7 @@ answer_tree_donut_html <- function(node) {
 }
 
 # One node and (recursively) its branch, as a <li>. Nodes with children are
-# buttons; the client-side toggle in ui.R flips the <li>'s .is-open, which
+# buttons; the client-side toggle in www/js/dashboard.js flips the <li>'s .is-open, which
 # shows or hides its child list — so any number of branches can be open.
 # `attempt` is the attempt this node stands for (0 = root).
 #
@@ -1025,7 +1025,7 @@ fixed_mistakes <- function(ud, data_item) {
 # One reading direction of the tree: takeaway, hint, the tree and its legend
 # `area` is the key of the learning-area filter ("all" or the area's index in
 # LEARNING_AREA_LEVELS); only the forward view of all areas is visible at
-# first, the client-side script in ui.R shows the chosen one (`hidden`).
+# first, the client-side script (www/js/dashboard.js) shows the chosen one (`hidden`).
 answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all",
                              chevron = as.character(bsicons::bs_icon("chevron-right"))) {
   backward <- identical(tree$direction, "backward")
@@ -1100,7 +1100,7 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all",
 # on, or from the latest answer back. With `by_area` (a list named by
 # learning area of list(forward, backward), see answer_tree_by_area()) it
 # also gets a learning-area filter. Every view is rendered; switching is
-# client-side (ui.R), so it needs no round trip. The card's data-view and
+# client-side (www/js/dashboard.js), so it needs no round trip. The card's data-view and
 # data-area say which one is shown (forward, all areas by default).
 answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, by_area = NULL) {
   switch_btn <- function(view, label, pressed) {
@@ -1152,7 +1152,7 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, b
           )
         },
         # One chip per area (short label, full name on hover) plus "Alle";
-        # plain buttons like the switch, handled by the script in ui.R
+        # plain buttons like the switch, handled by www/js/dashboard.js
         if (length(by_area) > 0L) {
           area_chip <- function(key, label, title, pressed = FALSE) {
             tags$button(

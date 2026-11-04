@@ -342,7 +342,8 @@ item_id_badge <- function(id_item, input_id, class = NULL) {
 }
 
 # Appends the file's modification time as a version query (`?v=...`) so a
-# changed stylesheet is re-fetched instead of served from browser cache.
+# changed stylesheet or script (www/css/, www/js/) is re-fetched instead of
+# served from browser cache.
 # Falls back to the bare href if the file isn't found (e.g. app_ui() called
 # outside runApp(), as in tests).
 css_href <- function(path, href) {

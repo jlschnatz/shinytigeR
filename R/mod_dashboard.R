@@ -314,7 +314,7 @@ trajectory_window_layout <- function(d, axis) {
 # Not built with plotly's R package (plot_ly() + renderPlotly()): its R
 # pipeline (plotly_build, event registration, JSON) took ~50 ms per panel,
 # ~0.35 s for opening "Fähigkeitsverlauf", while the spec itself is tiny.
-# trajectory_section() embeds the specs, a script in ui.R draws them with
+# trajectory_section() embeds the specs, www/js/dashboard.js draws them with
 # plotly.js (Plotly.react) and switches the time window without a round trip.
 trajectory_panel_spec <- function(d, axes) {
   d <- d[order(d$time), ]
@@ -418,7 +418,7 @@ trajectory_legend <- function(class) {
 }
 
 # Time-window switch above the trajectory grid (TRAJECTORY_WINDOWS), styled
-# like the answer tree's toggle. Plain buttons: the script in ui.R redraws the
+# like the answer tree's toggle. Plain buttons: www/js/dashboard.js redraws the
 # panels with the window's layout from their specs (no round trip) and keeps
 # the choice across dashboard re-renders; "all" stands for NA.
 trajectory_window_key <- function(days) if (is.na(days)) "all" else as.character(days)
