@@ -730,3 +730,8 @@ test_that("answer_tree_card with by_area adds the area chips and hides all but t
   expect_equal(sum(!grepl("hidden", views)), 1L)
   expect_match(views[!grepl("hidden", views)], 'data-view="forward" data-area="all"', fixed = TRUE)
 })
+
+test_that("trajectory panel titles have no native hover tooltip", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  expect_false(grepl('class="traj-panel-title" title=', html, fixed = TRUE))
+})

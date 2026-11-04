@@ -297,7 +297,7 @@ trajectory_panel_fig <- function(d, x_range) {
       # as a plain string instead of an array, and the hover template
       # %{text} then shows placeholders instead of the text
       x = d$time, y = d$theta, text = as.list(hover), hovertemplate = "%{text}<extra></extra>",
-      marker = list(color = TRAJECTORY_COLOR, size = 7, line = list(color = "white", width = 1))
+      marker = list(color = TRAJECTORY_COLOR, size = 9, line = list(color = "white", width = 1.5))
     ) |>
     plotly::layout(
       shapes = competency_band_shapes(),
@@ -395,7 +395,7 @@ trajectory_section <- function(hist, ns) {
       has_data <- any(hist$learning_area == area)
       div(
         class = "traj-panel",
-        div(class = "traj-panel-title", title = area, short),
+        div(class = "traj-panel-title", short),
         if (has_data) {
           plotly::plotlyOutput(ns(paste0("traj_", k)), height = "170px")
         } else {
