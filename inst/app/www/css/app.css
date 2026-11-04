@@ -810,6 +810,7 @@
    exactly when the grid itself drops to one column. */
 .traj-wrap { container-type: inline-size; }
 .traj-switch { display: flex; width: fit-content; margin-bottom: 0.85rem; }
+.traj-plot { height: 170px; }
 /* Columns of at least 260px and at least a quarter of the width, so there are
    never more than 4: with 7 charts + the legend tile that gives 4 + 4 on wide
    screens instead of 5 + 3. Below 4 * 260px + 3 gaps it drops to 3, 2, 1. */

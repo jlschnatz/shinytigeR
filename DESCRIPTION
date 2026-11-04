@@ -27,4 +27,6 @@ Imports:
     ggplot2,
     markdown,
     rclipboard,
-    plotly
+    plotly,
+    htmltools,
+    jsonlite

@@ -130,30 +130,42 @@ app_ui <- function() {
           "    }, 0);",
           "  });",
           "})();",
-          # The time-window switch of "Fähigkeitsverlauf": sends the chosen
-          # window (days, or "all") to the server, which redraws the panels.
-          # Remembered for the page's lifetime and re-applied after a
-          # re-render; the input keeps its value, so the panels match.
+          # The "Fähigkeitsverlauf" panels (trajectory_panel_spec() in
+          # mod_dashboard.R): each panel carries its plotly.js figure spec as
+          # JSON; it's drawn once visible (plotly needs the panel's width), so
+          # when the accordion opens, and after a dashboard re-render. The
+          # time-window switch swaps in that window's x range, labels and
+          # note from the spec, no round trip. The window is remembered for
+          # the page's lifetime.
           "(function () {",
-          "  var win = null;",
-          "  function apply(group, w) {",
-          "    group.querySelectorAll('[data-traj-window]').forEach(function (b) {",
-          "      b.setAttribute('aria-pressed', b.getAttribute('data-traj-window') === w ? 'true' : 'false');",
+          "  var win = 'all';",
+          "  function draw(panel) {",
+          "    var el = panel.querySelector('.traj-plot'), src = panel.querySelector('script.traj-spec');",
+          "    if (!el || !src || !window.Plotly || !el.offsetParent) return;",
+          "    if (el.getAttribute('data-drawn') === win) return;",
+          "    var f = JSON.parse(src.textContent), w = f.windows[win] || f.windows.all;",
+          "    var layout = Object.assign({}, f.layout, { annotations: w.annotations });",
+          "    layout.xaxis = Object.assign({}, f.layout.xaxis, { range: w.range, tickvals: w.tickvals, ticktext: w.ticktext });",
+          "    Plotly.react(el, f.data, layout, f.config);",
+          "    el.setAttribute('data-drawn', win);",
+          "  }",
+          "  function drawAll() {",
+          "    document.querySelectorAll('.traj-switch [data-traj-window]').forEach(function (b) {",
+          "      b.setAttribute('aria-pressed', b.getAttribute('data-traj-window') === win ? 'true' : 'false');",
           "    });",
+          "    document.querySelectorAll('.traj-panel').forEach(draw);",
           "  }",
           "  document.addEventListener('click', function (e) {",
-          "    var btn = e.target.closest('[data-traj-window]');",
+          "    var btn = e.target.closest('.traj-switch [data-traj-window]');",
           "    if (!btn) return;",
-          "    var group = btn.closest('[data-traj-input]');",
           "    win = btn.getAttribute('data-traj-window');",
-          "    apply(group, win);",
-          "    Shiny.setInputValue(group.getAttribute('data-traj-input'), win);",
+          "    drawAll();",
           "  });",
-          "  $(document).on('shiny:value', function () {",
-          "    if (win) setTimeout(function () {",
-          "      document.querySelectorAll('[data-traj-input]').forEach(function (g) { apply(g, win); });",
-          "    }, 0);",
-          "  });",
+          # 'show' fires before the panel is displayed; a tick later it has
+          # its width (and is still animating open), so the charts appear
+          # with the opening instead of after it
+          "  $(document).on('show.bs.collapse shown.bs.collapse', function () { setTimeout(drawAll, 0); });",
+          "  $(document).on('shiny:value', function () { setTimeout(drawAll, 0); });",
           "})();",
           # The "Wie wird das berechnet?" button in "Dein Lernstand im Detail":
           # opens/closes the explainer next to the strips (the grid's

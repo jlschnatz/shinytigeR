@@ -1043,9 +1043,15 @@ test_that("dashboard: renders a trajectory panel for each area with saved estima
       ),
       {
         k <- match("Regression", LEARNING_AREA_LEVELS)
-        expect_match(output$dash_content$html, sprintf('id="%s"', session$ns(paste0("traj_", k))), fixed = TRUE)
-        widget <- jsonlite::fromJSON(output[[paste0("traj_", k)]], simplifyVector = FALSE)
-        ys <- unlist(lapply(widget$x$data, function(tr) if (identical(tr$mode, "markers")) tr$y))
+        html <- as.character(output$dash_content$html)
+        expect_match(html, sprintf('id="%s" class="traj-plot"', session$ns(paste0("traj_", k))), fixed = TRUE)
+        # the panel's spec follows its plot div
+        spec <- regmatches(html, regexpr(sprintf(
+          '(?<=id="%s" class="traj-plot"></div>\\s{0,20}<script type="application/json" class="traj-spec">).*?(?=</script>)',
+          session$ns(paste0("traj_", k))
+        ), html, perl = TRUE))
+        fig <- jsonlite::fromJSON(spec, simplifyVector = FALSE)
+        ys <- unlist(lapply(fig$data, function(tr) if (identical(tr$mode, "markers")) tr$y))
         expect_equal(ys, c(0.4, 0.9))
       }
     )
