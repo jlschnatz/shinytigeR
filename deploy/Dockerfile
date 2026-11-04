@@ -3,8 +3,11 @@ FROM --platform=linux/amd64 rocker/r-ver:4.6.1
 
 # Local time for dates shown to students (calendar, retry time-out).
 # R's user cache (bslib/sass compile the theme at startup) goes to /tmp,
-# which is always writable, whatever the container's home directory.
+# which is always writable. The user has no home directory (admin's block
+# below), so HOME points to /tmp too: tools::R_user_dir() resolves ~ even
+# when R_USER_CACHE_DIR is set and warned twice per session otherwise.
 ENV TZ=Europe/Berlin \
+    HOME=/tmp \
     R_USER_CACHE_DIR=/tmp/R-cache
 
 RUN apt-get update -qq && \
@@ -38,14 +41,14 @@ COPY shinytigeR_*.tar.gz /tmp/
 RUN R CMD INSTALL /tmp/shinytigeR_*.tar.gz && rm /tmp/shinytigeR_*.tar.gz && \
     R -q -e 'library(shinytigeR)'
 
-# Same user as the old image (uid 1002, gid 1003): owns the DB folder.
-RUN groupadd --gid 1003 beitner && \
-    useradd --uid 1002 --gid 1003 --create-home --shell /bin/false beitner && \
-    mkdir -p /opt/shinyapp && chown beitner:beitner /opt/shinyapp
-
-# The four SQLite files (and reg_code.txt) are mounted here.
+# The four SQLite files (and reg_code.txt) are mounted at /opt/shinyapp.
 ENV TIGER_DB_DIR=/opt/shinyapp
-VOLUME ["/opt/shinyapp"]
+
+# From here on verbatim from the server admin's Dockerfile, parts of which
+# the server requires: user uid 1002 / gid 1003, no home directory (caches
+# go to R_USER_CACHE_DIR above), the volume, port and user. Don't change.
+RUN chmod o+x /root; addgroup --gid 1003 beitner; adduser --shell /bin/false --no-create-home --uid 1002 --gecos "Julia Beitner,,," --gid 1003 --disabled-password beitner
+VOLUME [ "/opt/shinyapp" ]
 WORKDIR /opt/shinyapp
 EXPOSE 3838
 USER beitner

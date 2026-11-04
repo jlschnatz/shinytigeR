@@ -654,6 +654,8 @@ Static files are served via Shiny's **built-in `www/` auto-serving convention** 
 
 ## Deployment
 
+**Step-by-step guide (release steps, local test, open questions for the admin, troubleshooting): `deploy/DEPLOYMENT.md`.** Keep it in sync with the sections below.
+
 ### Build process
 
 The server admin builds the image on the server; there's no shell access for us, only SFTP. Run once per release from the project root:
@@ -669,8 +671,9 @@ It fills `deploy/` with the upload folder: `Dockerfile` (generated, don't edit b
 **One image, no separate base image.** `rocker/r-ver:4.6.1`, `rv` pinned (`RV_VERSION`), `rv sync --locked` from `rv.lock`, then `R CMD INSTALL` of the tarball. The package layer comes before the tarball is copied in, so Docker's layer cache reuses it until `rv.lock` changes and a new app version rebuilds in seconds. The old setup (`shinytiger:base` + app image) went stale unnoticed: R 4.3.0 on the server while its Dockerfile said 4.5.2, and `remotes::install_local()` then compiled the missing packages from CRAN at build time, unpinned. Also set:
 
 - `TZ=Europe/Berlin`: dates shown to students (calendar, retry time-out) use the local day.
-- `R_USER_CACHE_DIR=/tmp/R-cache`: bslib/sass compile the theme at startup and cache it; the old image had no home directory for its user, which needed `chmod o+x /root` and `sass.cache=FALSE` as workarounds.
-- User `beitner` (uid 1002, gid 1003, same as the old image), `TIGER_DB_DIR=/opt/shinyapp`, port 3838.
+- `R_USER_CACHE_DIR=/tmp/R-cache`: bslib/sass compile the theme at startup and cache it (the old image's `CMD` set `sass.cache=FALSE` as a workaround).
+- `HOME=/tmp`: the user has no home directory (`--no-create-home`), and `tools::R_user_dir()` (used by sass for its cache dir) runs `normalizePath("~")` even when `R_USER_CACHE_DIR` is set, which logged two warnings per session.
+- **The user block at the end is verbatim from the server admin's Dockerfile**, which the admin said is partly required by the server: `chmod o+x /root; addgroup --gid 1003 beitner; adduser --shell /bin/false --no-create-home --uid 1002 --gecos ... beitner`, then `VOLUME`, `WORKDIR /opt/shinyapp`, `EXPOSE 3838`, `USER beitner`. Don't "clean it up"; ask the admin first. `TIGER_DB_DIR=/opt/shinyapp` is set just before it.
 
 Two things the first local image test (`linux/amd64`, real server data mounted) caught, keep them:
 - **`inst/app/app.R` calls `shinytigeR::app_ui()` / `shinytigeR::app_server`**, qualified. The `CMD` runs `shinytigeR::run_app()`, which loads the namespace without attaching it, so bare names crashed at startup with "object 'app_server' not found". Dev never noticed because `load_all()` attaches.
