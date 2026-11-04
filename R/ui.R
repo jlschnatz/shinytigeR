@@ -22,9 +22,13 @@ app_ui <- function() {
       version = 5,
       primary = PRIMARY_COLOR,
       font_scale = 1,
-      base_font = bslib::font_google("Fira Sans"),
+      # Fonts are bundled in www/fonts (@font-face rules in css/fonts.css),
+      # not bslib::font_google(): that downloads them from Google when the app
+      # starts, which fails silently in a container without internet access
+      # and would send students' browsers to Google (GDPR).
+      base_font = "'Fira Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
       # Fira Mono, not Fira Code: its ligatures would show R's `<-` as an arrow
-      code_font = bslib::font_google("Fira Mono")
+      code_font = "'Fira Mono', SFMono-Regular, Menlo, Consolas, monospace"
     ),
     header = tagList(
       shinyjs::useShinyjs(),
@@ -34,6 +38,7 @@ app_ui <- function() {
         # app.css after it changes, so new markup renders unstyled. runApp()
         # sets the working directory to the app dir (inst/app, or the
         # installed copy via run_app()), so this path resolves in both.
+        tags$link(rel = "stylesheet", href = css_href("www/css/fonts.css", "css/fonts.css")),
         tags$link(rel = "stylesheet", href = css_href("www/css/app.css", "css/app.css")),
         tags$link(rel = "icon", type = "image/png", href = "img_app/favicon.png"),
         tags$script(shiny::HTML(
