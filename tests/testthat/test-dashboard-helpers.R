@@ -642,3 +642,19 @@ test_that("trajectory_section shows the time-window switch with the panels", {
   for (lbl in names(TRAJECTORY_WINDOWS)) expect_match(html, lbl, fixed = TRUE)
   expect_match(html, 'data-traj-window="all" aria-pressed="true"', fixed = TRUE)
 })
+
+test_that("trajectory_ticks spreads 4 day labels over the range", {
+  now <- as.POSIXct("2026-11-04 12:00")
+  for (days in c(14, 28, 180)) {
+    t <- trajectory_ticks(c(now - days * 86400, now))
+    expect_length(t$vals, 4L)
+    expect_match(t$text, "^\\d{2}\\.\\d{2}\\.$")
+    expect_false(anyDuplicated(t$vals) > 0)
+  }
+  # a one-day range can't hold 4 distinct days
+  short <- trajectory_ticks(c(now - 12 * 3600, now + 12 * 3600))
+  expect_lte(length(short$vals), 2L)
+  b <- plotly::plotly_build(trajectory_panel_fig(traj_hist(), c(now - 14 * 86400, now)))
+  expect_equal(b$x$layout$xaxis$tickmode, "array")
+  expect_length(b$x$layout$xaxis$ticktext, 4L)
+})

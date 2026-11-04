@@ -222,6 +222,21 @@ trajectory_x_range <- function(hist, days = NA, now = Sys.time()) {
   r + c(-pad, pad)
 }
 
+# x-axis labels of the trajectory panels: `n` dates spread evenly over the
+# visible range (inset from the edges so the labels aren't clipped), each on
+# a full local day. Set explicitly because plotly's own "nice" ticks (weekly,
+# every two months, ...) often left only 2 labels on a panel. A short range
+# can yield fewer (two ticks on the same day collapse into one).
+# Returns list(vals = "YYYY-MM-DD", text = "dd.mm.").
+trajectory_ticks <- function(x_range, n = 4L) {
+  span <- as.numeric(difftime(x_range[2], x_range[1], units = "secs"))
+  at <- x_range[1] + span * seq(0.08, 0.92, length.out = n)
+  days <- unique(local_date(at))
+  midnight <- as.POSIXct(format(days))
+  days <- days[midnight >= x_range[1] & midnight <= x_range[2]]
+  list(vals = format(days, "%Y-%m-%d"), text = format(days, "%d.%m."))
+}
+
 # The latest saved estimate per learning area, in the learning_area/theta/
 # se/n_items shape estimate_competency() returns. Per area, not the latest
 # batch: compute_and_save_ability() only writes rows for the areas practised
@@ -255,6 +270,7 @@ latest_ability <- function(ab) {
 # intervals belong to the detailed explanation of the current estimate.
 trajectory_panel_fig <- function(d, x_range) {
   d <- d[order(d$time), ]
+  ticks <- trajectory_ticks(x_range)
   lbl <- COMPETENCY_SCALE$label[findInterval(d$theta, COMPETENCY_SCALE$lower)]
   n <- as.integer(d$n_items)
   basis <- ifelse(
@@ -298,7 +314,10 @@ trajectory_panel_fig <- function(d, x_range) {
       # plotly doesn't inherit the page font; keep in sync with base_font in ui.R
       font = list(family = "'Fira Sans', sans-serif"),
       hoverlabel = list(font = list(family = "'Fira Sans', sans-serif")),
-      xaxis = c(axis, list(type = "date", range = x_range, tickformat = "%d.%m.", nticks = 4)),
+      xaxis = c(axis, list(
+        type = "date", range = x_range, tickmode = "array",
+        tickvals = as.list(ticks$vals), ticktext = as.list(ticks$text)
+      )),
       yaxis = c(axis, list(range = TRAJECTORY_Y_RANGE, showticklabels = FALSE, ticks = "")),
       margin = list(l = 4, r = 4, t = 4, b = 4),
       dragmode = FALSE,
