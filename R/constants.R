@@ -103,3 +103,6 @@ REG_USERNAME_PATTERN <- "^[a-zA-Z0-9_.-]{3,30}$"
 REG_PW_MIN_LENGTH    <- 8L
 REG_MAX_ATTEMPTS     <- 3L
 REG_ATTEMPT_DELAY_S  <- 1.0
+# Semester code fallback when TIGER_REG_CODE isn't set: this file in the DB
+# folder (see read_secret())
+REG_CODE_FILE        <- "reg_code.txt"

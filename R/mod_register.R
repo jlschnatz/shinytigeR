@@ -97,7 +97,7 @@ mod_register_server <- function(id, on_show_login) {
       }
 
       # Check semester code
-      expected <- Sys.getenv("TIGER_REG_CODE")
+      expected <- read_secret("TIGER_REG_CODE", REG_CODE_FILE)
       if (!nzchar(expected)) {
         output$reg_feedback <- renderUI(reg_msg(
           paste0("Registrierung ist derzeit nicht verfügbar. Bitte wende dich an ", CONTACT_EMAIL, "."),

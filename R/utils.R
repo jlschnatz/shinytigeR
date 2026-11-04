@@ -280,6 +280,26 @@ local_date <- function(x) {
   as.Date(x, tz = "")
 }
 
+# A secret (semester code, later the LLM API key): the environment variable
+# if set (ShinyProxy's container-env), else the first line of a file in the
+# DB folder (TIGER_DB_DIR), which can be uploaded and changed by SFTP without
+# the server admin or a rebuild. Read on every use, so a new file takes effect
+# at once. Never under www/ (that's served to browsers). Returns "" if neither
+# exists; trims whitespace, so a trailing newline or CRLF doesn't matter.
+read_secret <- function(env_var, file_name, dir = Sys.getenv("TIGER_DB_DIR", ".")) {
+  val <- Sys.getenv(env_var)
+  if (nzchar(val)) {
+    return(val)
+  }
+  path <- file.path(dir, file_name)
+  if (!file.exists(path)) {
+    return("")
+  }
+  lines <- trimws(readLines(path, warn = FALSE))
+  lines <- lines[nzchar(lines)]
+  if (length(lines) == 0L) "" else lines[1]
+}
+
 safe_sample <- function(x, size = length(x)) {
   if (length(x) == 0L) {
     return(x)

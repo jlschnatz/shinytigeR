@@ -6,3 +6,11 @@
 ^db_.*\.sqlite$
 ^LICENSE\.md$
 ^.claude$
+^reg_code\.txt$
+^docs$
+^docker$
+^CLAUDE\.md$
+^SETUP\.md$
+^rv\.lock$
+^db_.*\.sqlite-(wal|shm|journal)$
+(^|/)\.DS_Store$

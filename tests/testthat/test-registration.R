@@ -157,17 +157,31 @@ test_that("REG_MAX_ATTEMPTS is a positive integer", {
   expect_gt(REG_MAX_ATTEMPTS, 0L)
 })
 
-# ── Semester code env var ─────────────────────────────────────────────────────
+# ── Semester code: env var, else file in the DB folder ───────────────────────
 
-test_that("TIGER_REG_CODE env var is readable and returns empty string when unset", {
-  withr::with_envvar(c(TIGER_REG_CODE = ""), {
-    expect_equal(Sys.getenv("TIGER_REG_CODE"), "")
-    expect_false(nzchar(Sys.getenv("TIGER_REG_CODE")))
+test_that("read_secret prefers the env var over the file", {
+  dir <- withr::local_tempdir()
+  writeLines("from-file", file.path(dir, REG_CODE_FILE))
+  withr::with_envvar(c(TIGER_REG_CODE = "from-env"), {
+    expect_equal(read_secret("TIGER_REG_CODE", REG_CODE_FILE, dir), "from-env")
   })
 })
 
-test_that("TIGER_REG_CODE env var can be set for testing", {
-  withr::with_envvar(c(TIGER_REG_CODE = "tiger2025"), {
-    expect_equal(Sys.getenv("TIGER_REG_CODE"), "tiger2025")
+test_that("read_secret falls back to the file's first line, trimmed", {
+  dir <- withr::local_tempdir()
+  writeBin(charToRaw("\n  tiger2026 \r\nsecond line\n"), file.path(dir, REG_CODE_FILE))
+  withr::with_envvar(c(TIGER_REG_CODE = ""), {
+    expect_equal(read_secret("TIGER_REG_CODE", REG_CODE_FILE, dir), "tiger2026")
+  })
+})
+
+test_that("read_secret returns an empty string without env var or file", {
+  dir <- withr::local_tempdir()
+  withr::with_envvar(c(TIGER_REG_CODE = ""), {
+    expect_equal(read_secret("TIGER_REG_CODE", REG_CODE_FILE, dir), "")
+  })
+  file.create(file.path(dir, REG_CODE_FILE))
+  withr::with_envvar(c(TIGER_REG_CODE = ""), {
+    expect_equal(read_secret("TIGER_REG_CODE", REG_CODE_FILE, dir), "")
   })
 })

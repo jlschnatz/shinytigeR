@@ -1,10 +1,10 @@
 [project]
-name = "tigerv3"
-r_version = "4.5"
+name = "shinytiger"
+r_version = "4.6"
 
 repositories = [
     { alias = "PPM", url = "https://packagemanager.posit.co/cran/latest" },
-    { alias = "CRAN", url = "https://cran.r-project.org" },
+    { alias = "CRAN", url = "https://cran.r-project.org", force_source = true },
 ]
 
 dependencies = [
@@ -18,4 +18,9 @@ dependencies = [
     "sodium",
     "ggplot2",
     "markdown",
+    "rclipboard",
+    "testthat",
+    "withr",
+    "pkgload",
+    "plotly",
 ]
