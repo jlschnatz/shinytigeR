@@ -183,6 +183,23 @@ test_that("db_get_userdata reads a multi-correct answer_correct from a legacy IN
   expect_equal(ud$answer_correct, c("1", "1;3"))
 })
 
+test_that("db_get_userdata reads a table from the old app (no skipped column) as answered", {
+  # Exact column set of the 2023/24 production tables.
+  path <- make_temp_db()
+  con <- DBI::dbConnect(RSQLite::SQLite(), path)
+  DBI::dbWriteTable(con, "erin", data.frame(
+    id_user = "erin", id_session = "s", id_date = 19680L,
+    id_datetime = 1700393312L + 0:1, id_item = 1:2,
+    learning_area = "Regression", selected_option = c(1L, 2L),
+    answer_correct = 1L, bool_correct = c(1L, 0L)
+  ))
+  DBI::dbDisconnect(con)
+
+  ud <- db_get_userdata("erin", path)
+  expect_equal(ud$skipped, c(0L, 0L))
+  expect_equal(nrow(answered_rows(ud)), 2L)
+})
+
 test_that("db_get_userdata returns empty data.frame for unknown user", {
   path <- make_temp_db()
   ud <- db_get_userdata("nobody", path)

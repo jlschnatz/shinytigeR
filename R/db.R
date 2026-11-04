@@ -41,10 +41,17 @@ db_get_userdata <- function(user_id, path = DB_USERS()) {
         "CAST(answer_correct AS TEXT) AS answer_correct",
         sprintf('"%s"', cols)
       )
-      score_legacy_unmatched(DBI::dbGetQuery(
+      ud <- DBI::dbGetQuery(
         con,
         sprintf('SELECT %s FROM "%s"', paste(sel, collapse = ", "), user_id)
-      ))
+      )
+      # Tables from the old app (2023/24) have no skipped column; it never
+      # stored skips, so none of their rows is one. Without the column the
+      # dashboard's skip filter matched nothing and showed no answers at all.
+      if (nrow(ud) > 0L && is.null(ud$skipped)) {
+        ud$skipped <- 0L
+      }
+      score_legacy_unmatched(ud)
     },
     wal = TRUE
   )
