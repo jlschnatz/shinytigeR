@@ -303,7 +303,7 @@ test_that("answer_tree_stats splits the pool attempt by attempt", {
     id_item      = c(1L, 2L, 2L, 3L, 3L, 3L, 4L, 4L),
     bool_correct = c(TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE)
   )
-  tr <- answer_tree_stats(ud, pool)
+  tr <- answer_tree_stats(ud, pool, depth = 3L)
   n <- function(node) vapply(node$children, `[[`, integer(1), "n")
   expect_equal(tr$n, 6L)
   # 1st attempt: 1, 4 right; 2, 3 wrong; 5, 6 not worked on
@@ -317,6 +317,26 @@ test_that("answer_tree_stats splits the pool attempt by attempt", {
   # "none" nodes and the last attempt's nodes are leaves
   expect_null(tr$children$none$children)
   expect_null(tr$children$wrong$children$wrong$children$correct$children)
+})
+
+test_that("the answer tree goes ANSWER_TREE_DEPTH attempts deep by default", {
+  expect_equal(ANSWER_TREE_DEPTH, 4L)
+  ud <- tree_ud(id_item = rep(1L, 4), bool_correct = c(FALSE, FALSE, FALSE, TRUE))
+  tr <- answer_tree_stats(ud, data.frame(id_item = 1L))
+  leaf <- tr$children$wrong$children$wrong$children$wrong$children$correct
+  expect_equal(leaf$n, 1L)
+  expect_null(leaf$children)
+  html <- as.character(answer_tree_card(tr))
+  expect_match(html, "--cols:5;", fixed = TRUE)
+  expect_match(html, "4. Versuch", fixed = TRUE)
+})
+
+test_that("answer tree: grey ring on nodes nothing follows, none on leaves of the last attempt", {
+  ud <- tree_ud(id_item = c(1L, 2L), bool_correct = c(TRUE, FALSE))
+  html <- as.character(answer_tree_card(answer_tree_stats(ud, data.frame(id_item = 1:3), depth = 1L)))
+  # root only (its children are the last attempt) + the "nicht bearbeitet" node
+  expect_equal(lengths(regmatches(html, gregexpr("lt-donut", html, fixed = TRUE))), 2L)
+  expect_match(html, "--a:0.0%;--b:0.0%;", fixed = TRUE) # all grey
 })
 
 test_that("answer_tree_stats ignores rows without a result and items outside the pool", {
@@ -333,14 +353,15 @@ test_that("answer_tree_stats ignores rows without a result and items outside the
   expect_equal(tr$children$wrong$children$none$n, 1L)
 })
 
-test_that("answer_tree_card opens the 1st attempt's branches and only makes non-empty nodes clickable", {
+test_that("answer_tree_card starts with every branch closed and only makes non-empty nodes clickable", {
   pool <- data.frame(id_item = 1:3)
   ud <- tree_ud(id_item = c(1L, 1L, 2L), bool_correct = c(FALSE, TRUE, FALSE))
   html <- as.character(answer_tree_card(answer_tree_stats(ud, pool)))
-  # wrong at the 1st attempt (open) and right at the 2nd (closed) are
-  # clickable; the right-at-1st node is empty, so not a button
+  # wrong at the 1st attempt and right at the 2nd are clickable, both closed;
+  # the right-at-1st node is empty, so not a button
   expect_equal(lengths(regmatches(html, gregexpr("data-node", html, fixed = TRUE))), 2L)
-  expect_equal(lengths(regmatches(html, gregexpr('aria-expanded="true"', html, fixed = TRUE))), 1L)
+  expect_equal(lengths(regmatches(html, gregexpr('aria-expanded="true"', html, fixed = TRUE))), 0L)
+  expect_equal(lengths(regmatches(html, gregexpr('<li class="is-open">', html, fixed = TRUE))), 1L) # root
   expect_match(html, "nicht bearbeitet", fixed = TRUE)
   expect_false(grepl("noch nicht bearbeitet", html, fixed = TRUE))
   expect_match(html, "nicht wiederholt", fixed = TRUE)

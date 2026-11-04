@@ -609,7 +609,7 @@ coverage_card <- function(cov) {
 # list(n, children = list(correct, wrong, none)); nodes at the last level and
 # "none" nodes have no children. Plus `direction` and the numbers for the
 # takeaway sentence: `$mistakes` (forward) or `$latest` (backward).
-ANSWER_TREE_DEPTH <- 3L
+ANSWER_TREE_DEPTH <- 4L
 
 answer_tree_stats <- function(
   ud,
@@ -798,7 +798,8 @@ answer_tree_label <- function(cat, attempt, direction = "forward") {
   )
 }
 
-# A ring showing how a node splits into its children (correct/wrong/none)
+# A ring showing how a node splits into its children (correct/wrong/none);
+# all grey for a node without children
 answer_tree_donut <- function(node) {
   counts <- vapply(node$children, `[[`, integer(1), "n")
   pct <- if (sum(counts) > 0L) {
@@ -832,9 +833,11 @@ answer_tree_item <- function(
   } else {
     NULL
   }
-  # Donut left of the text, label and share on one line: keeps nodes flat
+  # Donut left of the text, label and share on one line: keeps nodes flat.
+  # "none" nodes (nicht bearbeitet / nicht wiederholt / erster Versuch) get a
+  # plain grey ring: nothing follows them, and the column stays aligned.
   body <- tagList(
-    if (expandable) answer_tree_donut(node),
+    if (expandable || cat == "none") answer_tree_donut(node),
     tags$span(
       class = "lt-text",
       tags$span(class = "lt-num", node$n),
@@ -1040,7 +1043,8 @@ fixed_mistakes <- function(ud, data_item) {
 answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
   backward <- identical(tree$direction, "backward")
   heads <- if (backward) {
-    c("Letzter", "Vorletzter", "Drittletzter", sprintf("%d. letzter", 4:9))[seq_len(depth)]
+    c("Letzter", "Vorletzter", "Drittletzter", "Viertletzter", "Fünftletzter",
+      sprintf("%d. letzter", 6:9))[seq_len(depth)]
   } else {
     sprintf("%d. Versuch", seq_len(depth))
   }
@@ -1060,6 +1064,8 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
       lang = "de",
       div(
         class = "lt-inner",
+        # columns: root + one per attempt (the widths in app.css follow it)
+        style = sprintf("--cols:%d;", depth + 1L),
         # Narrow cards drop the root column (CSS) and show the total here
         div(class = "lt-total", sprintf("%d Aufgaben insgesamt", tree$n)),
         div(
@@ -1068,7 +1074,8 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
           tags$span("Alle"),
           lapply(heads, tags$span)
         ),
-        # The 1st column's branches are open by default, deeper ones on click
+        # Only the 1st attempt's column shows at first; every branch opens
+        # on click (closed by default, so the tree starts compact)
         tags$ul(
           class = "lt-top",
           answer_tree_item(
@@ -1076,7 +1083,7 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
             "root",
             0L,
             0L,
-            open_attempts = 1L,
+            open_attempts = integer(0),
             direction = tree$direction
           )
         )
@@ -1121,7 +1128,10 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
       "Deine Antwortverläufe",
       info_tip(paste(
         "Jede Spalte ist ein Versuch, die Zeit läuft von links nach rechts.",
-        "„Ab 1. Versuch“ beginnt links bei allen Aufgaben und zeigt deinen 1., 2. und 3. Versuch.",
+        sprintf(
+          "„Ab 1. Versuch“ beginnt links bei allen Aufgaben und zeigt deine ersten %d Versuche.",
+          depth
+        ),
         "„Ab letztem Versuch“ beginnt rechts bei deiner letzten Antwort und geht zurück zu den Versuchen davor.",
         "Der Ring in einem Kasten zeigt, wie er sich in der nächsten Spalte aufteilt.",
         "Übersprungene Aufgaben zählen nicht."
