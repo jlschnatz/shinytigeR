@@ -35,10 +35,8 @@ devtools::document()
 # Check the package — same caveat as above
 devtools::check(vignettes = FALSE)
 
-# Build tarball + Dockerfile for deployment (run from project root)
-Rscript deploy/build.R
-# Then:
-docker build --platform linux/amd64 -t shinytiger deploy/
+# Build the upload folder for the server (tarball + Dockerfile + README), see Deployment
+rv run deploy/build.R
 ```
 
 Note `docker/Dockerfile.dev` (used by `SETUP.md`'s Docker option) is dev-only (live source + package library, no production tarball) — distinct from `deploy/Dockerfile`, which builds the ShinyProxy production image described under Deployment below.
@@ -143,6 +141,7 @@ app_v3/
 │   ├── migrate_answer_mode.R     # production-safe: idempotently adds answer_mode column + backfills to 'mc'. No sample items — run this before deploying
 │   ├── migrate_numeric_bounds.R  # production-safe: idempotently adds lower_/upper_answeroption_0X columns (table rebuild, after if_answeroption_06) + makes answer_correct TEXT. No items — run this before deploying
 │   ├── migrate_drop_mc_skip.R    # production-safe: idempotently removes the old trailing skip option (+ its feedback) from MC items. No items — run this before deploying
+│   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (migrated? sample items? files present?)
 │   ├── add_numeric_samples.R     # dev-only: sources both migrations, then (re)writes 4 numeric sample items — never run against production
 │   └── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │
@@ -273,10 +272,11 @@ Single source of truth for:
 | `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` | functions | Return full paths to the four SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
 | `REG_USERNAME_PATTERN` / `REG_PW_MIN_LENGTH` / `REG_MAX_ATTEMPTS` / `REG_ATTEMPT_DELAY_S` | validation constants | Used by `mod_register.R` — see that section below |
+| `REG_CODE_FILE` | `character` | `"reg_code.txt"`: semester-code file in the DB folder, used when `TIGER_REG_CODE` isn't set (`read_secret()`) |
 
 > **Important:** `ITEM_TYPE_LABELS` values (`"content"`, `"coding"`) must exactly match the `type_item` column in `db_item.sqlite`. If item types change in the DB, update this constant.
 
-> **Registration requires `TIGER_REG_CODE`** (a separate env var from the constants above, read directly via `Sys.getenv()` in `mod_register.R`, not defined in `constants.R`) — the shared semester code students must enter to self-register. Unset in local dev by default, so registration will show "derzeit nicht verfügbar" unless you export it.
+> **Registration requires a semester code**: the env var `TIGER_REG_CODE`, else the first line of `reg_code.txt` (`REG_CODE_FILE`) in the DB folder, read via `read_secret()` in `mod_register.R` — the shared code students must enter to self-register (see Deployment > ShinyProxy). Unset in local dev by default, so registration will show "derzeit nicht verfügbar" unless you export it or create the file (gitignored).
 
 ### `R/db.R`
 
@@ -342,6 +342,7 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `latest_attempts(user_data)` | Keeps only the most recent response per `id_item` (by `id_datetime`), not the first. Used exclusively to build the input to the ability estimate (`compute_and_save_ability()`) |
 | `build_ability_rows(competency, user_id, session_token)` | Reshapes an `estimate_competency()` result into the `data.frame` written to `db_ability.sqlite` — one row per learning area, all sharing a single `computed_at` timestamp (one "batch") |
 | `local_date(x)` | Calendar date of a Unix timestamp (`id_datetime`, `computed_at`) or POSIXct in the **local** time zone, like `Sys.Date()`. Use it instead of `as.Date(as.POSIXct(...))`: plain `as.Date()` on a POSIXct counts in UTC, so right after local midnight it returned the previous day (calendar, "zuletzt geübt", and a mistake from 00:30 was retryable at once). Caught by the retry test failing just after midnight |
+| `read_secret(env_var, file_name, dir)` | A secret (semester code, later the LLM API key): the env var if set, else the first non-empty line of `file_name` in the DB folder (`TIGER_DB_DIR`), trimmed; `""` if neither. Read on every use |
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `css_href(path, href)` | Appends the file's mtime as `?v=` for cache-busting the stylesheet link in `ui.R`; falls back to the bare `href` if the file isn't found |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
@@ -452,7 +453,7 @@ This also seeds a **history** in `db_ability.sqlite` (one batch per `computed_at
 **"Fähigkeitsverlauf" trajectory** (`trajectory_section()`, `trajectory_panel_fig()`, outputs `traj_1`…`traj_7`) plots the full `db_ability.sqlite` history — every saved batch, not just the latest — as **small multiples**: one small `plotly` chart per learning area in a CSS grid (`.traj-grid`) whose columns are at least 260 px and at least a quarter of the width — so it wraps by itself to 4 columns on a laptop (never 5, even on a wide screen), 3 below ~1076 px, 2 on an iPad and 1 on a phone. Not `bslib::layout_column_wrap()`: it can set a minimum column width but no maximum column count. It sits in a `bslib::accordion` panel below the top row (closed by default, like the other two sections; the accordion is where the detailed report will go too). Until there are ≥ 2 batches it shows a short note instead (a single point isn't a trajectory); areas without an estimate get a "Noch keine Schätzung" placeholder instead of a chart.
 
 - **One chart per area instead of one chart with 7 lines:** 7 crossing lines needed a color per area plus hover and a clickable legend to stay readable, and got messy anyway. The panels share their axes (`TRAJECTORY_Y_RANGE` = `THETA_RANGE` ± 0.25 so markers at the bounds aren't clipped; `trajectory_x_range()` for time), so they stay comparable.
-- **Background bands = `COMPETENCY_SCALE`** (`competency_band_shapes()`), with a matching HTML legend (`trajectory_legend()`, `.traj-swatch`, same 20 % tint as the bands and the strips in "Lernstand im Detail", highest level first like the bands). The legend is the grid's **8th tile**, so with 7 areas it fills the free last cell at 4 and 2 columns (at 3 it sits next to the last chart). At 1 column it would land below all charts, so a CSS **container query** on `.traj-wrap` (< 532 px = two 260 px columns + gap) hides the tile and shows a copy above the grid instead. A point reads as "which competency zone", not as a raw θ; the y tick labels are hidden on purpose, and the hover shows date, label, θ and how many items the estimate is based on (`n_items`). The line is 3 px wide; plotly gets the page font (Fira Sans) set explicitly for axes and hover, since it doesn't inherit it.
+- **Background bands = `COMPETENCY_SCALE`** (`competency_band_shapes()`), with a matching HTML legend (`trajectory_legend()`, `.traj-swatch`, same 20 % tint as the bands and the strips in "Lernstand im Detail", highest level first like the bands). The legend is the grid's **8th tile**, so with 7 areas it fills the free last cell at 4 and 2 columns (at 3 it sits next to the last chart). At 1 column it would land below all charts, so a CSS **container query** on `.traj-wrap` (< 532 px = two 260 px columns + gap) hides the tile and shows a copy above the grid instead. A point reads as "which competency zone", not as a raw θ; the y tick labels are hidden on purpose, and the hover shows date, label, θ and how many items the estimate is based on (`n_items`). The line is 3 px wide; plotly gets the page font (Fira Sans, bundled, see Deployment) set explicitly for axes and hover, since it doesn't inherit it.
 - **x axis is `time` (POSIXct), not `date`:** the login catch-up and the refresh button often save two batches on the same day.
 - **No smoothing, no uncertainty:** the line just joins the saved estimates. A lowess line was tried and visibly missed points, which read as an error; damping jumps is meant to happen in the displayed estimate itself (planned, see the dashboard redesign). Intervals belong to the detailed explanation of the current estimate, not to the trajectory.
 - **Still `plotly`, not `renderPlot`:** a server-rendered image doesn't reflow on a phone, it just gets scaled down. Checked at 1366 px, 820 px (iPad) and 390 px (phone) with real device-metrics emulation, including collapsing and reopening the accordion (the charts keep their size).
@@ -655,47 +656,40 @@ Static files are served via Shiny's **built-in `www/` auto-serving convention** 
 
 ### Build process
 
-Run once per release from the project root:
-
-```r
-Rscript deploy/build.R
-```
-
-This script:
-1. Parses all package names from `rv.lock`
-2. Queries the Posit PPM sysreqs API (`packagemanager.posit.co/__api__/repos/1/sysreqs`) for Ubuntu 22.04 apt packages needed by those packages
-3. Generates `deploy/Dockerfile` via `{dockerfiler}` with the correct system dependencies baked in
-4. Runs `devtools::document()` to regenerate `NAMESPACE`
-5. Builds the `shinytigeR_*.tar.gz` tarball into `deploy/`
-6. Copies `rv.lock` and `rproject.toml` into `deploy/`
-
-Then build the image:
+The server admin builds the image on the server; there's no shell access for us, only SFTP. Run once per release from the project root:
 
 ```bash
-docker build --platform linux/amd64 -t shinytiger deploy/
+rv run deploy/build.R
 ```
 
-The `--platform linux/amd64` flag is required when building on Apple Silicon; without it Docker selects `arm64` and the `x86_64` rv binary fails under Rosetta.
+It fills `deploy/` with the upload folder: `Dockerfile` (generated, don't edit by hand), `rv.lock`, `rproject.toml`, the `shinytigeR_*.tar.gz` tarball and a `README.md` for the admin (`docker build -t shinytiger .`, **without** `--no-cache`). System packages come from the Posit PPM sysreqs API for Ubuntu 24.04 (the base image's release, keep `UBUNTU` in sync with `R_IMAGE` in `build.R`). `NAMESPACE` is regenerated only if `roxygen2` is installed, otherwise the committed one is used. To test locally on Apple Silicon: `docker build --platform linux/amd64 -t shinytiger deploy/`.
 
-### Dockerfile structure (single-stage)
+### Dockerfile structure
 
-Based on `rocker/r-ver:4.6`. Deliberately single-stage — installs R packages as pre-compiled binaries from PPM, which avoids rv library-path complexity across stages and is faster than compiling from source, so there's no separate builder/runtime split to keep dev headers out of the final image:
+**One image, no separate base image.** `rocker/r-ver:4.6.1`, `rv` pinned (`RV_VERSION`), `rv sync --locked` from `rv.lock`, then `R CMD INSTALL` of the tarball. The package layer comes before the tarball is copied in, so Docker's layer cache reuses it until `rv.lock` changes and a new app version rebuilds in seconds. The old setup (`shinytiger:base` + app image) went stale unnoticed: R 4.3.0 on the server while its Dockerfile said 4.5.2, and `remotes::install_local()` then compiled the missing packages from CRAN at build time, unpinned. Also set:
 
-- Installs apt build deps (`curl`, plus whatever the sysreqs API returned for the resolved packages — e.g. `libsodium-dev`)
-- Downloads the latest `rv` binary from GitHub releases (x86_64 Linux) and runs `rv sync --locked` in `/srv`, then appends the resolved `rv` library path to `R_LIBS_USER` in `Renviron` so R can find the packages
-- Installs the `shinytigeR` tarball with `R CMD INSTALL`
-- Creates user `beitner` (uid 1002, gid 1003) for ShinyProxy
-- Sets `TIGER_DB_DIR=/opt/shinyapp` — the SQLite files must be mounted at this path
+- `TZ=Europe/Berlin`: dates shown to students (calendar, retry time-out) use the local day.
+- `R_USER_CACHE_DIR=/tmp/R-cache`: bslib/sass compile the theme at startup and cache it; the old image had no home directory for its user, which needed `chmod o+x /root` and `sass.cache=FALSE` as workarounds.
+- User `beitner` (uid 1002, gid 1003, same as the old image), `TIGER_DB_DIR=/opt/shinyapp`, port 3838.
+
+Two things the first local image test (`linux/amd64`, real server data mounted) caught, keep them:
+- **`inst/app/app.R` calls `shinytigeR::app_ui()` / `shinytigeR::app_server`**, qualified. The `CMD` runs `shinytigeR::run_app()`, which loads the namespace without attaching it, so bare names crashed at startup with "object 'app_server' not found". Dev never noticed because `load_all()` attaches.
+- **The CRAN repository in `rproject.toml` has `force_source = true`.** On Linux, rv looks for binaries under `__linux__/<release>/` in every repository, which only PPM serves; on `cran.r-project.org` that index doesn't exist and `rv sync` failed. All packages in `rv.lock` come from PPM anyway (binaries, about 3 minutes under emulation); CRAN stays a source-only fallback.
+
+**No runtime downloads:** the fonts (Fira Sans / Fira Mono, OFL) are bundled in `inst/app/www/fonts/` with `@font-face` rules in `css/fonts.css`, not `bslib::font_google()`, which downloads them when the app starts (silently falls back without internet) and would send students' browsers to Google (GDPR). Only the latin, latin-ext and greek subsets (θ).
 
 ### ShinyProxy
 
-The container exposes port 3838. ShinyProxy should mount the four SQLite database files into `/opt/shinyapp/`:
-- `/opt/shinyapp/db_item.sqlite`
-- `/opt/shinyapp/db_user.sqlite`
-- `/opt/shinyapp/db_ability.sqlite` — must exist (even as an empty file) before first launch, same as `db_user.sqlite`; `db_write_ability()` creates per-user tables lazily but the file itself needs to be present for the bind-mount
-- `/opt/shinyapp/db_credentials.sqlite`
+The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`, port 3838, DB folder mounted at `/opt/shinyapp`); we don't have its `application.yml`. The DB folder (`shinyapps/shinytigeR-DB/` on the server, uploaded by SFTP) holds:
+- `db_item.sqlite` (migrated, see below), `db_user.sqlite`, `db_credentials.sqlite`
+- `db_ability.sqlite`: must exist (even as an empty file) in case single files are bind-mounted
+- `reg_code.txt`: the semester code (first non-empty line). `read_secret()` (`R/utils.R`) prefers the env var **`TIGER_REG_CODE`** if ShinyProxy's `container-env` sets it, else reads this file on every registration attempt, so it can be changed by SFTP without the admin or a rebuild. Never under `www/` (served to browsers), never in the image. The planned LLM API key should use the same helper.
 
-ShinyProxy's app config must also set **`TIGER_REG_CODE`** (the semester code — see `R/mod_register.R` above) as a container env var. It is **not** baked into `deploy/Dockerfile` (that would ship a secret in the image); without it set at runtime, self-registration is disabled with an error pointing students to `CONTACT_EMAIL`.
+The folder itself must be writable for uid 1002, not just the files: SQLite (WAL mode) writes `-wal`/`-shm` files next to the databases.
+
+**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only): files present, item DB migrated, no dev sample items (90001–90004), stimulus images present, accounts count. Exits non-zero on problems.
+
+**Old user tables** (2023/24, 372 tables) have no `skipped` column; the old app never stored skips (option 6, the skip option, was never chosen in 33,787 answers). `db_get_userdata()` adds `skipped = 0` for them. Without it, the dashboard's skip filter matched nothing and old students saw no answers at all.
 
 > **Required one-time migration before deploying any build that includes numeric items:** the production `db_item.sqlite` needs the `answer_mode` column added and backfilled to `'mc'` before this code runs against it — run `TIGER_DB_DIR=<mount path> rv run dev/migrate_answer_mode.R` against it first (idempotent, safe to re-run, inserts no items). **Skipping this doesn't crash the app** — `item$answer_mode` on a column that doesn't exist yet resolves to `NULL`, not an error, and both `mod_mc_answer.R`'s and `mod_numeric_answer.R`'s dispatch checks (`identical(item$answer_mode[1], "mc"/"num")`) are `FALSE` for `NULL` either way. The practice view's answer area just renders blank and "Antwort prüfen" never enables — for *every* item, MC included, with no error shown anywhere. Do **not** use `dev/add_numeric_samples.R` for this — it also inserts fake sample items, which don't belong in the real student-facing pool.
 >
@@ -705,7 +699,7 @@ ShinyProxy's app config must also set **`TIGER_REG_CODE`** (the semester code �
 
 The `CMD` starts the app as:
 ```
-R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); library(shinytigeR); shinytigeR::run_app()"
+R -q -e "options(shiny.port = 3838, shiny.host = '0.0.0.0'); shinytigeR::run_app()"
 ```
 
 ---
@@ -716,7 +710,7 @@ R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); library(shinytigeR); shiny
 2. Add the package to `Imports:` in `DESCRIPTION`
 3. Add `@importFrom pkg fn` to `R/shinytigeR-package.R` (or use `pkg::fn()` in code)
 4. Run `devtools::document()` to update `NAMESPACE`
-5. Run `Rscript deploy/build.R` — the sysreqs API will automatically detect any new system dependencies
+5. Run `rv run deploy/build.R` — the sysreqs API will automatically detect any new system dependencies
 
 ## Adding a new item type or learning area
 

@@ -6,3 +6,5 @@ db_ability.sqlite
 db_item.sqlite
 .Rprofile
 docs/
+reg_code.txt
+deploy/shinytigeR_*.tar.gz
