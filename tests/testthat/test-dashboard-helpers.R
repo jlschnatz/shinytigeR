@@ -600,3 +600,20 @@ test_that("the detail section labels the interval as a confidence interval and e
   expect_equal(lengths(regmatches(ex, gregexpr('class="la-step"', ex))), 4L)
   expect_match(ex, "gemessen an der Schwierigkeit", fixed = TRUE)
 })
+
+# ── latest_ability / time windows ─────────────────────────────────────────────
+
+test_that("latest_ability takes each area's latest row, not the latest batch", {
+  ab <- data.frame(
+    computed_at = c(100L, 100L, 200L),
+    learning_area = LEARNING_AREA_LEVELS[c(1, 2, 2)],
+    theta = c(0.5, -1, 1.5), se = c(0.4, 0.6, 0.3), n_items = c(4L, 2L, 6L)
+  )
+  comp <- latest_ability(ab)
+  expect_equal(nrow(comp), length(LEARNING_AREA_LEVELS))
+  expect_equal(comp$theta[1:2], c(0.5, 1.5)) # area 1 kept from the older batch
+  expect_equal(comp$n_items[1:3], c(4L, 6L, 0L))
+  expect_true(is.na(comp$theta[3]))
+  expect_equal(comp$computed_at[1], 200L)
+  expect_null(latest_ability(data.frame()))
+})

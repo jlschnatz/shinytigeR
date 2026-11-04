@@ -330,3 +330,18 @@ test_that("db_get_userdata reads old unmatched numeric answers as wrong, skips s
   ud <- db_get_userdata("olduser", path = path)
   expect_identical(as.logical(ud$bool_correct), c(FALSE, NA, TRUE))
 })
+
+test_that("ability_needs_update ignores skips newer than the last snapshot", {
+  user_path <- make_temp_db()
+  ability_path <- make_temp_db()
+  row <- make_response_row("alice")
+  db_write_response("alice", row, user_path)
+  db_write_ability("alice", make_ability_rows("alice", computed_at = row$id_datetime + 10L), ability_path)
+  skip_row <- row
+  skip_row$id_datetime <- row$id_datetime + 20L
+  skip_row$bool_correct <- NA
+  skip_row$skipped <- TRUE
+  db_write_response("alice", skip_row, user_path)
+
+  expect_false(ability_needs_update("alice", user_path, ability_path))
+})

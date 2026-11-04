@@ -216,6 +216,30 @@ trajectory_x_range <- function(hist) {
   r + c(-pad, pad)
 }
 
+# The latest saved estimate per learning area, in the learning_area/theta/
+# se/n_items shape estimate_competency() returns. Per area, not the latest
+# batch: compute_and_save_ability() only writes rows for the areas practised
+# since the last estimate, so an area's current value can be older than
+# another's. `computed_at` is the most recent update of any area (the date in
+# the card header). Areas without a row read as NA / 0 items ("Keine Daten").
+latest_ability <- function(ab) {
+  if (nrow(ab) == 0L) {
+    return(NULL)
+  }
+  ab <- ab[order(ab$computed_at), , drop = FALSE]
+  ab <- ab[!duplicated(ab$learning_area, fromLast = TRUE), , drop = FALSE]
+  idx <- match(LEARNING_AREA_LEVELS, ab$learning_area)
+  data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = ab$theta[idx],
+    # NA for estimates saved before the standard error was stored
+    se = if ("se" %in% names(ab)) as.numeric(ab$se[idx]) else NA_real_,
+    n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
+    computed_at = max(ab$computed_at, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
 # One small-multiples panel: the trajectory of a single learning area (`d`,
 # rows of ability_trajectory_data() for that area) on the full theta range.
 # Markers show the saved estimates (hover: date + competency label), joined by
@@ -388,35 +412,15 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       needs_ability_update() && !isTRUE(ability_computed_this_session())
     })
 
-    # The persisted ability snapshot (most recent computed_at batch), reshaped
-    # to the same learning_area/theta/n_items shape estimate_competency()
-    # returns, so nothing downstream needs to change.
-    competency <- reactive({
-      ability_version()
-      ab <- db_get_ability(credentials()$info$user_name)
-      if (nrow(ab) == 0L) {
-        return(NULL)
-      }
-      latest_batch <- max(ab$computed_at, na.rm = TRUE)
-      ab <- ab[ab$computed_at == latest_batch, ]
-      idx <- match(LEARNING_AREA_LEVELS, ab$learning_area)
-      data.frame(
-        learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
-        theta = ab$theta[idx],
-        # NA for snapshots saved before the standard error was stored
-        se = if ("se" %in% names(ab)) as.numeric(ab$se[idx]) else NA_real_,
-        n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
-        computed_at = latest_batch,
-        stringsAsFactors = FALSE
-      )
-    })
-
-    # Full ability history (every saved batch, not just the latest) — feeds
-    # the "Fähigkeitsverlauf" trajectory plot below.
+    # Full ability history (every saved row, not just the latest), feeds the
+    # "Fähigkeitsverlauf" trajectory plot below.
     ability_history <- reactive({
       ability_version()
       db_get_ability(credentials()$info$user_name)
     })
+
+    # The latest saved estimate per learning area (latest_ability()).
+    competency <- reactive(latest_ability(ability_history()))
 
     observeEvent(input$refresh_ability, {
       req(can_refresh_ability())

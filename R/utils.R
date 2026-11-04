@@ -178,7 +178,7 @@ latest_attempts <- function(user_data) {
   ud[!duplicated(ud$id_item, fromLast = TRUE), ]
 }
 
-# One row per learning area for a single computed_at batch (see estimate_competency()).
+# One row per estimated learning area, all with the same computed_at (one update; see estimate_competency()).
 build_ability_rows <- function(competency, user_id, session_token) {
   data.frame(
     id_user = as.character(user_id),
