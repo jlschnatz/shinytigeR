@@ -935,7 +935,7 @@ retry_eligible <- function(oi, today = Sys.Date()) {
   oi[as.integer(today - oi$last_date) >= RETRY_MIN_DAYS, , drop = FALSE]
 }
 
-# The panel next to the tree, closing the loop back to practice: a button
+# The panel closing the loop back to practice: a button
 # that starts a practice queue with the retryable open mistakes
 # (`input$retry_open`; the dashboard server picks at most RETRY_MAX_ITEMS).
 # Deliberately no per-item list or solution lookup: looking up the answer
@@ -943,31 +943,59 @@ retry_eligible <- function(oi, today = Sys.Date()) {
 # Shiny.setInputValue() event, not an actionButton(), since this panel
 # re-renders after every answer (see item_id_badge() for that quirk). `ns` is
 # the dashboard's.
-open_items_panel <- function(oi, ns, today = Sys.Date()) {
+#
+# A full-width bar in "Dein Lernverhalten" (above the answer tree), since
+# retrying mistakes is the section's main action: the number of open mistakes, a sentence why retrying pays off, how
+# many mistakes were already fixed (`fixed`, see fixed_mistakes()), and the
+# button on the right.
+open_items_panel <- function(oi, ns, today = Sys.Date(), fixed = 0L) {
   n_open <- nrow(oi)
   n_ready <- nrow(retry_eligible(oi, today))
   n_wait <- n_open - n_ready
+  fixed_note <- if (fixed > 0L) {
+    tags$p(
+      class = "oi-fixed",
+      bsicons::bs_icon("check-circle-fill"),
+      tags$span(sprintf(
+        "Schon ausgebessert: %d %s nach einem Fehler richtig gelöst.",
+        fixed, if (fixed == 1L) "Aufgabe" else "Aufgaben"
+      ))
+    )
+  }
   div(
-    class = "la-card oi-card",
+    class = paste("la-card oi-card oi-hero", if (n_open == 0L) "is-clear"),
     div(
-      class = "la-card-title",
-      "Offene Fehler",
-      if (n_open > 0L) tags$span(class = "oi-count", n_open),
-      info_tip(
-        "Aufgaben, die du zuletzt falsch beantwortet hast (auch wenn du sie früher schon einmal richtig hattest). Du kannst diese Aufgaben frühestens 24 Stunden nach deiner letzten Antwort nochmal versuchen."
-      )
+      class = "oi-big",
+      tags$span(class = "oi-big-val", if (n_open == 0L) bsicons::bs_icon("check-lg") else n_open),
+      tags$span(class = "oi-big-lbl", if (n_open == 0L) "zuletzt alles richtig" else "zuletzt falsch")
     ),
-    if (n_open == 0L) {
-      tags$p(
-        class = "la-note mt-0",
-        "Keine! Deine letzte Antwort war überall richtig."
-      )
-    } else {
-      tagList(
+    div(
+      class = "oi-main",
+      div(
+        class = "la-card-title",
+        "Fehler nochmal üben",
+        info_tip(
+          "Aufgaben, die du zuletzt falsch beantwortet hast (auch wenn du sie früher schon einmal richtig hattest). Du kannst diese Aufgaben frühestens 24 Stunden nach deiner letzten Antwort nochmal versuchen."
+        )
+      ),
+      if (n_open == 0L) {
+        tags$p(class = "oi-lead", "Keine! Deine letzte Antwort war überall richtig.")
+      } else {
+        tags$p(
+          class = "oi-lead",
+          "Bei diesen Aufgaben war deine letzte Antwort falsch.",
+          "Ab dem nächsten Tag kannst du sie nochmal üben."
+        )
+      },
+      fixed_note
+    ),
+    if (n_open > 0L) {
+      div(
+        class = "oi-action",
         if (n_ready > 0L) {
           tags$button(
             type = "button",
-            class = "btn btn-sm btn-primary oi-retry",
+            class = "btn btn-primary oi-retry",
             onclick = sprintf(
               "Shiny.setInputValue('%s', Date.now(), {priority: 'event'})",
               ns("retry_open")
@@ -993,6 +1021,19 @@ open_items_panel <- function(oi, ns, today = Sys.Date()) {
       )
     }
   )
+}
+
+# Mistakes already fixed: items whose latest answer is right after at least
+# one earlier wrong answer (skips don't count, same rule as open_items()).
+fixed_mistakes <- function(ud, data_item) {
+  a <- answered_rows(ud, data_item)
+  if (nrow(a) == 0L) {
+    return(0L)
+  }
+  # answered_rows() sorts by time, so the last row is the latest answer
+  sum(vapply(split(a$bool_correct, a$id_item), function(x) {
+    x[length(x)] && any(!x[-length(x)])
+  }, logical(1)))
 }
 
 # One reading direction of the tree: takeaway, hint, the tree and its legend
@@ -1112,15 +1153,19 @@ behaviour_section <- function(
     icon = bsicons::bs_icon("calendar3"),
     div(
       class = "la-grid la-grid-behaviour",
-      # Narrow left column on wide screens: key numbers, calendar and the
-      # retry card; coverage and tree share the rest side by side (CSS)
+      # A narrow side column (key numbers, calendar) next to the coverage
+      # card; below them, each across the full width, the retry bar and the
+      # answer tree (CSS)
       div(
         class = "la-side",
         behaviour_tiles(behaviour_stats(ud, data_item, today), today),
-        calendar_card(ud, today),
-        open_items_panel(open_items(ud, data_item), ns, today = today)
+        calendar_card(ud, today)
       ),
       coverage_card(coverage_matrix(ud, data_item)),
+      open_items_panel(
+        open_items(ud, data_item), ns,
+        today = today, fixed = fixed_mistakes(ud, data_item)
+      ),
       answer_tree_card(
         answer_tree_stats(ud, data_item),
         backward = answer_tree_stats(ud, data_item, direction = "backward")

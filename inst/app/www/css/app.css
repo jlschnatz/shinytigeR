@@ -907,9 +907,9 @@
 .ivl-explain-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
 .ivl-explain-btn[aria-expanded="false"] .ivl-explain-open,
 .ivl-explain-btn[aria-expanded="true"] .ivl-explain-closed { display: none; }
-/* Three columns from 1200 px: a narrow side column (tiles, calendar, retry),
-   then coverage and tree side by side. Between 768 and 1200 px the tree goes
-   full width below; on phones everything stacks. */
+/* From 768 px a narrow side column (tiles, calendar) next to the coverage
+   card; below them the retry bar and the answer tree, each across the full
+   width; on phones everything stacks. */
 /* Key numbers above the behaviour cards: small, three side by side even on
    a phone (not bslib value boxes, which would dominate the section) */
 .la-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
@@ -934,10 +934,9 @@
   .la-side .la-tile { display: grid; grid-template-columns: 4.3rem minmax(0, 1fr); column-gap: 0.4rem; align-items: center; padding: 0.3rem 0.65rem; }
   .la-side .la-tile-val { grid-row: span 2; font-size: 1.15rem; }
 }
-@media (min-width: 1200px) {
-  .la-grid-behaviour { grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr) minmax(0, 1.25fr); }
-  .la-grid-behaviour > .lt-card { grid-column: auto; }
-}
+/* Retry bar and answer tree below the columns, each full width */
+.la-grid-behaviour > .oi-hero,
+.la-grid-behaviour > .lt-card { grid-column: 1 / -1; }
 /* Equal-height columns without gaps below shorter cards: the columns stretch
    to the tallest one, the last card of the side column grows to the bottom,
    the coverage rows spread out and the tree centres vertically */
@@ -1157,6 +1156,48 @@
 .oi-card > .la-card-title { margin-bottom: 0.5rem; }
 .oi-retry { display: flex; justify-content: center; align-items: center; gap: 0.35rem; width: 100%; }
 .oi-wait { margin-top: 0.3rem; }
+/* The retry bar: count left, text in the middle, button
+   right; stacked on phones. A card like the others, only the count in the
+   "wrong" colour while mistakes are open (the "correct" colour when there are
+   none), so it stands out without dominating. */
+.oi-hero {
+  --oi-accent: var(--tiger-incorrect);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem;
+}
+.oi-hero.is-clear { --oi-accent: var(--tiger-correct); }
+@media (min-width: 1200px) { .oi-hero.is-clear { grid-template-columns: 6rem minmax(0, 1fr); } }
+.oi-hero > .oi-main > .la-card-title { margin-bottom: 0.2rem; }
+.oi-big { display: flex; align-items: baseline; gap: 0.5rem; }
+.oi-big-val { font-size: 1.6rem; font-weight: 700; line-height: 1; color: var(--oi-accent); }
+.oi-big-lbl { font-size: 0.78rem; font-weight: 600; color: #374151; }
+.oi-lead { margin: 0; font-size: 0.85rem; color: #374151; }
+.oi-fixed { margin: 0.3rem 0 0; font-size: 0.8rem; color: var(--tiger-correct); display: flex; align-items: flex-start; gap: 0.35rem; }
+.oi-fixed > svg { flex: none; margin-top: 0.22em; }
+.oi-action { display: flex; flex-direction: column; justify-content: center; }
+.oi-hero .oi-retry { padding: 0.4rem 0.75rem; }
+.oi-hero .oi-retry > svg { flex: none; }
+@media (max-width: 575.98px) {
+  .oi-hero .oi-retry { font-size: 0.95rem; padding: 0.4rem 0.5rem; }
+  /* the card is only ~230 px wide here: drop the icon so the label fits on one line */
+  .oi-hero .oi-retry > svg { display: none; }
+}
+.oi-hero .oi-wait { text-align: center; }
+/* From 768 px: the count as its own column; the button below the text,
+   from 1200 px in a third column on the right */
+@media (min-width: 768px) {
+  .oi-hero { grid-template-columns: 6rem minmax(0, 1fr); align-items: center; column-gap: 1rem; row-gap: 0.5rem; }
+  .oi-hero > .oi-big { grid-row: span 2; }
+  .oi-hero > .oi-action { grid-column: 2; align-items: flex-start; }
+  .oi-hero > .oi-action .oi-wait { text-align: left; }
+  .oi-big { flex-direction: column; align-items: center; text-align: center; gap: 0.2rem; }
+  .oi-big-val { font-size: 1.9rem; }
+}
+@media (min-width: 1200px) {
+  .oi-hero { grid-template-columns: 6rem minmax(0, 1fr) minmax(12rem, 15rem); }
+  .oi-hero > .oi-big { grid-row: auto; }
+  .oi-hero > .oi-action { grid-column: auto; align-items: stretch; }
+  .oi-hero > .oi-action .oi-wait { text-align: center; }
+}
 .lt-takeaway { font-weight: 600; }
 /* Toggle between the tree's two reading directions (segmented control) */
 .lt-switch {

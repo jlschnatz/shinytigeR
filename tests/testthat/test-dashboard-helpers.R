@@ -588,6 +588,30 @@ test_that("open_items_panel offers the retry only for mistakes past their time-o
   expect_match(as.character(open_items_panel(oi(integer(0)), ns, today)), "überall richtig")
 })
 
+test_that("open_items_panel shows the open count big and the fixed mistakes", {
+  today <- as.Date("2026-10-28")
+  oi <- data.frame(id_item = 1:3, learning_area = "Regression", type_item = "content", last_date = today - 3L)
+  ns <- shiny::NS("d")
+  html <- as.character(open_items_panel(oi, ns, today, fixed = 2L))
+  expect_match(html, '<span class="oi-big-val">3</span>', fixed = TRUE)
+  expect_match(html, "zuletzt falsch", fixed = TRUE)
+  expect_match(html, "Schon ausgebessert: 2 Aufgaben", fixed = TRUE)
+  expect_match(as.character(open_items_panel(oi, ns, today, fixed = 1L)), "1 Aufgabe nach", fixed = TRUE)
+  expect_false(grepl("ausgebessert", as.character(open_items_panel(oi, ns, today)), fixed = TRUE))
+  expect_match(as.character(open_items_panel(oi[0, ], ns, today)), "oi-hero is-clear", fixed = TRUE)
+})
+
+test_that("fixed_mistakes counts items answered right after an earlier mistake", {
+  pool <- data.frame(id_item = 1:4)
+  ud <- tree_ud(
+    id_item = c(1L, 1L, 2L, 2L, 3L, 4L, 4L),
+    bool_correct = c(FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE)
+  )
+  # only item 1: wrong, then right (2 regressed, 3 right at once, 4 still wrong)
+  expect_equal(fixed_mistakes(ud, pool), 1L)
+  expect_equal(fixed_mistakes(ud[0, ], pool), 0L)
+})
+
 test_that("the detail section labels the interval as a confidence interval and explains it in four steps", {
   html <- as.character(detail_section(NULL))
   expect_match(html, "Konfidenzintervall", fixed = TRUE)
