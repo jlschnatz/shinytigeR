@@ -769,3 +769,8 @@ test_that("the trajectory has an (i) explaining its points next to the time swit
   expect_match(html, '<div class="traj-controls">', fixed = TRUE)
   expect_match(html, 'class="la-info" data-tip="Jeder Punkt ist eine gespeicherte Schätzung', fixed = TRUE)
 })
+
+test_that("the explainer's button looks like the (i) hints, right after the card title", {
+  html <- as.character(detail_section(NULL))
+  expect_match(html, '<span>Wie sicher ist die Einschätzung\\?</span>\\s*<button type="button" class="la-info la-info-text ivl-explain-btn"')
+})

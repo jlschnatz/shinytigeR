@@ -89,7 +89,7 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
         "Es zählt also, wie viele Aufgaben du richtig gelöst hast, gemessen an ihrer Schwierigkeit:",
         "7 von 10 richtig bei schweren Aufgaben ergibt eine höhere Einschätzung als 7 von 10 bei leichten.",
         "\n\nDas geschieht für jeden Themenbereich getrennt, und pro Aufgabe zählt deine letzte Antwort.",
-        "Mehr dazu findest du unter **Fortschritt** bei **Dein Lernstand im Detail**."
+        "Mehr dazu findest du unter **Fortschritt** bei **Dein Lernstand im Detail** (**Wie wird das berechnet?**)."
       )
     ),
     # Rasch difficulty b: the ability at which P(correct) = 50 %, on the same

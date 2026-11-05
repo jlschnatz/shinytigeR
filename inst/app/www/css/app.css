@@ -896,21 +896,7 @@
 @media (prefers-reduced-motion: reduce) {
   .la-grid-detail[data-explain="open"] > .la-explainer { animation: none; }
 }
-.ivl-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 1rem; }
-.ivl-explain-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.55rem;
-  border: 1px solid #d5dae0;
-  border-radius: 999px;
-  background: #f6f7f9;
-  font-size: 0.78rem;
-  font-weight: 400;
-  color: #5b6470;
-  white-space: nowrap;
-}
-.ivl-explain-btn > span { display: inline-flex; align-items: center; gap: 0.35rem; }
-.ivl-explain-btn:hover { color: var(--tiger-primary); border-color: var(--tiger-primary); }
+.ivl-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; }
 .ivl-explain-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
 .ivl-explain-btn[aria-expanded="false"] .ivl-explain-open,
 .ivl-explain-btn[aria-expanded="true"] .ivl-explain-closed { display: none; }
@@ -1436,6 +1422,11 @@
 }
 .la-info:hover,
 .la-info:focus-visible { color: var(--tiger-primary); }
+/* The same (i), with a label: opens an explanation in place instead of a
+   tooltip ("Wie wird das berechnet?" in "Lernstand im Detail") */
+.la-info-text { margin-left: 0; font-size: 0.78rem; font-weight: 400; cursor: pointer; white-space: nowrap; }
+.la-info-text > span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.la-info-text:hover > span { text-decoration: underline; text-underline-offset: 2px; }
 /* Hover affordance: these have a tooltip with the details */
 .cal-cell[data-tip] { cursor: default; transition: box-shadow 0.1s; }
 .cal-cell[data-tip]:hover,

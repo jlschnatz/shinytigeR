@@ -140,10 +140,14 @@ interval_card <- function(comp) {
     div(
       class = "la-card-title ivl-title",
       tags$span("Wie sicher ist die Einschätzung?"),
-      # Opens/closes the explainer next to the strips (client-side, www/js/dashboard.js)
+      # Opens/closes the explainer next to the strips (client-side,
+      # www/js/dashboard.js). Styled like the (i) of info_tip(), right after
+      # the title, with text: the rule in the dashboard is (i) = short
+      # reading hint (tooltip), "Wie wird das berechnet?" = the method,
+      # opened in place (too long for a tooltip)
       tags$button(
         type = "button",
-        class = "ivl-explain-btn",
+        class = "la-info la-info-text ivl-explain-btn",
         `data-explain-toggle` = "",
         `aria-expanded` = "false",
         `aria-controls` = "la-explainer",
