@@ -605,7 +605,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       tagList(
         # ── Top row: competency map + AI feedback ─────────────────────────────
         div(
-          class = "row g-3 mb-4",
+          class = "row g-3 mb-3",
 
           # Competency map ("Dein Lernstand")
           div(

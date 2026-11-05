@@ -102,9 +102,8 @@ mod_selector_ui <- function(id, data_item) {
       class = "sel-main",
       bslib::card_header(sel_step_title(1L, "Themenbereiche wählen")),
       bslib::card_body(
-        class = "p-3",
         tags$p(
-          class = "text-muted mb-2",
+          class = "text-muted mb-0",
           "Wähle, aus welchen Themenbereichen und Aufgabentypen geübt wird. Daraus bekommst du eine zufällige Auswahl."
         ),
         div(
@@ -121,7 +120,6 @@ mod_selector_ui <- function(id, data_item) {
         bslib::card_header(sel_step_title(2L, "Anzahl festlegen und starten")),
         # gap: bslib's default of 1rem between children made the card airy
         bslib::card_body(
-          class = "p-3",
           gap = "0.9rem",
           # ── Only-new toggle ────────────────────────────────────────────────────
           div(
@@ -181,7 +179,6 @@ mod_selector_ui <- function(id, data_item) {
           )
         ),
         bslib::card_body(
-          class = "p-3",
           gap = "0.5rem",
           tags$p(
             class = "text-muted mb-0",

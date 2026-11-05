@@ -79,7 +79,32 @@
   --fw-regular: 400;
   --fw-semibold: 600;
   --fw-bold: 700;
+
+  /* Spacing scale, the same idea for padding and gaps (test-css.R checks
+     the containers listed below use it): */
+  --pad-card: 1rem;     /* inside every card (bslib cards, the feedback card) and accordion section */
+  --pad-inner: 0.75rem; /* inside cards within a card or section (dashboard cards, trajectory panels) */
+  --gap-card: 1rem;     /* between cards, and between a page title and its first card */
+  --gap-inner: 0.75rem; /* between cards within a card or section */
 }
+
+/* ── Spacing ───────────────────────────────────────────────────────────────── */
+/* Every card and accordion uses the same inner padding (--pad-card): before,
+   the welcome card had 24 px, all others 16 px, the dashboard's nested cards
+   8 to 14 px and the accordions 20 px at the sides. */
+.card {
+  --bs-card-spacer-x: var(--pad-card);
+  --bs-card-spacer-y: var(--pad-card);
+  --bs-card-cap-padding-x: var(--pad-card);
+}
+.accordion {
+  --bs-accordion-btn-padding-x: var(--pad-card);
+  --bs-accordion-body-padding-x: var(--pad-card);
+  --bs-accordion-body-padding-y: var(--pad-card);
+}
+.bslib-card { margin-bottom: var(--gap-card); }
+/* Page title + one line below it (home greeting, FAQ) */
+.page-intro { margin-bottom: var(--gap-card); }
 
 /* ── Type scale for headings ──────────────────────────────────────────────── */
 /* One size and weight per level, across all tabs:
@@ -430,7 +455,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .feedback-card {
   background: #fff;
   border-radius: 6px;
-  padding: 12px 16px;
+  padding: var(--pad-card);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
   animation: fadeSlideIn var(--anim-dur) ease;
 }
@@ -481,7 +506,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 
 /* ── Home panel ─────────────────────────────────────────────────────────────  */
 /* Home: "Jetzt üben" + "Fortschritt ansehen", side by side from 576 px */
-.home-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+.home-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); }
 @media (min-width: 576px) { .home-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .home-actions .btn > div { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; }
 
@@ -523,9 +548,9 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 
 /* Selector: stacked cards; from 1200 px the area list left and a side column
    (step 2, direct lookup) right, see mod_selector_ui() */
-.sel-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+.sel-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); align-items: start; }
 .sel-layout .card { margin-bottom: 0; }
-.sel-side { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.sel-side { display: flex; flex-direction: column; gap: var(--gap-card); min-width: 0; }
 @media (min-width: 1200px) {
   /* both columns end together: the side column stretches to the area list's
      height, step 2 takes the extra space and keeps "Starten" at its bottom */
@@ -554,11 +579,11 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .practice-answers-section {
   background-color: #f8f9fa;
   border-radius: 0 0 8px 8px;
-  margin: 0.5rem -1rem -1rem -1rem;
-  padding: 1rem 1rem 1rem;
+  margin: 0.5rem calc(-1 * var(--pad-card)) calc(-1 * var(--pad-card));
+  padding: var(--pad-card);
 }
 /* Feedback after the check, full width below the item card */
-.practice-feedback .feedback-card { margin-top: 1rem; scroll-margin: 1rem 0 6rem; }
+.practice-feedback .feedback-card { margin-top: var(--gap-card); scroll-margin: 1rem 0 6rem; }
 /* Below the card: "Neue Auswahl" left, skip / check / next right */
 .practice-actions-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; margin-top: 1rem; }
 .practice-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-left: auto; }
@@ -592,7 +617,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
     display: flex;
     flex-direction: column;
     justify-content: center;
-    margin: -1rem -1rem -1rem 0;
+    margin: calc(-1 * var(--pad-card)) calc(-1 * var(--pad-card)) calc(-1 * var(--pad-card)) 0;
     border-radius: 0 8px 8px 0;
   }
   .practice-answers-inner {
@@ -947,8 +972,8 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
    screens instead of 5 + 3. Below 4 * 260px + 3 gaps it drops to 3, 2, 1. */
 .traj-grid {
   display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fill, minmax(max(min(260px, 100%), calc((100% - 2.25rem) / 4)), 1fr));
+  gap: var(--gap-inner);
+  grid-template-columns: repeat(auto-fill, minmax(max(min(260px, 100%), calc((100% - 3 * var(--gap-inner)) / 4)), 1fr));
 }
 .traj-legend-top { display: none; margin-bottom: 0.85rem; }
 @container (max-width: 531.98px) {
@@ -983,7 +1008,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .traj-panel {
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
-  padding: 0.5rem 0.5rem 0.35rem;
+  padding: var(--pad-inner);
   background: #fff;
   min-width: 0;
 }
@@ -1007,7 +1032,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 }
 
 /* ── Dashboard — detail sections (R/dashboard_details.R) ─────────────────────── */
-.la-grid { display: grid; gap: 0.6rem; }
+.la-grid { display: grid; gap: var(--gap-inner); }
 .la-grid-detail { grid-template-columns: minmax(0, 1fr); }
 /* The explainer is closed by default; opened, it's a side column from 992 px
    (the strips get narrower) and below the strips on narrower screens.
@@ -1043,7 +1068,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 }
 .la-behaviour-empty { margin: 0 0 0.75rem; }
 .la-grid-behaviour { grid-template-columns: minmax(0, 1fr); }
-.la-side { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.la-side { display: flex; flex-direction: column; gap: var(--gap-inner); min-width: 0; }
 .la-side > .la-card { flex: none; }
 @media (min-width: 768px) {
   .la-grid-behaviour { grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr); }
@@ -1067,7 +1092,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .la-card {
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
-  padding: 0.7rem 0.85rem;
+  padding: var(--pad-inner);
   background: #fff;
   min-width: 0;
 }

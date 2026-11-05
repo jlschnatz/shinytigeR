@@ -30,8 +30,22 @@ test_that("app.css sets font weights only via the tokens (icon fonts excepted)",
 
 test_that("every token used in app.css is defined", {
   css <- paste(readLines(css_path(), warn = FALSE), collapse = "\n")
-  used <- unique(regmatches(css, gregexpr("var\\(--f[sw]-[a-z-]+\\)", css))[[1]])
+  used <- unique(regmatches(css, gregexpr("var\\(--(f[sw]|pad|gap)-[a-z-]+\\)", css))[[1]])
   used <- sub("var\\((.*)\\)", "\\1", used)
-  defined <- regmatches(css, gregexpr("--f[sw]-[a-z-]+(?=:)", css, perl = TRUE))[[1]]
+  defined <- regmatches(css, gregexpr("--(f[sw]|pad|gap)-[a-z-]+(?=:)", css, perl = TRUE))[[1]]
   expect_true(all(used %in% defined), info = paste(setdiff(used, defined), collapse = ", "))
+})
+
+# The spacing scale (--pad-* / --gap-*): every card container takes its padding
+# from it, so cards don't drift apart again (the welcome card had 24 px, the
+# others 16 px, the dashboard's nested cards 8 to 14 px).
+test_that("card containers take their padding from the spacing tokens", {
+  css <- css_without_root_and_comments()
+  for (sel in c(".la-card", ".traj-panel", ".feedback-card")) {
+    rule <- regmatches(css, regexpr(paste0("(?m)^\\Q", sel, "\\E\\s*\\{[^}]*\\}"), css, perl = TRUE))
+    expect_length(rule, 1)
+    expect_match(rule, "padding:\\s*var\\(--pad-", info = sel)
+  }
+  expect_match(css, "--bs-card-spacer-x:\\s*var\\(--pad-card\\)")
+  expect_match(css, "--bs-accordion-body-padding-x:\\s*var\\(--pad-card\\)")
 })

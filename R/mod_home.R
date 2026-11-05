@@ -2,17 +2,15 @@ mod_home_ui <- function(id) {
   ns <- NS(id)
   div(
     class = "main-content",
+    # ── Greeting: the page title, above the card like the FAQ's ──────────────
+    uiOutput(ns("greeting")),
+    # ── How it works ─────────────────────────────────────────────────────────
+    # A card with a header like every other card (it used to be one card with
+    # the greeting, a divider and a small caps label, with its own, larger
+    # padding)
     bslib::card(
+      bslib::card_header(tags$b("So funktioniert tigeR")),
       bslib::card_body(
-        class = "p-4",
-        # ── Greeting ───────────────────────────────────────────────────────────
-        uiOutput(ns("greeting")),
-        tags$hr(class = "my-4"),
-        # ── How it works ───────────────────────────────────────────────────────
-        tags$p(
-          class = "fw-semibold text-muted text-uppercase small mb-2",
-          "So funktioniert tigeR"
-        ),
         div(
           class = "home-steps",
           div(
@@ -56,7 +54,7 @@ mod_home_ui <- function(id) {
     # second way on (outlined), with the Fortschritt tab's icon. Side by
     # side from 576 px, stacked on phones (.home-actions in app.css)
     div(
-      class = "home-actions mt-3",
+      class = "home-actions",
       actionButton(
         ns("start"),
         div(bsicons::bs_icon("play-fill"), tags$b("Jetzt üben")),
@@ -78,6 +76,7 @@ mod_home_server <- function(id, data_item, credentials, go_train, go_progress = 
     output$greeting <- renderUI({
       user <- credentials()$info$user_name
       div(
+        class = "page-intro",
         tags$h4(class = "page-title mb-1", sprintf("Hallo, %s!", user)),
         tags$p(
           class = "text-muted mb-0",
