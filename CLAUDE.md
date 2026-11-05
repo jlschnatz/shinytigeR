@@ -352,7 +352,7 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 
 ### `R/mod_home.R`
 
-Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation and the "Jetzt üben" button (the links to pandar and otter are FAQ answers, see `R/faq.R`). The "Jetzt üben" button calls the `go_train` callback passed from `server.R`, which uses `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
+Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation and two buttons (`.home-actions`, side by side from 576 px): "Jetzt üben" (filled, the main action) and "Fortschritt ansehen" (outlined, the Fortschritt tab's icon); the links to pandar and otter are FAQ answers, see `R/faq.R`. The buttons call the `go_train` / `go_progress` callbacks passed from `server.R`, which use `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
 
 ### `R/mod_faq.R` / `R/faq.R`
 

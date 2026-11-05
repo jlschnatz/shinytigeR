@@ -128,6 +128,9 @@ app_server <- function(input, output, session) {
       credentials = credentials,
       go_train = function() {
         bslib::nav_select("main_tabs", "train_panel", session = app_session)
+      },
+      go_progress = function() {
+        bslib::nav_select("main_tabs", "progress_panel", session = app_session)
       }
     )
 

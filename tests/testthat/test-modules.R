@@ -1116,3 +1116,24 @@ test_that("dashboard: refresh button computes and saves ability, then latches th
     )
   })
 })
+
+test_that("home: both start buttons call their navigation callbacks", {
+  went <- character(0)
+  testServer(
+    mod_home_server,
+    args = list(
+      data_item = make_data_item(),
+      credentials = fake_credentials(),
+      go_train = function() went <<- c(went, "train"),
+      go_progress = function() went <<- c(went, "progress")
+    ),
+    {
+      session$setInputs(start = 1L)
+      session$setInputs(progress = 1L)
+      expect_equal(went, c("train", "progress"))
+    }
+  )
+  html <- as.character(mod_home_ui("h"))
+  expect_match(html, "Fortschritt ansehen", fixed = TRUE)
+  expect_match(html, "btn-outline-primary", fixed = TRUE)
+})
