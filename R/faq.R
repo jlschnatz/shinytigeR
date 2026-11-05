@@ -17,8 +17,8 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
       topic = "Üben",
       q = "Wie wähle ich Aufgaben aus?",
       a = paste(
-        "Unter **Üben** wählst du pro Themenbereich aus, ob du inhaltliche Aufgaben, R-Code-Aufgaben oder beides üben möchtest.",
-        "Darunter legst du fest, wie viele Aufgaben du bearbeiten möchtest, und klickst auf **Starten**.",
+        "Unter **Üben** wählst du in Schritt 1 pro Themenbereich aus, ob du inhaltliche Aufgaben, R-Code-Aufgaben oder beides üben möchtest.",
+        "In Schritt 2 legst du fest, wie viele Aufgaben du bearbeiten möchtest, und klickst auf **Starten**.",
         "Die Aufgaben werden **zufällig** aus deiner Auswahl gezogen.",
         "Mit **Nur neue Aufgaben** bekommst du nur Aufgaben, die du noch nicht bearbeitet hast."
       )

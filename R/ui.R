@@ -117,9 +117,7 @@ app_ui <- function() {
     bslib::nav_panel(
       title = div(bsicons::bs_icon("ui-radios"), "Üben"),
       value = "train_panel",
-      # wider than home/FAQ: the selector and practice view have two
-      # columns on a laptop and would otherwise leave wide empty margins
-      div(class = "main-content main-content-wide", uiOutput("train_view"))
+      div(class = "main-content", uiOutput("train_view"))
     ),
 
     # ── Fortschritt ───────────────────────────────────────────────────────────

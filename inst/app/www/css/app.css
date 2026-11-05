@@ -57,18 +57,24 @@
 }
 
 /* ── Layout ────────────────────────────────────────────────────────────────── */
+/* One container width for every tab (home, Üben, Fortschritt, FAQ), so the
+   content edges don't jump when switching tabs; keep .dashboard-wrap's
+   max-width and side padding in sync. Running text is limited separately
+   (.faq-answer) to a readable line length; the home steps sit side by side. */
 .main-content {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 1.5rem auto;
   padding: 0 2rem;
   box-sizing: border-box;
 }
-.main-content-wide { max-width: 1400px; }
 
 /* Dashboard fills full tab width — charts benefit from more horizontal space */
 .dashboard-wrap {
   width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
   padding: 0 2rem 2rem;
   box-sizing: border-box;
 }
@@ -442,6 +448,11 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+/* From 992 px the three steps side by side: uses the container's width and
+   keeps their lines short (instead of half-empty full-width rows) */
+@media (min-width: 992px) {
+  .home-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
 }
 
 .home-step {
@@ -1490,6 +1501,6 @@
 .faq-topic + .faq-topic { margin-top: 1.5rem; }
 .faq-topic-title { font-size: 1rem; font-weight: 600; color: var(--tiger-primary); margin-bottom: 0.5rem; }
 .faq-accordion .accordion-button { font-weight: 500; }
-.faq-answer { font-size: 0.95rem; }
+.faq-answer { font-size: 0.95rem; max-width: 80ch; }
 .faq-answer p:last-child,
 .faq-answer ul:last-child { margin-bottom: 0; }

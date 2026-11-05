@@ -352,7 +352,7 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 
 ### `R/mod_home.R`
 
-Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation and two buttons (`.home-actions`, side by side from 576 px): "Jetzt üben" (filled, the main action) and "Fortschritt ansehen" (outlined, the Fortschritt tab's icon); the links to pandar and otter are FAQ answers, see `R/faq.R`. The buttons call the `go_train` / `go_progress` callbacks passed from `server.R`, which use `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
+Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation (three columns from 992 px) and two buttons (`.home-actions`, side by side from 576 px): "Jetzt üben" (filled, the main action) and "Fortschritt ansehen" (outlined, the Fortschritt tab's icon); the links to pandar and otter are FAQ answers, see `R/faq.R`. The buttons call the `go_train` / `go_progress` callbacks passed from `server.R`, which use `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
 
 ### `R/mod_faq.R` / `R/faq.R`
 
@@ -592,6 +592,7 @@ Table: `credentials_db` — columns `user_name` and `password_hashed` (sodium-ha
 
 ### CSS (`inst/app/www/css/app.css`)
 
+
 Key CSS variables (defined on `:root`):
 - `--tiger-primary: #006290` (= `PRIMARY_COLOR`)
 - `--tiger-correct: #00618f`
@@ -603,8 +604,8 @@ Key CSS classes to be aware of when changing layout:
 
 | Class | Purpose |
 |---|---|
-| `.main-content` / `.main-content-wide` | Centers home/FAQ content at `max-width: 1100px`; the Üben tab (selector, practice) is `.main-content-wide`, 1400 px, since both have two columns on a laptop and left wide empty margins at 1100 |
-| `.dashboard-wrap` | Full-width dashboard container, `padding: 0 2rem 2rem` |
+| `.main-content` | Centers the content of every tab at `max-width: 1400px` (2 rem side padding); `.dashboard-wrap` uses the same width and padding, so the content edges stay put when switching tabs (before: 1100 px for home/FAQ, 1400 for Üben, full width for Fortschritt). Running text: `.faq-answer` limited to 80ch; the home page's three steps (`.home-steps`) sit side by side from 992 px instead (a text limit there left the card's right half empty) |
+| `.dashboard-wrap` | Dashboard container, same `max-width: 1400px` and side padding as `.main-content` |
 | `.login-page` / `.login-card` / `.login-card-header` / `.login-card-body` | Login page layout |
 | `.reg-error` / `.reg-success` | Registration feedback message styling (`mod_register.R`'s `reg_msg()`) |
 | `.home-steps` / `.home-step` / `.home-step-num` | Home panel numbered steps layout |
