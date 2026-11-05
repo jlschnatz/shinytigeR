@@ -56,6 +56,31 @@
   display: block;
 }
 
+:root {
+  /* Type scale: one size and weight per level of the hierarchy, used
+     everywhere via var(); app.css has no other font-size/-weight values
+     (tests/testthat/test-css.R checks). Levels can share a value (label and
+     secondary text are both 0.875rem) but stay separate names, so one can
+     change without the other. */
+  --fs-page: 1.5rem;        /* page title: home greeting, FAQ title */
+  --fs-title: 1rem;         /* card and section titles */
+  --fs-body: 1rem;          /* body text, controls */
+  --fs-sub: 0.95rem;        /* subheadings: cards inside sections, panel titles, FAQ questions */
+  --fs-text: 0.95rem;       /* running text in compact contexts: FAQ answers, feedback */
+  --fs-label: 0.875rem;     /* row labels (area names in lists), small headings; semibold */
+  --fs-secondary: 0.875rem; /* secondary text: notes, hints, chips, table text */
+  --fs-small: 0.8rem;       /* labels, legends, tooltips, switch buttons */
+  --fs-tiny: 0.75rem;       /* axis labels, tree nodes, coverage counts */
+  --fs-micro: 0.65rem;      /* badges, calendar months */
+  --fs-num-sm: 1.1rem;      /* key numbers */
+  --fs-num-md: 1.4rem;
+  --fs-num-lg: 1.6rem;
+  --fs-num-xl: 1.9rem;
+  --fw-regular: 400;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+}
+
 /* ── Type scale for headings ──────────────────────────────────────────────── */
 /* One size and weight per level, across all tabs:
    page title 1.5rem/700 (home greeting, FAQ title);
@@ -64,12 +89,13 @@
    trajectory panels, FAQ topics and questions). Before, card headers were
    16.8 px in Üben but 14.4 px in Fortschritt, and the accordion headers
    400 in Fortschritt, 500 in FAQ. */
-b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
-.page-title { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+/* The levels are the --fs-* / --fw-* tokens in :root above. */
+b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to 900 */
+.page-title { font-size: var(--fs-page); font-weight: var(--fw-bold); line-height: 1.2; }
 .card-header,
-.bslib-card .card-header { font-size: 1rem; }   /* bslib sets 0.9rem */
-.card-header b { font-weight: 700; }
-.dashboard-wrap .accordion-button { font-size: 1rem; font-weight: 700; }
+.bslib-card .card-header { font-size: var(--fs-title); }   /* bslib sets 0.9rem */
+.card-header b { font-weight: var(--fw-bold); }
+.dashboard-wrap .accordion-button { font-size: var(--fs-title); font-weight: var(--fw-bold); }
 
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 /* One container width for every tab (home, Üben, Fortschritt, FAQ), so the
@@ -123,7 +149,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 }
 
 .login-subtitle {
-  font-size: 0.875rem;
+  font-size: var(--fs-secondary);
   opacity: 0.85;
   color: #fff;
 }
@@ -150,7 +176,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   background-color: var(--tiger-primary) !important;
   border-color: var(--tiger-primary) !important;
   padding: 0.55rem;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   border-radius: 8px;
   margin-top: 0.25rem;
 }
@@ -168,7 +194,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 
 /* Hint text at the bottom */
 .login-hint {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: #6c757d;
   line-height: 1.5;
 }
@@ -184,8 +210,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
    override it to match .reg-error's aesthetic below. */
 #login-error p {
   color: var(--tiger-incorrect) !important;
-  font-weight: 400 !important;
-  font-size: 0.85rem !important;
+  font-weight: var(--fw-regular) !important;
+  font-size: var(--fs-secondary) !important;
   text-align: left !important;
   padding-top: 0 !important;
   margin-top: 0.75rem !important;
@@ -194,7 +220,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 
 #login-error p::before {
   font-family: "Font Awesome 5 Free";
-  font-weight: 900;
+  font-weight: 900; /* selects Font Awesome's solid icons, not a text weight */
   content: "\f06a";
   margin-right: 0.4rem;
 }
@@ -202,14 +228,14 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 /* ── Registration form ─────────────────────────────────────────────────────── */
 .reg-error {
   color: var(--tiger-incorrect);
-  font-size: 0.85rem;
+  font-size: var(--fs-secondary);
   margin-top: 0.75rem;
   line-height: 1.4;
 }
 
 .reg-success {
   color: #1a7a78;
-  font-size: 0.85rem;
+  font-size: var(--fs-secondary);
   margin-top: 0.75rem;
   line-height: 1.4;
 }
@@ -240,7 +266,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   margin-left: 0 !important;
   margin-bottom: 0;
   padding-left: 0 !important;
-  font-size: 0.9rem;
+  font-size: var(--fs-secondary);
 }
 
 /* ── Buttons ───────────────────────────────────────────────────────────────── */
@@ -325,14 +351,14 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 }
 
 .numeric-answer-label {
-  font-size: 0.85rem;
+  font-size: var(--fs-secondary);
   color: #6c7a89;
 }
 
 .numeric-answer-input {
   width: 180px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: var(--fs-num-sm);
+  font-weight: var(--fw-semibold);
   text-align: center;
   padding: 4px 10px;
   border: 1.5px solid #c7d2e0;
@@ -347,7 +373,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 }
 
 .numeric-answer-hint {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: #9aa5b1;
 }
 
@@ -387,9 +413,9 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 }
 
 /* Text answers */
-.correct_answer_txt   { background-color: #e6f2f7; color: var(--tiger-correct);   font-weight: 600; }
-.incorrect_answer_txt { background-color: #fce4ec; color: var(--tiger-incorrect); font-weight: 600; }
-.skip_answer_txt      { background-color: #fff8e1; color: var(--tiger-skip);      font-weight: 600; }
+.correct_answer_txt   { background-color: #e6f2f7; color: var(--tiger-correct);   font-weight: var(--fw-semibold); }
+.incorrect_answer_txt { background-color: #fce4ec; color: var(--tiger-incorrect); font-weight: var(--fw-semibold); }
+.skip_answer_txt      { background-color: #fff8e1; color: var(--tiger-skip);      font-weight: var(--fw-semibold); }
 
 /* Image answers */
 .correct_answer_img,
@@ -413,12 +439,12 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 1.05rem;
+  font-size: var(--fs-title);
   margin-bottom: 6px;
 }
 
 .feedback-body {
-  font-size: 0.95rem;
+  font-size: var(--fs-text);
   line-height: 1.6;
 }
 
@@ -483,8 +509,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border-radius: 50%;
   background-color: var(--tiger-primary);
   color: #fff;
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sub);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -511,7 +537,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .sel-step-num {
   flex: none; display: inline-flex; align-items: center; justify-content: center;
   width: 1.5rem; height: 1.5rem; border-radius: 50%;
-  background: var(--tiger-primary); color: #fff; font-size: 0.8rem; font-weight: 700;
+  background: var(--tiger-primary); color: #fff; font-size: var(--fs-small); font-weight: var(--fw-bold);
 }
 /* Count row: the -/+ stepper and the presets as two groups; side by side
    with a thin divider, stacked (no divider) when the card is too narrow */
@@ -587,7 +613,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .practice-item-id {
   display: inline-block;
   font-family: var(--bs-font-monospace);
-  font-size: 0.85rem;
+  font-size: var(--fs-secondary);
   color: #6c757d;
   background-color: #f1f3f5;
   border-radius: 20px;
@@ -649,8 +675,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .sel-area-label {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-semibold);
 }
 
 .sel-chip-group {
@@ -693,7 +719,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   width: 100px;
   border-radius: 20px;
   padding: 0.28rem 0.8rem;
-  font-size: 0.88rem;
+  font-size: var(--fs-secondary);
   border: 1px solid #dee2e6;
   background-color: #fff;
   cursor: pointer;
@@ -721,12 +747,12 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 }
 
 .sel-chip-count {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   opacity: 0.7;
 }
 
 .sel-chip-header {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .sel-chip-badge {
@@ -735,8 +761,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   right: -8px;
   background-color: var(--tiger-skip);
   color: #fff;
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
   border-radius: 9px;
   padding: 1px 6px;
   line-height: 1.4;
@@ -753,20 +779,20 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   height: 2rem;
   border-radius: 50%;
   padding: 0;
-  font-size: 1rem;
+  font-size: var(--fs-body);
   line-height: 1;
 }
 
 .sel-count-value {
   min-width: 2rem;
   text-align: center;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: var(--fs-num-sm);
+  font-weight: var(--fw-bold);
 }
 
 .sel-preset-btn {
   border-radius: 20px;
-  font-size: 0.85rem;
+  font-size: var(--fs-secondary);
   padding: 0.3rem 0.75rem;
 }
 
@@ -783,13 +809,13 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 
 
 /* ── Dataset table ─────────────────────────────────────────────────────────── */
-.shiny-html-output table { font-size: 0.88rem; }
+.shiny-html-output table { font-size: var(--fs-secondary); }
 
 /* ── Dashboard — competency table ───────────────────────────────────────────── */
 .dashboard-comp-table th {
-  font-size: 0.85rem;
+  font-size: var(--fs-label);
   color: #6c757d;
-  font-weight: 500;
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
   padding: 0.6rem 1rem;
 }
@@ -806,16 +832,16 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .dashboard-comp-table th:not(:first-child),
 .dashboard-comp-table td:not(:first-child) { width: 1%; white-space: nowrap; }
 .dashboard-comp-table tbody tr:last-child td { border-bottom: 0; }
-.dashboard-comp-table .comp-area { font-weight: 600; }
+.dashboard-comp-table .comp-area { font-weight: var(--fw-semibold); }
 
 .comp-level { display: inline-flex; flex-direction: column; gap: 0.35rem; }
 .comp-level-label {
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-label);
   line-height: 1.1;
   color: #1f2937;
 }
-.comp-level.is-empty .comp-level-label { color: #9aa1ab; font-weight: 500; }
+.comp-level.is-empty .comp-level-label { color: #9aa1ab; font-weight: var(--fw-semibold); }
 
 .comp-scale { display: inline-flex; align-items: center; gap: 3px; }
 .comp-seg {
@@ -843,8 +869,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 @media (max-width: 575.98px) {
   .dashboard-comp-table th,
   .dashboard-comp-table td { padding-left: 0.5rem; padding-right: 0.5rem; }
-  .dashboard-comp-table .comp-area { font-size: 0.9rem; }
-  .comp-level-label { font-size: 0.82rem; }
+  .dashboard-comp-table .comp-area { font-size: var(--fs-label); }
+  .comp-level-label { font-size: var(--fs-small); }
   .comp-seg { width: 11px; }
   .comp-scale { gap: 2px; }
   .ev-dots { gap: 0.2rem; }
@@ -853,8 +879,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 
 /* ── Dashboard — AI feedback card (placeholder) ────────────────────────────── */
 .ai-feedback-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-semibold);
   color: var(--tiger-primary);
   background: #e8f0f7;
   border-radius: 999px;
@@ -906,7 +932,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   .traj-legend-top { display: block; }
   .traj-wrap .traj-legend-panel { display: none; }
 }
-.traj-legend { font-size: 0.8rem; color: #5b6477; }
+.traj-legend { font-size: var(--fs-small); color: #5b6477; }
 .traj-legend-items { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; }
 .traj-legend-panel {
   padding: 0.5rem 0.5rem 0.35rem;
@@ -939,8 +965,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   min-width: 0;
 }
 .traj-panel-title {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-semibold);
   margin: 0 0 0.35rem 0.15rem;
   white-space: nowrap;
   overflow: hidden;
@@ -954,7 +980,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border-radius: 0.35rem;
   background: #f8f9fa;
   color: #9aa1ab;
-  font-size: 0.85rem;
+  font-size: var(--fs-secondary);
 }
 
 /* ── Dashboard — detail sections (R/dashboard_details.R) ─────────────────────── */
@@ -983,14 +1009,14 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
    a phone (not bslib value boxes, which would dominate the section) */
 .la-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
 .la-tile { padding: 0.6rem 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #fff; min-width: 0; }
-.la-tile-val { font-size: 1.4rem; font-weight: 700; line-height: 1.15; color: var(--tiger-primary); }
-.la-tile-lbl { font-size: 0.8rem; font-weight: 600; color: #374151; }
-.la-tile-sub { font-size: 0.72rem; color: #6b7280; }
+.la-tile-val { font-size: var(--fs-num-md); font-weight: var(--fw-bold); line-height: 1.15; color: var(--tiger-primary); }
+.la-tile-lbl { font-size: var(--fs-small); font-weight: var(--fw-semibold); color: #374151; }
+.la-tile-sub { font-size: var(--fs-tiny); color: #6b7280; }
 @media (max-width: 575.98px) {
   .la-tiles { gap: 0.4rem; }
   .la-tile { padding: 0.5rem; }
-  .la-tile-val { font-size: 1.1rem; }
-  .la-tile-lbl { font-size: 0.72rem; hyphens: auto; -webkit-hyphens: auto; }
+  .la-tile-val { font-size: var(--fs-num-sm); }
+  .la-tile-lbl { font-size: var(--fs-tiny); hyphens: auto; -webkit-hyphens: auto; }
 }
 .la-behaviour-empty { margin: 0 0 0.75rem; }
 .la-grid-behaviour { grid-template-columns: minmax(0, 1fr); }
@@ -1001,7 +1027,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   /* Tiles as compact rows in the side column: number left, text right */
   .la-side .la-tiles { grid-template-columns: minmax(0, 1fr); gap: 0.35rem; margin-bottom: 0; }
   .la-side .la-tile { display: grid; grid-template-columns: 4.3rem minmax(0, 1fr); column-gap: 0.4rem; align-items: center; padding: 0.3rem 0.65rem; }
-  .la-side .la-tile-val { grid-row: span 2; font-size: 1.15rem; }
+  .la-side .la-tile-val { grid-row: span 2; font-size: var(--fs-num-sm); }
 }
 /* Retry bar and answer tree below the columns, each full width */
 .la-grid-behaviour > .oi-hero,
@@ -1022,10 +1048,10 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   background: #fff;
   min-width: 0;
 }
-.la-card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
-.la-subtitle { font-size: 0.9rem; font-weight: 600; margin: 1.1rem 0 0.5rem; }
-.la-summary { font-size: 0.875rem; color: #374151; margin-bottom: 0.6rem; }
-.la-note { font-size: 0.78rem; color: #6b7280; margin: 0.5rem 0 0; }
+.la-card-title { font-size: var(--fs-sub); font-weight: var(--fw-semibold); margin-bottom: 0.35rem; }
+.la-subtitle { font-size: var(--fs-label); font-weight: var(--fw-semibold); margin: 1.1rem 0 0.5rem; }
+.la-summary { font-size: var(--fs-secondary); color: #374151; margin-bottom: 0.6rem; }
+.la-note { font-size: var(--fs-small); color: #6b7280; margin: 0.5rem 0 0; }
 /* "Wie wird dein Lernstand berechnet?": four steps one below the other */
 .la-steps { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.6rem; }
 .la-step { display: flex; align-items: flex-start; gap: 0.6rem; }
@@ -1039,11 +1065,11 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border-radius: 50%;
   background: var(--tiger-primary);
   color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
 }
-.la-step-title { font-size: 0.875rem; font-weight: 600; color: #1f2937; }
-.la-step-text { font-size: 0.82rem; color: #4b5563; }
+.la-step-title { font-size: var(--fs-label); font-weight: var(--fw-semibold); color: #1f2937; }
+.la-step-text { font-size: var(--fs-small); color: #4b5563; }
 .la-explainer-close { margin-top: 0.85rem; }
 
 /* Estimate with interval on the competency scale */
@@ -1051,7 +1077,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem 1rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   color: #6b7280;
   margin-bottom: 0.4rem;
 }
@@ -1066,8 +1092,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border-bottom: 1px solid #f0f1f3;
 }
 .ivl-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.ivl-area { font-size: 0.875rem; font-weight: 600; }
-.ivl-text { grid-column: 2; font-size: 0.8rem; color: #4b5563; }
+.ivl-area { font-size: var(--fs-label); font-weight: var(--fw-semibold); }
+.ivl-text { grid-column: 2; font-size: var(--fs-small); color: #4b5563; }
 .ivl-strip { position: relative; height: 14px; }
 .ivl-bands { position: absolute; inset: 0; border-radius: 7px; overflow: hidden; background: #f3f4f6; }
 /* Same tint as the trajectory bands (competency_band_shapes()) */
@@ -1078,7 +1104,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .ivl-card { container-type: inline-size; }
 .ivl-axis-row { padding: 0; border-bottom: 0; }
 .ivl-axis-row + .ivl-row { padding-top: 0.25rem; }
-.ivl-axis { position: relative; font-size: 0.7rem; color: #6b7280; }
+.ivl-axis { position: relative; font-size: var(--fs-tiny); color: #6b7280; }
 .ivl-axis-names { height: 3.6rem; }
 .ivl-axis-names .ivl-axis-tick { position: absolute; bottom: 0.2rem; width: 0; }
 .ivl-axis-name {
@@ -1154,7 +1180,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 }
 .cal-head,
 .cal-month {
-  font-size: 0.62rem;
+  font-size: var(--fs-micro);
   line-height: var(--cal-cell);
   color: #9aa1ab;
 }
@@ -1177,7 +1203,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   align-items: center;
   gap: 3px;
   margin-top: 0.5rem;
-  font-size: 0.7rem;
+  font-size: var(--fs-tiny);
   color: #9aa1ab;
 }
 .cal-card .cal-legend { justify-content: center; }
@@ -1194,16 +1220,16 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   column-gap: 0.75rem;
   align-items: center;
 }
-.cov-head-row { font-size: 0.72rem; font-weight: 600; color: #6b7280; margin-bottom: 0.2rem; }
+.cov-head-row { font-size: var(--fs-tiny); font-weight: var(--fw-semibold); color: #6b7280; margin-bottom: 0.2rem; }
 .cov-row { padding: 0.25rem 0; border-top: 1px solid #f0f1f3; }
-.cov-area { font-size: 0.825rem; font-weight: 600; min-width: 0; }
+.cov-area { font-size: var(--fs-label); font-weight: var(--fw-semibold); min-width: 0; }
 .cov-cell { min-width: 0; }
 .cov-cell.is-empty .cov-count { color: #b8bec6; }
-.cov-count { font-size: 0.75rem; color: #6b7280; }
+.cov-count { font-size: var(--fs-tiny); color: #6b7280; }
 .cov-bar { display: flex; height: 8px; margin-top: 0.2rem; border-radius: 4px; overflow: hidden; background: #e5e8ec; }
 .cov-bar .is-correct { background: var(--tiger-correct); }
 .cov-bar .is-wrong { background: var(--tiger-incorrect); }
-.cov-new { font-size: 0.7rem; color: #8a929c; }
+.cov-new { font-size: var(--fs-tiny); color: #8a929c; }
 .cov-legend { justify-content: flex-start; }
 @container (max-width: 420px) {
   .cov-head-row,
@@ -1219,7 +1245,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
    CSS tree technique. A branch shows when its <li> has .is-open (ui.R). */
 .lt-card { grid-column: 1 / -1; }
 /* "Offene Fehler": a small card in the left column */
-.oi-count { margin-left: 0.4rem; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; color: #fff; background: var(--tiger-incorrect); vertical-align: 1px; }
+.oi-count { margin-left: 0.4rem; padding: 0 0.45rem; border-radius: 999px; font-size: var(--fs-small); color: #fff; background: var(--tiger-incorrect); vertical-align: 1px; }
 /* When the card grows to the column bottom, keep its content in the middle */
 .oi-card { display: flex; flex-direction: column; justify-content: center; }
 .oi-card > .la-card-title { margin-bottom: 0.5rem; }
@@ -1237,16 +1263,16 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 @media (min-width: 1200px) { .oi-hero.is-clear { grid-template-columns: 6rem minmax(0, 1fr); } }
 .oi-hero > .oi-main > .la-card-title { margin-bottom: 0.2rem; }
 .oi-big { display: flex; align-items: baseline; gap: 0.5rem; }
-.oi-big-val { font-size: 1.6rem; font-weight: 700; line-height: 1; color: var(--oi-accent); }
-.oi-big-lbl { font-size: 0.78rem; font-weight: 600; color: #374151; }
-.oi-lead { margin: 0; font-size: 0.85rem; color: #374151; }
-.oi-fixed { margin: 0.3rem 0 0; font-size: 0.8rem; color: var(--tiger-correct); display: flex; align-items: flex-start; gap: 0.35rem; }
+.oi-big-val { font-size: var(--fs-num-lg); font-weight: var(--fw-bold); line-height: 1; color: var(--oi-accent); }
+.oi-big-lbl { font-size: var(--fs-small); font-weight: var(--fw-semibold); color: #374151; }
+.oi-lead { margin: 0; font-size: var(--fs-secondary); color: #374151; }
+.oi-fixed { margin: 0.3rem 0 0; font-size: var(--fs-small); color: var(--tiger-correct); display: flex; align-items: flex-start; gap: 0.35rem; }
 .oi-fixed > svg { flex: none; margin-top: 0.22em; }
 .oi-action { display: flex; flex-direction: column; justify-content: center; }
 .oi-hero .oi-retry { padding: 0.4rem 0.75rem; }
 .oi-hero .oi-retry > svg { flex: none; }
 @media (max-width: 575.98px) {
-  .oi-hero .oi-retry { font-size: 0.95rem; padding: 0.4rem 0.5rem; }
+  .oi-hero .oi-retry { font-size: var(--fs-text); padding: 0.4rem 0.5rem; }
   /* the card is only ~230 px wide here: drop the icon so the label fits on one line */
   .oi-hero .oi-retry > svg { display: none; }
 }
@@ -1259,7 +1285,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   .oi-hero > .oi-action { grid-column: 2; align-items: flex-start; }
   .oi-hero > .oi-action .oi-wait { text-align: left; }
   .oi-big { flex-direction: column; align-items: center; text-align: center; gap: 0.2rem; }
-  .oi-big-val { font-size: 1.9rem; }
+  .oi-big-val { font-size: var(--fs-num-xl); }
 }
 @media (min-width: 1200px) {
   .oi-hero { grid-template-columns: 6rem minmax(0, 1fr) minmax(12rem, 15rem); }
@@ -1267,7 +1293,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   .oi-hero > .oi-action { grid-column: auto; align-items: stretch; }
   .oi-hero > .oi-action .oi-wait { text-align: center; }
 }
-.lt-takeaway { font-weight: 600; }
+.lt-takeaway { font-weight: var(--fw-semibold); }
 /* Toggle between the tree's two reading directions (segmented control) */
 .lt-switch {
   display: inline-flex;
@@ -1283,14 +1309,14 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border: 0;
   border-radius: 999px;
   background: transparent;
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   color: #5b6470;
   white-space: nowrap;
   transition: background-color 0.12s, color 0.12s;
 }
 .lt-switch-btn:hover { color: var(--tiger-primary); }
 @media (max-width: 575.98px) {
-  .lt-switch-btn { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+  .lt-switch-btn { padding: 0.15rem 0.5rem; font-size: var(--fs-tiny); }
 }
 .lt-switch-btn[aria-pressed="true"] { background: var(--tiger-primary); color: #fff; }
 .lt-switch-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
@@ -1304,7 +1330,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border: 1px solid #d5dae0;
   border-radius: 999px;
   background: #fff;
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   color: #5b6470;
   white-space: nowrap;
   transition: background-color 0.12s, border-color 0.12s, color 0.12s;
@@ -1313,7 +1339,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .lt-area-chip[aria-pressed="true"] { background: var(--tiger-primary); border-color: var(--tiger-primary); color: #fff; }
 .lt-area-chip:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
 @media (max-width: 575.98px) {
-  .lt-area-chip { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+  .lt-area-chip { padding: 0.15rem 0.5rem; font-size: var(--fs-tiny); }
 }
 .lt-view[hidden] { display: none; }
 .lt-hint { margin: 0.3rem 0 0.2rem; }
@@ -1331,8 +1357,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   display: flex;
   column-gap: var(--gap);
   margin-bottom: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-semibold);
   text-align: center;
   color: #6b7280;
 }
@@ -1380,15 +1406,15 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .lt-node.is-toggle:hover { background: #f8f9fa; }
 .lt-node.is-toggle:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 2px; }
 .lt-node.is-toggle[aria-expanded="true"] { background: color-mix(in srgb, var(--cat) 8%, white); border-color: var(--cat); }
-.lt-num { font-size: 1.1rem; font-weight: 700; line-height: 1.1; }
-.lt-lbl { font-size: 0.7rem; line-height: 1.15; color: #4b5563; hyphens: auto; -webkit-hyphens: auto; }
+.lt-num { font-size: var(--fs-num-sm); font-weight: var(--fw-bold); line-height: 1.1; }
+.lt-lbl { font-size: var(--fs-tiny); line-height: 1.15; color: #4b5563; hyphens: auto; -webkit-hyphens: auto; }
 .lt-share { color: #6b7280; white-space: nowrap; }
 .lt-chevron {
   position: absolute;
   right: 0.2rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.7rem;
+  font-size: var(--fs-tiny);
   color: #6b7280;
   transition: transform var(--anim-dur);
 }
@@ -1407,7 +1433,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   -webkit-mask: radial-gradient(circle, transparent 46%, #000 48%);
   mask: radial-gradient(circle, transparent 46%, #000 48%);
 }
-.lt-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280; }
+.lt-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem 1rem; margin-top: 0.5rem; font-size: var(--fs-tiny); color: #6b7280; }
 .lt-swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; border-radius: 2px; vertical-align: -1px; }
 .lt-swatch.is-correct { background: var(--tiger-correct); }
 .lt-swatch.is-wrong { background: var(--tiger-incorrect); }
@@ -1422,7 +1448,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   .lt-top > li > ul > li > ul > li > ul > li > .lt-children { display: none; }
   .lt-top > li > ul > li > ul > li > ul > li > .lt-node { pointer-events: none; padding-bottom: 0.2rem; }
   .lt-top > li > ul > li > ul > li > ul > li > .lt-node .lt-chevron { display: none; }
-  .lt-total { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; text-align: center; color: #6b7280; }
+  .lt-total { display: block; margin-bottom: 0.35rem; font-size: var(--fs-tiny); text-align: center; color: #6b7280; }
   .lt-head > span:first-child,
   .lt-top > li > .lt-node,
   .lt-top > li > .lt-children::before,
@@ -1471,7 +1497,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   border-radius: 0.4rem;
   background: #1f2937;
   color: #fff;
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   line-height: 1.35;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   pointer-events: none;
@@ -1490,7 +1516,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
   padding: 0;
   border: 0;
   background: none;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   line-height: 1;
   color: #9aa1ab;
   vertical-align: 0;
@@ -1500,7 +1526,7 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 .la-info:focus-visible { color: var(--tiger-primary); }
 /* The same (i), with a label: opens an explanation in place instead of a
    tooltip ("Wie wird das berechnet?" in "Lernstand im Detail") */
-.la-info-text { margin-left: 0; font-size: 0.78rem; font-weight: 400; cursor: pointer; white-space: nowrap; }
+.la-info-text { margin-left: 0; font-size: var(--fs-small); font-weight: var(--fw-regular); cursor: pointer; white-space: nowrap; }
 .la-info-text > span { display: inline-flex; align-items: center; gap: 0.3rem; }
 .la-info-text:hover > span { text-decoration: underline; text-underline-offset: 2px; }
 /* Hover affordance: these have a tooltip with the details */
@@ -1513,8 +1539,8 @@ b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
 
 /* ── FAQ (R/faq.R, mod_faq.R) ───────────────────────────────────────────────── */
 .faq-topic + .faq-topic { margin-top: 1.5rem; }
-.faq-topic-title { font-size: 0.95rem; font-weight: 600; color: var(--tiger-primary); margin-bottom: 0.5rem; }
-.faq-accordion .accordion-button { font-size: 0.95rem; font-weight: 600; }
-.faq-answer { font-size: 0.95rem; max-width: 80ch; }
+.faq-topic-title { font-size: var(--fs-sub); font-weight: var(--fw-semibold); color: var(--tiger-primary); margin-bottom: 0.5rem; }
+.faq-accordion .accordion-button { font-size: var(--fs-sub); font-weight: var(--fw-semibold); }
+.faq-answer { font-size: var(--fs-text); max-width: 80ch; }
 .faq-answer p:last-child,
 .faq-answer ul:last-child { margin-bottom: 0; }
