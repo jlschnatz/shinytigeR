@@ -1,6 +1,6 @@
 # shinytigeR
 
-<img src="inst/app/www/img_app/tigeR_hex.png" alt="shinytigeR hex logo" width="150" align="right" />
+<img src="inst/app/www/logo/tiger_logo.svg" alt="tigeR logo" width="150" align="right" />
 
 **T**raining mit **i**ndividuell **ge**nerierten Erfolgs**r**ückmeldungen in R
 

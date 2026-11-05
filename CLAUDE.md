@@ -150,7 +150,7 @@ app_v3/
 │   └── www/
 │       ├── css/app.css    # all custom CSS
 │       ├── js/            # page scripts: practice.js, dashboard.js, tooltips.js (linked in ui.R)
-│       ├── img_app/       # app branding: logo files (tigeR_hex.png, tiger_logo_white.png, favicon.png)
+│       ├── logo/          # app branding: tiger_logo.svg (Goethe blue), tiger_logo_white.svg (navbar, login card), favicon.png (180 px, from the SVG)
 │       └── img_item/      # item content images — path baked into db_item.sqlite; do not rename without migrating
 │
 ├── deploy/
@@ -261,7 +261,7 @@ Single source of truth for:
 | `LEARNING_AREA_LEVELS` | `character` vector | Canonical ordering of the 7 topic areas; used as factor levels throughout |
 | `LEARNING_AREA_LABELS` | named `character` | Short display names → full DB values (e.g. `"Inferenz" = "Grundlagen der Inferenzstatistik"`) |
 | `ITEM_TYPE_LABELS` | named `character` | `"Inhaltlich" = "content"`, `"R-Code" = "coding"` — these must match `type_item` values in `db_item.sqlite` |
-| `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
+| `PRIMARY_COLOR` | `character` | `"#006290"`, the logo's blue (`www/logo/tiger_logo.svg`); before Nov 2026 `#285f8a`. Used in the theme and as `--tiger-primary` in `app.css` (keep both in sync). Practically the same as `ANSWER_COLORS$correct` (`#00618f`) |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
 | `SKIP_FEEDBACK` | `character` | Feedback text after the skip button, MC and numeric alike (skipping isn't stored in the item DB) |
 | `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: bounds of `estimate_theta()`, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
@@ -352,7 +352,7 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 
 ### `R/mod_home.R`
 
-Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation and the "Jetzt üben" button (the links to pandar and otter are FAQ answers, see `R/faq.R`). The "Jetzt üben" button calls the `go_train` callback passed from `server.R`, which uses `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
+Landing panel shown immediately after login. Displays a personalised greeting, a three-step "how it works" explanation and two buttons (`.home-actions`, side by side from 576 px): "Jetzt üben" (filled, the main action) and "Fortschritt ansehen" (outlined, the Fortschritt tab's icon); the links to pandar and otter are FAQ answers, see `R/faq.R`. The buttons call the `go_train` / `go_progress` callbacks passed from `server.R`, which use `bslib::nav_select()` with the **app-level session** (not the module session) to switch tabs. If you need to add cross-tab navigation from a module, always capture `session` in `server.R` and pass it via closure — `bslib::nav_select()` uses `getDefaultReactiveDomain()` which resolves to the module session inside a module server.
 
 ### `R/mod_faq.R` / `R/faq.R`
 
@@ -593,7 +593,7 @@ Table: `credentials_db` — columns `user_name` and `password_hashed` (sodium-ha
 ### CSS (`inst/app/www/css/app.css`)
 
 Key CSS variables (defined on `:root`):
-- `--tiger-primary: #285f8a`
+- `--tiger-primary: #006290` (= `PRIMARY_COLOR`)
 - `--tiger-correct: #00618f`
 - `--tiger-incorrect: #D81B60`
 - `--tiger-skip: #FFA000`
@@ -649,7 +649,7 @@ Static files are served via Shiny's **built-in `www/` auto-serving convention** 
 
 | Prefix | Filesystem location | Content |
 |---|---|---|
-| `img_app` | `inst/app/www/img_app/` | App logos and favicon |
+| `logo` | `inst/app/www/logo/` | The tigeR logo as SVG: `tiger_logo.svg` (Goethe blue, also the favicon and in `README.md`) and `tiger_logo_white.svg` (same paths, white fill: navbar and login card, both on `PRIMARY_COLOR`). `favicon.png` is rendered from the blue SVG for browsers without SVG favicons and iOS (`rsvg-convert -w 164`, padded to 180 × 180 with ImageMagick). Replaced the old `img_app/` PNGs (hex logo), Nov 2026 |
 | `img_item` | `inst/app/www/img_item/` | Item stimulus and answer images |
 | `css` | `inst/app/www/css/` | `app.css` |
 | `js` | `inst/app/www/js/` | The page scripts, plain browser JS (no build step), linked in `ui.R` with `css_href()` cache-busting: `practice.js` (MathJax re-typeset, item-ID badge confirmation, scrolling to the feedback), `dashboard.js` (answer tree, trajectory panels and time window, explainer), `tooltips.js` (`data-tip`). They used to be one long inline `tags$script()` in `ui.R` |

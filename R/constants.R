@@ -23,7 +23,7 @@ ITEM_TYPE_LABELS <- c(
   "R-Code" = "coding"
 )
 
-PRIMARY_COLOR <- "#285f8a"
+PRIMARY_COLOR <- "#006290"
 
 ANSWER_COLORS <- list(
   correct = "#00618f",

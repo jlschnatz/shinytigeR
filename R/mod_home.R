@@ -51,19 +51,29 @@ mod_home_ui <- function(id) {
         )
       )
     ),
-    # ── Start button ───────────────────────────────────────────────────────────
+    # ── Start buttons ──────────────────────────────────────────────────────────
+    # Practising is the main action (filled); the progress button is the
+    # second way on (outlined), with the Fortschritt tab's icon. Side by
+    # side from 576 px, stacked on phones (.home-actions in app.css)
     div(
-      class = "d-grid mt-3",
+      class = "home-actions mt-3",
       actionButton(
         ns("start"),
         div(bsicons::bs_icon("play-fill"), tags$b("Jetzt üben")),
         class = "btn btn-primary btn-lg"
+      ),
+      actionButton(
+        ns("progress"),
+        div(bsicons::bs_icon("bar-chart-fill"), tags$b("Fortschritt ansehen")),
+        class = "btn btn-outline-primary btn-lg"
       )
     )
   )
 }
 
-mod_home_server <- function(id, data_item, credentials, go_train) {
+# `go_train()` / `go_progress()`: callbacks from server.R that switch the app's
+# tabs (they need the app-level session, see CLAUDE.md)
+mod_home_server <- function(id, data_item, credentials, go_train, go_progress = NULL) {
   moduleServer(id, function(input, output, session) {
     output$greeting <- renderUI({
       user <- credentials()$info$user_name
@@ -77,5 +87,6 @@ mod_home_server <- function(id, data_item, credentials, go_train) {
     })
 
     observeEvent(input$start, go_train())
+    observeEvent(input$progress, if (!is.null(go_progress)) go_progress())
   })
 }
