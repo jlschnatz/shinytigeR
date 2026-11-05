@@ -1628,3 +1628,56 @@ body { padding-bottom: var(--footer-h); }
 .app-footer-inner a:hover { color: var(--tiger-primary); }
 .legal-text { font-size: var(--fs-text); max-width: 80ch; }
 .legal-text p:last-child, .legal-text ul:last-child { margin-bottom: 0; }
+
+/* ── Code blocks in item texts ─────────────────────────────────────────────── */
+/* format_code_blocks() (utils.R): a header bar (R / Ausgabe, copy button)
+   above the code; R code highlighted by highr's classes. Colours: Quarto's
+   "a11y" style (a11y-light.theme, designed for contrast: every colour at
+   least 5:1 on its background), mapped onto highr's classes; chosen from a
+   comparison with Quarto's arrow/github/atom-one-light and knitr's
+   edit-xcode (Nov 2026). Like Quarto, argument names stay plain text. */
+.code-block {
+  margin: 0 0 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fefefe;
+  overflow: hidden;
+}
+.code-block-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.2rem 0.4rem 0.2rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #eef1f4;
+  font-size: var(--fs-tiny); color: #4b5563;
+}
+.code-lang { font-weight: var(--fw-semibold); }
+.code-block.is-output .code-lang { font-weight: var(--fw-regular); font-style: italic; }
+.code-copy-btn {
+  display: inline-flex; align-items: center;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid transparent; border-radius: 0.3rem;
+  background: transparent; color: inherit;
+  font-size: var(--fs-tiny);
+  cursor: pointer;
+}
+.code-copy-btn:hover { background: #fff; border-color: #d1d5db; color: var(--tiger-primary); }
+.code-copy-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+.code-copy-btn.is-copied { color: var(--tiger-correct); }
+.code-block pre {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 0; border-radius: 0;
+  background: transparent;
+  font-size: var(--fs-secondary);
+  line-height: 1.5;
+  overflow-x: auto;
+}
+/* inline code's chip style (padding, background) would indent the first line */
+.code-block pre code { display: block; padding: 0; border: 0; background: none; font-size: inherit; color: #111111; }
+.code-block.is-output pre code { color: #4b5563; }
+.hl.com { color: #696969; }                         /* comments */
+.hl.str, .hl.sng { color: #008000; }                /* strings */
+.hl.num { color: #7928a1; }                         /* numbers, TRUE/FALSE */
+.hl.kwa { color: #d91e18; }                         /* keywords (function, if, in) */
+.hl.kwd { color: #06287e; }                         /* function calls */
+.hl.kwb, .hl.opt { color: #00769e; }                /* <- and other operators */

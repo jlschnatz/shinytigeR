@@ -57,7 +57,10 @@ test_that("protect_math_delimiters leaves fenced code blocks untouched, incl. ba
 
 test_that("render_md keeps text after fenced code blocks and renders them as <pre>", {
   html <- render_md("Vorher:\n```\nincome$salary\n```\nNachher **fett**.")
-  expect_match(html, "<pre><code>income$salary", fixed = TRUE)
+  expect_match(html, "<pre><code>", fixed = TRUE)
+  # the code's text without the highlighting spans: $ stayed code, not math
+  code <- sub("(?s).*<pre><code>(.*?)</code></pre>.*", "\\1", html, perl = TRUE)
+  expect_identical(gsub("<[^>]+>", "", code), "income$salary")
   expect_match(html, "Nachher <strong>fett</strong>.", fixed = TRUE)
   expect_false(grepl("\\(salary", html, fixed = TRUE))
 })
@@ -427,4 +430,41 @@ test_that("local_date uses the local time zone, not UTC", {
   expect_equal(local_date(t), as.Date("2026-11-03"))
   expect_equal(local_date(as.numeric(t)), as.Date("2026-11-03"))
   expect_equal(local_date(as.integer(t)), as.Date("2026-11-03"))
+})
+
+# ── Code blocks: highlighting + copy button (format_code_blocks()) ──────────
+
+test_that("an R code block gets highlighting, an R label and a copy button", {
+  html <- render_md("Text\n\n```\nx <- c(1, 2) # a & b\n```\n")
+  expect_match(html, '<div class="code-block is-r">', fixed = TRUE)
+  expect_match(html, '<span class="code-lang">R</span>', fixed = TRUE)
+  expect_match(html, 'class="code-copy-btn"', fixed = TRUE)
+  expect_match(html, '<span class="hl kwb">&lt;-</span>', fixed = TRUE)
+  expect_match(html, '<span class="hl com"># a &amp; b</span>', fixed = TRUE)
+})
+
+test_that("console output that doesn't parse stays plain, labelled Ausgabe", {
+  html <- render_md("```\n> t.test(x)\nFehler in var(y) : bad\n```\n")
+  expect_match(html, '<div class="code-block is-output">', fixed = TRUE)
+  expect_match(html, '<span class="code-lang">Ausgabe</span>', fixed = TRUE)
+  expect_no_match(html, 'class="hl ', fixed = TRUE)
+  expect_match(html, "&gt; t.test(x)\nFehler in var(y) : bad</code>", fixed = TRUE)
+})
+
+test_that("the highlighted code's text is the code as typed (what the copy button copies)", {
+  code <- 'y <- "a<b" & TRUE\nz <- \'q\''
+  html <- render_md(paste0("```\n", code, "\n```\n"))
+  inner <- sub("(?s).*<pre><code>(.*)</code></pre>.*", "\\1", html, perl = TRUE)
+  expect_identical(html_unescape(gsub("<[^>]+>", "", inner)), code)
+})
+
+test_that("text without code blocks is unchanged, inline code included", {
+  md <- "Nutze `mean(x)` und **fett**."
+  expect_identical(render_md(md), markdown::markdownToHTML(text = protect_math_delimiters(md), fragment.only = TRUE))
+})
+
+test_that("several blocks in one text are each formatted", {
+  html <- render_md("```\na <- 1\n```\n\ndazwischen\n\n```\nFehler in x\n```\n")
+  expect_identical(lengths(regmatches(html, gregexpr('class="code-block ', html, fixed = TRUE))), 2L)
+  expect_match(html, "<p>dazwischen</p>", fixed = TRUE)
 })

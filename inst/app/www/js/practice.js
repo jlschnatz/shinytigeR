@@ -1,5 +1,6 @@
 // Practice view: MathJax re-typesetting, the item-ID badge's "Kopiert"
-// confirmation, and scrolling the feedback into view after the check.
+// confirmation, the code blocks' copy button, and scrolling the feedback
+// into view after the check.
 // Loaded in ui.R (app_ui()); plain browser JS, no build step.
 
 Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
@@ -56,4 +57,32 @@ $(document).on('shiny:value', function (e) {
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
   }, 50);
+});
+
+// Copy button of the code blocks in item texts (format_code_blocks() in
+// utils.R): copies the block's text as typed (the highlighting spans don't
+// add characters). Delegated via ClipboardJS's selector, so blocks from
+// later renders work too; ClipboardJS (from rclipboard) also works without
+// the async clipboard API, which needs HTTPS.
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.ClipboardJS) return;
+  var clip = new ClipboardJS('.code-copy-btn', {
+    text: function (btn) {
+      var code = btn.closest('.code-block').querySelector('pre code');
+      return code ? code.textContent : '';
+    }
+  });
+  clip.on('success', function (e) {
+    var btn = e.trigger, label = btn.querySelector('.code-copy-label');
+    if (!label || btn.dataset.busy) return;
+    btn.dataset.busy = '1';
+    label.textContent = '\u2713 Kopiert';
+    btn.classList.add('is-copied');
+    setTimeout(function () {
+      label.textContent = 'Kopieren';
+      btn.classList.remove('is-copied');
+      delete btn.dataset.busy;
+    }, 1200);
+    e.clearSelection();
+  });
 });

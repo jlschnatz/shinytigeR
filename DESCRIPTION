@@ -29,4 +29,5 @@ Imports:
     rclipboard,
     plotly,
     htmltools,
-    jsonlite
+    jsonlite,
+    highr

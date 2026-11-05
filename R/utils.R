@@ -84,10 +84,60 @@ render_md <- function(text) {
   if (is.null(text) || is.na(text) || !nzchar(trimws(text))) {
     return("")
   }
-  markdown::markdownToHTML(
+  html <- markdown::markdownToHTML(
     text = protect_math_delimiters(text),
     fragment.only = TRUE
   )
+  format_code_blocks(html)
+}
+
+# Code blocks (``` fences, rendered as <pre><code>) get a copy button and,
+# if they are R code, syntax highlighting. Highlighting is done here in R by
+# highr (R's own parser, the classes .hl.kwd/.hl.com/... styled in app.css),
+# not by a JS library: nothing to download, and it survives every renderUI
+# re-render. The items' fences carry no language tag, so "is it R code?" is
+# decided by parse(): blocks that don't parse are R console output (error
+# messages, `> ` prompts) and stay plain; highr's regex fallback would colour
+# words like "in" in the error text. The header bar says which it is (R /
+# Ausgabe) and holds the copy button, client-side (www/js/practice.js): it
+# copies the block's text, as typed.
+format_code_blocks <- function(html) {
+  pattern <- "(?s)<pre><code( class=\"[^\"]*\")?>(.*?)</code></pre>"
+  m <- gregexpr(pattern, html, perl = TRUE)
+  blocks <- regmatches(html, m)[[1]]
+  if (!length(blocks)) {
+    return(html)
+  }
+  regmatches(html, m) <- list(vapply(blocks, function(b) {
+    inner <- sub(pattern, "\\2", b, perl = TRUE)
+    code <- sub("\n$", "", html_unescape(inner))
+    is_r <- !inherits(try(parse(text = code, keep.source = FALSE), silent = TRUE), "try-error")
+    body <- if (is_r) {
+      paste(highr::hi_html(strsplit(code, "\n", fixed = TRUE)[[1]]), collapse = "\n")
+    } else {
+      sub("\n$", "", inner)
+    }
+    paste0(
+      '<div class="code-block', if (is_r) " is-r" else " is-output", '">',
+      # a header bar rather than a button over the code, which would cover
+      # long first lines; it also tells code from console output
+      '<div class="code-block-head"><span class="code-lang">',
+      if (is_r) "R" else "Ausgabe", "</span>",
+      '<button type="button" class="code-copy-btn">',
+      '<span class="code-copy-label">Kopieren</span></button></div>',
+      '<pre><code>', body, '</code></pre></div>'
+    )
+  }, character(1), USE.NAMES = FALSE))
+  html
+}
+
+# The entities commonmark escapes in code, back to characters
+html_unescape <- function(x) {
+  x <- gsub("&lt;", "<", x, fixed = TRUE)
+  x <- gsub("&gt;", ">", x, fixed = TRUE)
+  x <- gsub("&quot;", "\"", x, fixed = TRUE)
+  x <- gsub("&#39;", "'", x, fixed = TRUE)
+  gsub("&amp;", "&", x, fixed = TRUE)
 }
 
 get_answeroptions <- function(item) {
