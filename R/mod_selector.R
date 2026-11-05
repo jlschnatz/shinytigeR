@@ -1,3 +1,13 @@
+# A selector card title with its step number (styled like the home page's
+# numbered steps, .sel-step-num)
+sel_step_title <- function(n, title) {
+  div(
+    class = "d-flex align-items-center gap-2",
+    tags$span(class = "sel-step-num", `aria-hidden` = "true", n),
+    tags$b(title)
+  )
+}
+
 mod_selector_ui <- function(id, data_item) {
   ns <- NS(id)
 
@@ -77,95 +87,129 @@ mod_selector_ui <- function(id, data_item) {
     )
   })
 
+  # Layout: from 1200 px two columns (.sel-layout in app.css), the area list
+  # left (step 1) and, on the right and as tall as it, what to do with it (step 2:
+  # only-new switch, count, start) plus the direct lookup. Before, all of it
+  # was one full-width card whose rows had ~700 px of nothing between the
+  # area names and their chips on a laptop. Narrower screens stack the three
+  # cards in this order.
   div(
-    class = "selector-wrap",
+    class = "selector-wrap sel-layout",
+    # Numbered like the steps on the home page, so the order is clear:
+    # 1 = which topics, 2 = how many (and whether only new ones) + start.
+    # The direct lookup is the alternative to both, so it has no number.
     bslib::card(
-      bslib::card_header(
-        div(
-          class = "d-flex align-items-center gap-2",
-          bsicons::bs_icon("funnel-fill"),
-          tags$b("Aufgaben auswählen")
-        )
-      ),
+      class = "sel-main",
+      bslib::card_header(sel_step_title(1L, "Themenbereiche wählen")),
       bslib::card_body(
         class = "p-3",
         tags$p(
           class = "text-muted mb-2",
-          "Wähle Themenbereiche und Aufgabentypen aus — du bekommst dann eine zufällige Auswahl zum Üben."
+          "Wähle, aus welchen Themenbereichen und Aufgabentypen geübt wird. Daraus bekommst du eine zufällige Auswahl."
         ),
         div(
           class = "sel-area-list mb-1",
           type_header_row,
           area_rows
-        ),
-        # ── Only-new toggle ──────────────────────────────────────────────────────
-        div(
-          class = "form-check form-switch mt-2 mb-2",
-          tags$input(
-            type = "checkbox",
-            class = "form-check-input",
-            id = ns("only_new"),
-            role = "switch"
-          ),
-          tags$label(
-            class = "form-check-label",
-            `for` = ns("only_new"),
-            "Nur neue Aufgaben"
-          )
-        ),
-        # ── Item count: stepper + presets + submit ───────────────────────────────
-        div(
-          class = "d-flex align-items-center justify-content-between gap-2 flex-wrap mt-2 pt-2 sel-footer",
-          div(
-            class = "d-flex align-items-center gap-2 flex-wrap sel-count-row",
-            tags$span(class = "text-muted me-1", "Anzahl Aufgaben"),
-            actionButton(ns("n_minus"), "−", class = "btn btn-outline-secondary sel-stepper-btn"),
-            div(class = "sel-count-value", uiOutput(ns("n_value"), inline = TRUE)),
-            actionButton(ns("n_plus"), "+", class = "btn btn-outline-secondary sel-stepper-btn"),
-            actionButton(ns("preset_5"), "5", class = "btn btn-outline-secondary sel-preset-btn"),
-            actionButton(ns("preset_10"), "10", class = "btn btn-outline-secondary sel-preset-btn"),
-            actionButton(ns("preset_20"), "20", class = "btn btn-outline-secondary sel-preset-btn"),
-            actionButton(ns("preset_all"), uiOutput(ns("preset_all_label"), inline = TRUE), class = "btn btn-outline-secondary sel-preset-btn")
-          ),
-          actionButton(
-            ns("submit"),
-            div(bsicons::bs_icon("play-fill"), tags$b("Starten")),
-            class = "btn btn-primary btn-lg"
-          )
         )
       )
     ),
-    # ── Direct item lookup ──────────────────────────────────────────────────────
-    bslib::card(
-      class = "mt-2",
-      bslib::card_header(
-        div(
-          class = "d-flex align-items-center gap-2",
-          bsicons::bs_icon("hash"),
-          tags$b("Spezifische Aufgabe auswählen")
+    div(
+      class = "sel-side",
+      bslib::card(
+        class = "sel-choice",
+        bslib::card_header(sel_step_title(2L, "Anzahl festlegen und starten")),
+        # gap: bslib's default of 1rem between children made the card airy
+        bslib::card_body(
+          class = "p-3",
+          gap = "0.9rem",
+          # ── Only-new toggle ────────────────────────────────────────────────────
+          div(
+            class = "form-check form-switch mb-0",
+            tags$input(
+              type = "checkbox",
+              class = "form-check-input",
+              id = ns("only_new"),
+              role = "switch"
+            ),
+            tags$label(
+              class = "form-check-label",
+              `for` = ns("only_new"),
+              "Nur neue Aufgaben"
+            )
+          ),
+          # ── Item count: stepper + presets, one row ─────────────────────────────
+          div(
+            tags$div(class = "text-muted mb-1", "Anzahl Aufgaben"),
+            # two groups, so a narrow screen wraps between them, not inside
+            div(
+              class = "sel-count-row",
+              div(
+                class = "sel-count-group",
+                actionButton(ns("n_minus"), "−", class = "btn btn-outline-secondary sel-stepper-btn"),
+                div(class = "sel-count-value", uiOutput(ns("n_value"), inline = TRUE)),
+                actionButton(ns("n_plus"), "+", class = "btn btn-outline-secondary sel-stepper-btn")
+              ),
+              div(
+                class = "sel-count-group sel-preset-group",
+                actionButton(ns("preset_5"), "5", class = "btn btn-outline-secondary sel-preset-btn"),
+                actionButton(ns("preset_10"), "10", class = "btn btn-outline-secondary sel-preset-btn"),
+                actionButton(ns("preset_20"), "20", class = "btn btn-outline-secondary sel-preset-btn"),
+                actionButton(ns("preset_all"), uiOutput(ns("preset_all_label"), inline = TRUE), class = "btn btn-outline-secondary sel-preset-btn")
+              )
+            )
+          ),
+          # ── Submit ─────────────────────────────────────────────────────────────
+          div(
+            class = "d-grid sel-footer",
+            actionButton(
+              ns("submit"),
+              div(bsicons::bs_icon("play-fill"), tags$b("Starten")),
+              class = "btn btn-primary btn-lg"
+            )
+          )
         )
       ),
-      bslib::card_body(
-        class = "p-3",
-        tags$p(
-          class = "text-muted mb-2",
-          "Direkt zu einer Aufgabe springen."
+      # ── Direct item lookup ──────────────────────────────────────────────────
+      bslib::card(
+        class = "sel-direct",
+        bslib::card_header(
+          div(
+            class = "d-flex align-items-center gap-2",
+            bsicons::bs_icon("hash"),
+            tags$b("Spezifische Aufgabe auswählen")
+          )
         ),
-        div(
-          class = "input-group sel-direct-row",
-          tags$input(
-            id = ns("direct_id"),
-            type = "number",
-            class = "shiny-input-number form-control",
-            min = 1L,
-            step = 1L,
-            placeholder = "ID",
-            style = "flex: 0 0 120px;"
+        bslib::card_body(
+          class = "p-3",
+          gap = "0.5rem",
+          tags$p(
+            class = "text-muted mb-0",
+            "Direkt zu einer Aufgabe springen."
           ),
-          actionButton(
-            ns("direct_submit"),
-            div(bsicons::bs_icon("eye"), "Aufgabe ansehen"),
-            class = "btn btn-outline-primary"
+          div(
+            class = "input-group sel-direct-row",
+            tags$input(
+              id = ns("direct_id"),
+              type = "number",
+              class = "shiny-input-number form-control",
+              min = 1L,
+              step = 1L,
+              placeholder = "ID",
+              # grows/shrinks with the column, so field and button stay on one
+              # line in the narrow side column too
+              style = "flex: 1 1 5rem; min-width: 0;"
+            ),
+            actionButton(
+              ns("direct_submit"),
+              # shorter label on phones, so the ID field keeps room
+              div(
+                bsicons::bs_icon("eye"),
+                tags$span(class = "d-none d-sm-inline", "Aufgabe ansehen"),
+                tags$span(class = "d-sm-none", "Ansehen")
+              ),
+              class = "btn btn-outline-primary"
+            )
           )
         )
       )
@@ -353,7 +397,7 @@ mod_selector_server <- function(
     output$n_value <- renderUI(effective_n())
 
     output$preset_all_label <- renderUI(
-      sprintf("Alle verfügbaren (%d)", nrow(filtered_items()))
+      sprintf("Alle (%d)", nrow(filtered_items()))
     )
 
     observeEvent(input$submit, {
