@@ -97,7 +97,10 @@ app_ui <- function() {
                 bsicons::bs_icon("info-circle"),
                 " Noch kein Konto? ",
                 actionLink("show_register", "Registriere"),
-                " dich mit dem Semester-Code aus dem Praktikum."
+                " dich mit dem ",
+                # kept on one line: it broke at the hyphen
+                tags$span(class = "text-nowrap", "Semester-Code"),
+                " aus dem Praktikum."
               )
             ),
             # ── Registration form (hidden, toggled in) ────────────────────────

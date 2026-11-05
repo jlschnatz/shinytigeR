@@ -198,6 +198,14 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   margin: 0 !important;
 }
 
+/* shinyauthr's #login-panel has an inline padding of 20px, which set the
+   fields and button 20px further in than the hint below them (and added
+   space above "Benutzername"); everything in the card now shares its edge */
+.login-card-body #login-panel { padding: 0 !important; }
+/* Shiny's text inputs default to 300px wide: in the registration form they
+   ended 34px before the button */
+.login-card-body .shiny-input-container { width: 100%; }
+
 /* Make the login button full-width and use the brand color */
 .login-card-body .btn-primary {
   width: 100%;
