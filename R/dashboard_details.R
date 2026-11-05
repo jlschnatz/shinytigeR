@@ -1151,16 +1151,16 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, b
             switch_btn("backward", "Ab letztem Versuch", FALSE)
           )
         },
-        # One chip per area (short label, full name on hover) plus "Alle";
-        # plain buttons like the switch, handled by www/js/dashboard.js
+        # One chip per area (its short label) plus "Alle"; plain buttons like
+        # the switch, handled by www/js/dashboard.js. No `title`: the native
+        # hover label looked out of place (same for the trajectory panels)
         if (length(by_area) > 0L) {
-          area_chip <- function(key, label, title, pressed = FALSE) {
+          area_chip <- function(key, label, pressed = FALSE) {
             tags$button(
               type = "button",
               class = "lt-area-chip",
               `data-lt-area` = key,
               `aria-pressed` = if (pressed) "true" else "false",
-              title = title,
               label
             )
           }
@@ -1168,10 +1168,10 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, b
             class = "lt-areas",
             role = "group",
             `aria-label` = "Themenbereich",
-            area_chip("all", "Alle", "Alle Themenbereiche", pressed = TRUE),
+            area_chip("all", "Alle", pressed = TRUE),
             lapply(names(by_area), function(area) {
               short <- names(LEARNING_AREA_LABELS)[match(area, LEARNING_AREA_LABELS)]
-              area_chip(area_key(area), if (is.na(short)) area else short, area)
+              area_chip(area_key(area), if (is.na(short)) area else short)
             })
           )
         }

@@ -25,7 +25,10 @@ competency_scale_bar <- function(cl) {
   }
   div(
     class = if (cl$level == 0L) "comp-level is-empty" else "comp-level",
-    title = desc,
+    # the app's tooltip (www/js/tooltips.js), not a native `title`; tabindex
+    # -1 so a tap shows it on touch screens without adding a Tab stop
+    `data-tip` = desc,
+    tabindex = "-1",
     tags$span(class = "comp-level-label", cl$label),
     tags$span(
       class = "comp-scale",
@@ -111,7 +114,8 @@ certainty_dots <- function(theta, se, n_items, cl) {
   }
   tags$span(
     class = "ev-dots",
-    title = desc,
+    `data-tip` = desc, # app tooltip, see competency_scale_bar()
+    tabindex = "-1",
     role = "img",
     `aria-label` = desc,
     lapply(seq_len(3L), function(k) {
@@ -617,7 +621,8 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                     tags$tr(
                       tags$th(tags$span(class = "visually-hidden", "Themenbereich")),
                       tags$th(
-                        title = "Wie sicher die Einstufung ist (●●● = wahrscheinlich zutreffend)",
+                        `data-tip` = "Wie sicher die Einstufung ist (●●● = wahrscheinlich zutreffend)",
+                        tabindex = "-1",
                         "Evidenz"
                       ),
                       tags$th("Kompetenz")

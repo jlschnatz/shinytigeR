@@ -739,8 +739,9 @@ test_that("answer_tree_card with by_area adds the area chips and hides all but t
     backward = answer_tree_stats(ud, pool, direction = "backward"),
     by_area = answer_tree_by_area(ud, pool)
   ))
-  expect_match(html, 'data-lt-area="all" aria-pressed="true" title="Alle Themenbereiche">Alle</button>', fixed = TRUE)
-  expect_match(html, 'data-lt-area="3" aria-pressed="false" title="Grundlagen der Inferenzstatistik">Inferenz</button>', fixed = TRUE)
+  expect_match(html, 'data-lt-area="all" aria-pressed="true">Alle</button>', fixed = TRUE)
+  expect_match(html, 'data-lt-area="3" aria-pressed="false">Inferenz</button>', fixed = TRUE)
+  expect_false(grepl("lt-area-chip[^>]*title=", html)) # no native hover label
   expect_equal(lengths(regmatches(html, gregexpr("lt-area-chip", html, fixed = TRUE))), 3L) # Alle + 2 areas
   views <- regmatches(html, gregexpr('<div class="lt-view"[^>]*>', html))[[1]]
   expect_length(views, 6L) # (all + 2 areas) x 2 directions
@@ -751,4 +752,14 @@ test_that("answer_tree_card with by_area adds the area chips and hides all but t
 test_that("trajectory panel titles have no native hover tooltip", {
   html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
   expect_false(grepl('class="traj-panel-title" title=', html, fixed = TRUE))
+})
+
+test_that("the Lernstand card uses the app tooltip, not native titles", {
+  cl <- competency_label(0.3, 12L)
+  dots <- as.character(certainty_dots(0.3, 0.4, 12L, cl))
+  bar <- as.character(competency_scale_bar(cl))
+  expect_match(dots, 'data-tip="[^"]*Wahrscheinlichkeit')
+  expect_match(bar, 'data-tip="Kompetenz: ')
+  expect_false(grepl(" title=", dots, fixed = TRUE))
+  expect_false(grepl(" title=", bar, fixed = TRUE))
 })
