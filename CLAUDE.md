@@ -150,7 +150,7 @@ app_v3/
 │   └── www/
 │       ├── css/app.css    # all custom CSS
 │       ├── js/            # page scripts: practice.js, dashboard.js, tooltips.js (linked in ui.R)
-│       ├── img_app/       # app branding: logo files (tigeR_hex.png, tiger_logo_white.png, favicon.png)
+│       ├── logo/          # app branding: tiger_logo.svg (Goethe blue), tiger_logo_white.svg (navbar, login card), favicon.png (180 px, from the SVG)
 │       └── img_item/      # item content images — path baked into db_item.sqlite; do not rename without migrating
 │
 ├── deploy/
@@ -649,7 +649,7 @@ Static files are served via Shiny's **built-in `www/` auto-serving convention** 
 
 | Prefix | Filesystem location | Content |
 |---|---|---|
-| `img_app` | `inst/app/www/img_app/` | App logos and favicon |
+| `logo` | `inst/app/www/logo/` | The tigeR logo as SVG: `tiger_logo.svg` (Goethe blue, also the favicon and in `README.md`) and `tiger_logo_white.svg` (same paths, white fill: navbar and login card, both on `PRIMARY_COLOR`). `favicon.png` is rendered from the blue SVG for browsers without SVG favicons and iOS (`rsvg-convert -w 164`, padded to 180 × 180 with ImageMagick). Replaced the old `img_app/` PNGs (hex logo), Nov 2026 |
 | `img_item` | `inst/app/www/img_item/` | Item stimulus and answer images |
 | `css` | `inst/app/www/css/` | `app.css` |
 | `js` | `inst/app/www/js/` | The page scripts, plain browser JS (no build step), linked in `ui.R` with `css_href()` cache-busting: `practice.js` (MathJax re-typeset, item-ID badge confirmation, scrolling to the feedback), `dashboard.js` (answer tree, trajectory panels and time window, explainer), `tooltips.js` (`data-tip`). They used to be one long inline `tags$script()` in `ui.R` |

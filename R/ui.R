@@ -7,7 +7,7 @@ app_ui <- function() {
       inputId = "brand_home",
       label = div(
         class = "d-flex align-items-center gap-2",
-        tags$img(src = "img_app/tiger_logo_white.png", height = "26px"),
+        tags$img(src = "logo/tiger_logo_white.svg", height = "26px", alt = ""),
         tags$b("tigeR", class = "fw-bolder")
       ),
       class = "navbar-brand-link"
@@ -40,7 +40,11 @@ app_ui <- function() {
         # installed copy via run_app()), so this path resolves in both.
         tags$link(rel = "stylesheet", href = css_href("www/css/fonts.css", "css/fonts.css")),
         tags$link(rel = "stylesheet", href = css_href("www/css/app.css", "css/app.css")),
-        tags$link(rel = "icon", type = "image/png", href = "img_app/favicon.png"),
+        # The logo as favicon; the PNG (180 px, rendered from the SVG) for
+        # browsers without SVG favicons and for iOS home-screen icons
+        tags$link(rel = "icon", type = "image/svg+xml", href = "logo/tiger_logo.svg"),
+        tags$link(rel = "icon", type = "image/png", href = "logo/favicon.png"),
+        tags$link(rel = "apple-touch-icon", href = "logo/favicon.png"),
         # The page scripts (inst/app/www/js/, served like css/), cache-busted
         # like the stylesheets
         tags$script(src = css_href("www/js/practice.js", "js/practice.js")),
@@ -57,12 +61,13 @@ app_ui <- function() {
         class = "login-page",
         div(
           class = "login-card",
-          # Header with hex logo + title on colored background
+          # Header with the logo + title on colored background
           div(
             class = "login-card-header",
             tags$img(
-              src = "img_app/tigeR_hex.png",
-              height = "90px",
+              src = "logo/tiger_logo_white.svg",
+              height = "80px",
+              alt = "",
               class = "d-block mx-auto mb-3"
             ),
             tags$h3(class = "fw-bold mb-1", "tigeR"),
