@@ -362,6 +362,32 @@ is_img_path <- function(x) {
     grepl("\\.(?:png|jpg|jpeg|svg|gif)$", x, ignore.case = TRUE, perl = TRUE)
 }
 
+# Item images that enlarge on click (lightbox in www/js/practice.js, a native
+# <dialog>). Stimulus images: the image itself is the button (role, tabindex
+# for the keyboard). Answer images sit inside the option's <label>, where a
+# click selects the answer, so they get a small magnifier button in their
+# corner instead; the image click keeps selecting. Shared by mod_practice,
+# mod_mc_answer and mod_inspect.
+stimulus_img <- function(src) {
+  tags$img(
+    src = src, alt = "",
+    class = "img-fluid stimulus-img is-zoomable",
+    role = "button", tabindex = "0", `aria-label` = "Bild vergr\u00f6\u00dfern"
+  )
+}
+
+answer_img <- function(src, style = NULL) {
+  tags$span(
+    class = "answer-img-wrap",
+    tags$img(src = src, alt = "", class = "img-fluid answer-img", style = style),
+    tags$button(
+      type = "button", class = "img-zoom-btn", `data-zoom-src` = src,
+      `aria-label` = "Bild vergr\u00f6\u00dfern",
+      bsicons::bs_icon("zoom-in")
+    )
+  )
+}
+
 # Item-ID badge that copies its own ID on click. Used by mod_practice.R (in the
 # progress bar) and mod_inspect.R (above the item card) so both behave alike.
 # Built on rclipboard::rclipButton (clipboard.js) rather than a hand-rolled

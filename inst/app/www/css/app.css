@@ -509,6 +509,38 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   border-radius: 4px;
 }
 
+/* ── Image zoom (stimulus_img() / answer_img(), dialog in practice.js) ───── */
+.stimulus-img.is-zoomable { cursor: zoom-in; }
+.stimulus-img.is-zoomable:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 2px; }
+/* the magnifier sits in the answer image's top right corner */
+.answer-img-wrap { position: relative; display: inline-block; max-width: 100%; }
+.img-zoom-btn {
+  position: absolute; top: 0.35rem; right: 0.35rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; padding: 0;
+  border: 1px solid #d1d5db; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92); color: #374151;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  cursor: zoom-in;
+}
+.img-zoom-btn:hover { color: var(--tiger-primary); border-color: var(--tiger-primary); }
+.img-zoom-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+.img-zoom {
+  max-width: none; max-height: none; padding: 0; border: 0;
+  background: transparent; overflow: visible; cursor: zoom-out;
+}
+.img-zoom::backdrop { background: rgba(17, 24, 39, 0.8); }
+.img-zoom img { display: block; border-radius: 6px; background: #fff; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35); }
+.img-zoom-close {
+  position: fixed; top: 0.75rem; right: 0.75rem;
+  width: 2.5rem; height: 2.5rem; padding: 0;
+  border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92); color: #111827;
+  font-size: var(--fs-num-md); line-height: 1;
+  cursor: pointer;
+}
+.img-zoom-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
 /* ── Progress bar ──────────────────────────────────────────────────────────── */
 .progress-bar {
   background-color: var(--tiger-primary);

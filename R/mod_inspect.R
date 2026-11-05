@@ -74,10 +74,7 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
         if (!is.na(item$stimulus_image) && nzchar(item$stimulus_image)) {
           div(
             class = "text-center my-3",
-            tags$img(
-              src = item$stimulus_image,
-              class = "img-fluid stimulus-img"
-            )
+            stimulus_img(item$stimulus_image)
           )
         }
       )
@@ -165,7 +162,7 @@ mod_inspect_server <- function(id, data_item, inspect_id) {
                 "d-flex align-items-center mb-2 answer-option is-static",
                 hi_class
               ),
-              tags$img(src = choices[i], class = "img-fluid answer-img")
+              answer_img(choices[i])
             )
           } else {
             div(

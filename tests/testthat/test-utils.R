@@ -468,3 +468,20 @@ test_that("several blocks in one text are each formatted", {
   expect_identical(lengths(regmatches(html, gregexpr('class="code-block ', html, fixed = TRUE))), 2L)
   expect_match(html, "<p>dazwischen</p>", fixed = TRUE)
 })
+
+# ── Image zoom (stimulus_img() / answer_img()) ───────────────────────────────
+
+test_that("a stimulus image is itself the zoom button, reachable by keyboard", {
+  html <- as.character(stimulus_img("img_item/a.png"))
+  expect_match(html, 'class="img-fluid stimulus-img is-zoomable"', fixed = TRUE)
+  expect_match(html, 'role="button"', fixed = TRUE)
+  expect_match(html, 'tabindex="0"', fixed = TRUE)
+  expect_match(html, 'aria-label="Bild vergrößern"', fixed = TRUE)
+})
+
+test_that("an answer image gets a separate magnifier button (the image click selects)", {
+  html <- as.character(answer_img("img_item/b.png", style = "opacity:0.65;"))
+  expect_match(html, 'class="img-fluid answer-img" style="opacity:0.65;"', fixed = TRUE)
+  expect_match(html, '<button type="button" class="img-zoom-btn" data-zoom-src="img_item/b.png"', fixed = TRUE)
+  expect_no_match(html, "is-zoomable", fixed = TRUE)
+})

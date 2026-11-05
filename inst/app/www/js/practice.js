@@ -1,6 +1,6 @@
 // Practice view: MathJax re-typesetting, the item-ID badge's "Kopiert"
-// confirmation, the code blocks' copy button, and scrolling the feedback
-// into view after the check.
+// confirmation, the code blocks' copy button, the image zoom, and
+// scrolling the feedback into view after the check.
 // Loaded in ui.R (app_ui()); plain browser JS, no build step.
 
 Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
@@ -86,3 +86,58 @@ document.addEventListener('DOMContentLoaded', function () {
     e.clearSelection();
   });
 });
+
+// Image zoom (stimulus_img() / answer_img() in utils.R): a click on a
+// stimulus image, or on an answer image's magnifier button, shows the image
+// enlarged in a native <dialog> (Esc, a click anywhere or the x closes it;
+// the dialog keeps the focus inside while open and returns it afterwards).
+// Scaled to fit the window, small images up to 3x their size. One dialog
+// for the page, created on first use; delegated, so re-rendered items work.
+(function () {
+  var dlg = null, img = null, opener = null;
+  function fit() {
+    if (!img.naturalWidth) return;
+    var maxW = window.innerWidth * 0.94, maxH = window.innerHeight * 0.86;
+    var k = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 3);
+    img.style.width = Math.round(img.naturalWidth * k) + 'px';
+    img.style.height = Math.round(img.naturalHeight * k) + 'px';
+  }
+  function ensure() {
+    if (dlg) return;
+    dlg = document.createElement('dialog');
+    dlg.className = 'img-zoom';
+    dlg.setAttribute('aria-label', 'Vergr\u00f6\u00dfertes Bild');
+    dlg.innerHTML = '<button type="button" class="img-zoom-close" aria-label="Schlie\u00dfen">\u00d7</button><img alt="">';
+    document.body.appendChild(dlg);
+    img = dlg.querySelector('img');
+    img.addEventListener('load', fit);
+    dlg.addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('close', function () { if (opener) opener.focus(); opener = null; });
+    window.addEventListener('resize', function () { if (dlg.open) fit(); });
+  }
+  function open(src, from) {
+    ensure();
+    opener = from;
+    img.style.width = img.style.height = '';
+    img.src = src;
+    if (img.complete) fit();
+    dlg.showModal();
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.img-zoom-btn');
+    if (btn) {
+      // inside the option's <label>: don't select the answer
+      e.preventDefault(); e.stopPropagation();
+      open(btn.getAttribute('data-zoom-src'), btn);
+      return;
+    }
+    var im = e.target.closest('img.is-zoomable');
+    if (im) open(im.getAttribute('src'), im);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('img.is-zoomable')) {
+      e.preventDefault();
+      open(e.target.getAttribute('src'), e.target);
+    }
+  });
+})();

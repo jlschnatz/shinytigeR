@@ -59,7 +59,7 @@ mod_mc_answer_server <- function(id, item, checked, result) {
               tags$label(
                 `for` = id_i,
                 class = "label-answer",
-                tags$img(src = choices[i], class = "img-fluid answer-img")
+                answer_img(choices[i])
               )
             )
           } else {
@@ -124,9 +124,8 @@ mod_mc_answer_server <- function(id, item, checked, result) {
                   tags$label(
                     `for` = id_i,
                     class = "label-answer",
-                    tags$img(
-                      src = choices[i],
-                      class = "img-fluid answer-img",
+                    answer_img(
+                      choices[i],
                       style = if (!is_sel) "opacity:0.65;" else NULL
                     )
                   )

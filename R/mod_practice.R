@@ -297,10 +297,7 @@ mod_practice_server <- function(
         if (!is.na(item$stimulus_image) && nzchar(item$stimulus_image)) {
           div(
             class = "text-center my-3",
-            tags$img(
-              src = item$stimulus_image,
-              class = "img-fluid stimulus-img"
-            )
+            stimulus_img(item$stimulus_image)
           )
         }
       )
