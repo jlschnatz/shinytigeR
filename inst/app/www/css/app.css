@@ -56,6 +56,21 @@
   display: block;
 }
 
+/* ── Type scale for headings ──────────────────────────────────────────────── */
+/* One size and weight per level, across all tabs:
+   page title 1.5rem/700 (home greeting, FAQ title);
+   card and section titles 1rem/700 (every card header, the dashboard's
+   accordion sections); subheadings 0.95rem/600 (cards inside the sections,
+   trajectory panels, FAQ topics and questions). Before, card headers were
+   16.8 px in Üben but 14.4 px in Fortschritt, and the accordion headers
+   400 in Fortschritt, 500 in FAQ. */
+b, strong { font-weight: 700; }   /* Bootstrap's "bolder" computed to 900 */
+.page-title { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.card-header,
+.bslib-card .card-header { font-size: 1rem; }   /* bslib sets 0.9rem */
+.card-header b { font-weight: 700; }
+.dashboard-wrap .accordion-button { font-size: 1rem; font-weight: 700; }
+
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 /* One container width for every tab (home, Üben, Fortschritt, FAQ), so the
    content edges don't jump when switching tabs; keep .dashboard-wrap's
@@ -479,7 +494,6 @@
 .selector-wrap,
 .practice-wrap  { padding-bottom: 2rem; }
 
-.selector-wrap .card-header { font-size: 1.05rem; }
 
 /* Selector: stacked cards; from 1200 px the area list left and a side column
    (step 2, direct lookup) right, see mod_selector_ui() */
@@ -925,7 +939,7 @@
   min-width: 0;
 }
 .traj-panel-title {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   margin: 0 0 0.35rem 0.15rem;
   white-space: nowrap;
@@ -1499,8 +1513,8 @@
 
 /* ── FAQ (R/faq.R, mod_faq.R) ───────────────────────────────────────────────── */
 .faq-topic + .faq-topic { margin-top: 1.5rem; }
-.faq-topic-title { font-size: 1rem; font-weight: 600; color: var(--tiger-primary); margin-bottom: 0.5rem; }
-.faq-accordion .accordion-button { font-weight: 500; }
+.faq-topic-title { font-size: 0.95rem; font-weight: 600; color: var(--tiger-primary); margin-bottom: 0.5rem; }
+.faq-accordion .accordion-button { font-size: 0.95rem; font-weight: 600; }
 .faq-answer { font-size: 0.95rem; max-width: 80ch; }
 .faq-answer p:last-child,
 .faq-answer ul:last-child { margin-bottom: 0; }

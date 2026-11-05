@@ -3,7 +3,7 @@
 mod_faq_ui <- function(id) {
   div(
     class = "faq-wrap",
-    tags$h3(class = "fw-bold mb-2", "Häufig gestellte Fragen"),
+    tags$h3(class = "page-title mb-2", "Häufig gestellte Fragen"),
     # Contact first, so it's found without scrolling past all questions
     tags$p(
       class = "text-muted mb-4",

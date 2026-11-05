@@ -592,6 +592,7 @@ Table: `credentials_db` — columns `user_name` and `password_hashed` (sodium-ha
 
 ### CSS (`inst/app/www/css/app.css`)
 
+**Headings follow one scale** (block at the top of `app.css`, keep it that way when adding UI): page title 1.5 rem / 700 (`.page-title`: home greeting, FAQ title); card and section titles 1 rem / 700 (every `.card-header`, overriding bslib's 0.9 rem, and the dashboard's accordion sections); subheadings 0.95 rem / 600 (`.la-card-title`, `.traj-panel-title`, FAQ topics and questions). `b`/`strong` are 700 (Bootstrap's `bolder` computed to 900; only 400–700 of Fira are bundled). Before, card headers were 16.8 px in Üben but 14.4 px in Fortschritt. The smaller sizes (labels, chips, legends: ~20 values between 0.62 and 0.9 rem) aren't consolidated yet.
 
 Key CSS variables (defined on `:root`):
 - `--tiger-primary: #006290` (= `PRIMARY_COLOR`)

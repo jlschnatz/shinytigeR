@@ -78,7 +78,7 @@ mod_home_server <- function(id, data_item, credentials, go_train, go_progress = 
     output$greeting <- renderUI({
       user <- credentials()$info$user_name
       div(
-        tags$h4(class = "fw-bold mb-1", sprintf("Hallo, %s!", user)),
+        tags$h4(class = "page-title mb-1", sprintf("Hallo, %s!", user)),
         tags$p(
           class = "text-muted mb-0",
           "Willkommen bei tigeR — deiner Übungsplattform für Statistik und R mit individuellem Feedback."
