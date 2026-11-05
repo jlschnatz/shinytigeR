@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Practice: after the check, bring the feedback card into view if it
 // lands below the screen (a long stimulus above it, or stacked below
-// the options on narrow screens). Its scroll-margin (app.css) keeps
+// the options on narrow screens) or behind the button bar / footer. Its scroll-margin (app.css) keeps
 // it clear of the sticky button bar.
 $(document).on('shiny:value', function (e) {
   if (!$(e.target).closest('.practice-feedback').length) return;
@@ -50,7 +50,8 @@ $(document).on('shiny:value', function (e) {
     var card = e.target.querySelector('.feedback-card');
     if (!card) return;
     var bar = document.querySelector('.practice-actions-bar');
-    var limit = window.innerHeight - (bar ? bar.offsetHeight : 0);
+    var foot = document.querySelector('.app-footer');
+    var limit = window.innerHeight - (bar ? bar.offsetHeight : 0) - (foot ? foot.offsetHeight : 0);
     if (card.getBoundingClientRect().bottom <= limit) return;
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });

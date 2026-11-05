@@ -29,6 +29,10 @@ app_server <- function(input, output, session) {
 
   mod_register_server("register_1", on_show_login = toggle_login_register)
 
+  # ── Footer link to Impressum & Datenschutz — before the auth gate, the page
+  # is public ──────────────────────────────────────────────────────────────
+  observeEvent(input$show_legal, bslib::nav_select("main_tabs", "legal_panel"))
+
   # ── Static item data (loaded once) ────────────────────────────────────────
   data_item <- db_get_items()
 

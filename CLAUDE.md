@@ -132,6 +132,7 @@ app_v3/
 │   ├── mod_dashboard.R    # module: progress dashboard
 │   ├── mod_faq.R          # module: FAQ tab (static UI: contact line, questions from faq.R)
 │   ├── faq.R              # FAQ entries as data: faq_entries(), FAQ_TOPICS, faq_section()
+│   ├── legal.R            # Impressum & Datenschutz page (legal_sections(), legal_page()) + the footer (app_footer())
 │   └── dashboard_details.R  # dashboard's bottom sections: "Lernstand im Detail" + "Lernverhalten" (pure helpers, no module)
 │
 ├── dev/
@@ -357,6 +358,10 @@ Landing panel shown immediately after login. Displays a personalised greeting as
 ### `R/mod_faq.R` / `R/faq.R`
 
 The FAQ tab. The questions are **data** in `R/faq.R`: `faq_entries()` returns a list of `list(topic, q, a)` (answer in Markdown, rendered with `render_md()`; `CONTACT_EMAIL` is filled in via the function's `contact` argument), `FAQ_TOPICS` fixes the topic order, and `faq_section()` renders one closed `bslib::accordion` per topic. **To add a question, add an entry**, nothing else. Keep the wording in sync with the app's labels, and keep the data-protection answer to what the app itself stores: the server (ShinyProxy) is run by the university, so the FAQ makes no claims about it, and it doesn't promise anonymity (username + responses are pseudonymous under the GDPR; details belong in a privacy policy). The links to pandaR (dataset documentation) and otter (R basics) are answers too; above the questions `mod_faq.R` shows the contact line. Static UI, no server part. Tests: `tests/testthat/test-faq.R`.
+
+### `R/legal.R` (Impressum & Datenschutz, footer)
+
+One public page, `legal_panel` in `ui.R` (not a tab: its nav link is hidden in `app.css` like `home_panel`'s), works before login like the FAQ. It's reached from the **footer on every page** (`app_footer()`, passed as `page_navbar(footer = ...)`): "tigeR · Goethe-Universität Frankfurt" and the link „Impressum & Datenschutz“, an `actionLink("show_legal")` whose observer in `server.R` sits **before** the auth gate. The footer is **fixed to the window's bottom**, so the link is always in view (in the page flow it only showed after scrolling to the end). Its height is the token `--footer-h`, and everything else at the bottom sits above it: the body's bottom padding, the practice view's sticky button bar and options column, the feedback's `scroll-margin` (and the scroll check in `practice.js`), Shiny's notification panel. Keep them in sync when adding something sticky at the bottom. For the padding to work, `app.css` overrides bslib's fill page (`body.bslib-page-fill { height: auto; min-height: 100vh }`): with it the body was exactly the window's height and long tabs overflowed it. Below 576 px the footer shows only the link. The sections are data (`legal_sections()`, Markdown, rendered like FAQ answers, links in a new tab), one card each. **Provisional text** (Nov 2026), marked as such on the page itself („Vorläufige Fassung: übernommen von pandaR, wird noch an tigeR angepasst“, remove it with the final text): contacts, data protection officer and supervisory authority as on pandaR's page (pandar.netlify.app/privacy); what tigeR stores as in the FAQ answer (keep both in sync); no claims about the server or cookies, no anonymity promise. The final text will replace it. Tests: `tests/testthat/test-legal.R`.
 
 ### `R/mod_register.R`
 

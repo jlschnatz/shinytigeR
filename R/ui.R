@@ -30,6 +30,7 @@ app_ui <- function() {
       # Fira Mono, not Fira Code: its ligatures would show R's `<-` as an arrow
       code_font = "'Fira Mono', SFMono-Regular, Menlo, Consolas, monospace"
     ),
+    footer = app_footer(),
     header = tagList(
       shinyjs::useShinyjs(),
       rclipboard::rclipboardSetup(),
@@ -132,6 +133,15 @@ app_ui <- function() {
       title = div(bsicons::bs_icon("question-circle-fill"), "FAQ"),
       value = "faq_panel",
       div(class = "main-content", mod_faq_ui("faq_1"))
+    ),
+
+    # ── Impressum & Datenschutz ───────────────────────────────────────────────
+    # Public like the FAQ, not a tab: reachable via the footer link on every
+    # page (app_footer(), R/legal.R); its nav link is hidden in app.css
+    bslib::nav_panel(
+      title = "Impressum & Datenschutz",
+      value = "legal_panel",
+      div(class = "main-content", legal_page())
     ),
 
     # ── Spacer + Logout ───────────────────────────────────────────────────────

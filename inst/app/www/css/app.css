@@ -27,7 +27,9 @@
   display: none;
 }
 
-/* home_panel is never a tab — reachable only via the navbar brand/logo link */
+/* home_panel is never a tab — reachable only via the navbar brand/logo link;
+   legal_panel only via the footer link */
+.navbar-nav a[data-value="legal_panel"],
 .navbar-nav a[data-value="home_panel"] {
   display: none !important;
 }
@@ -86,6 +88,7 @@
   --pad-inner: 0.75rem; /* inside cards within a card or section (dashboard cards, trajectory panels) */
   --gap-card: 1rem;     /* between cards, and between a page title and its first card */
   --gap-inner: 0.75rem; /* between cards within a card or section */
+  --footer-h: 2.25rem;  /* the fixed footer (Impressum & Datenschutz); whatever sticks to the bottom sits above it */
 }
 
 /* ── Spacing ───────────────────────────────────────────────────────────────── */
@@ -583,7 +586,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   padding: var(--pad-card);
 }
 /* Feedback after the check, full width below the item card */
-.practice-feedback .feedback-card { margin-top: var(--gap-card); scroll-margin: 1rem 0 6rem; }
+.practice-feedback .feedback-card { margin-top: var(--gap-card); scroll-margin: 1rem 0 calc(6rem + var(--footer-h)); }
 /* Below the card: "Neue Auswahl" left, skip / check / next right */
 .practice-actions-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; margin-top: 1rem; }
 .practice-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-left: auto; }
@@ -623,11 +626,11 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   .practice-answers-inner {
     position: sticky;
     top: 1rem;
-    bottom: calc(var(--actions-bar-h) + 1rem);
+    bottom: calc(var(--actions-bar-h) + var(--footer-h) + 1rem);
   }
   .practice-actions-bar {
     position: sticky;
-    bottom: 0;
+    bottom: var(--footer-h);
     z-index: 10;
     margin-top: 0;
     padding: 0.75rem 0;
@@ -1592,3 +1595,36 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .faq-answer { font-size: var(--fs-text); max-width: 80ch; }
 .faq-answer p:last-child,
 .faq-answer ul:last-child { margin-bottom: 0; }
+
+/* ── Footer: Impressum & Datenschutz, on every page ─────────────────────────── */
+/* Fixed to the window's bottom, so the link is always in view (in the page
+   flow it only showed after scrolling to the end of a long page). Everything
+   else that sticks to the bottom sits above it, offset by --footer-h: the
+   practice button bar and options column, Shiny's notifications, and the
+   body's padding keeps the end of every page clear of it. */
+/* page_navbar() makes a "fill" page: the body exactly as tall as the window
+   and longer tabs overflowing it, so its bottom padding wouldn't keep their
+   end clear. Here the body grows with its content instead; nothing in the
+   app relies on filling the window's height. */
+body.bslib-page-fill { height: auto; min-height: 100vh; }
+body { padding-bottom: var(--footer-h); }
+.app-footer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030;
+  height: var(--footer-h);
+  border-top: 1px solid #e5e7eb; background: #f8f9fa;
+}
+.app-footer-inner {
+  height: 100%; max-width: 1400px; margin: 0 auto; padding: 0 2rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  font-size: var(--fs-small); color: #6b7280; white-space: nowrap;
+}
+/* on phones only the link (the line wouldn't fit next to it) */
+@media (max-width: 575.98px) {
+  .app-footer-inner { justify-content: center; padding: 0 1rem; }
+  .app-footer-name { display: none; }
+}
+#shiny-notification-panel { bottom: var(--footer-h); }
+.app-footer-inner a { color: inherit; text-decoration: underline; }
+.app-footer-inner a:hover { color: var(--tiger-primary); }
+.legal-text { font-size: var(--fs-text); max-width: 80ch; }
+.legal-text p:last-child, .legal-text ul:last-child { margin-bottom: 0; }
