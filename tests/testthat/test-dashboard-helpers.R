@@ -763,3 +763,9 @@ test_that("the Lernstand card uses the app tooltip, not native titles", {
   expect_false(grepl(" title=", dots, fixed = TRUE))
   expect_false(grepl(" title=", bar, fixed = TRUE))
 })
+
+test_that("the trajectory has an (i) explaining its points next to the time switch", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  expect_match(html, '<div class="traj-controls">', fixed = TRUE)
+  expect_match(html, 'class="la-info" data-tip="Jeder Punkt ist eine gespeicherte Schätzung', fixed = TRUE)
+})

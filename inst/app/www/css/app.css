@@ -809,7 +809,13 @@
    takes over. A container query, not a media query, so the swap happens
    exactly when the grid itself drops to one column. */
 .traj-wrap { container-type: inline-size; }
-.traj-switch { display: flex; width: fit-content; margin-bottom: 0.85rem; }
+/* time switch and its (i) in one row above the grid */
+.traj-controls { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.85rem; }
+/* the switch takes .lt-switch's align-self/margin from the answer tree, which
+   made the row taller than the switch and the (i) sit ~4 px below its centre */
+.traj-controls > .lt-switch { align-self: center; margin-bottom: 0; }
+.traj-controls > .la-info { margin-left: 0; }
+.traj-switch { display: flex; width: fit-content; }
 .traj-plot { height: 170px; }
 /* Columns of at least 260px and at least a quarter of the width, so there are
    never more than 4: with 7 charts + the legend tile that gives 4 + 4 on wide

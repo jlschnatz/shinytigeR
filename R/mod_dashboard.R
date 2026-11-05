@@ -489,7 +489,16 @@ trajectory_section <- function(hist, ns = shiny::NS(NULL), now = Sys.time()) {
     div(
       class = "traj-wrap",
       plotly_js_dependency(),
-      trajectory_window_switch(),
+      # the time switch with an (i) explaining how to read the panels
+      div(
+        class = "traj-controls",
+        trajectory_window_switch(),
+        info_tip(paste(
+          "Jeder Punkt ist eine gespeicherte Schätzung deines Lernstands in diesem Themenbereich.",
+          "Eine neue entsteht höchstens einmal pro Sitzung (beim Login oder über „Fähigkeitsverlauf aktualisieren“),",
+          "und nur für Bereiche, die du seitdem geübt hast. Die farbigen Bänder sind die Kompetenzstufen."
+        ))
+      ),
       trajectory_legend("traj-legend-top"),
       div(class = "traj-grid", panels, trajectory_legend("traj-legend-panel"))
     )
