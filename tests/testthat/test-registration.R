@@ -185,3 +185,22 @@ test_that("read_secret returns an empty string without env var or file", {
     expect_equal(read_secret("TIGER_REG_CODE", REG_CODE_FILE, dir), "")
   })
 })
+
+# ── mod_register_server: one account per session ─────────────────────────────
+
+test_that("after a successful registration, further submits in the session create no account", {
+  dir <- withr::local_tempdir()
+  file.copy(make_creds_db(), file.path(dir, "db_credentials.sqlite"))
+  withr::local_envvar(c(TIGER_DB_DIR = dir, TIGER_REG_CODE = "sem-code"))
+  shiny::testServer(mod_register_server, args = list(on_show_login = function() NULL), {
+    session$setInputs(
+      reg_username = "first_user", reg_password = "password123",
+      reg_password2 = "password123", reg_code = "sem-code", reg_submit = 1L
+    )
+    expect_true(db_username_exists("first_user"))
+    expect_true(registered())
+    # a second submit with another username, before the reload
+    session$setInputs(reg_username = "second_user", reg_submit = 2L)
+    expect_false(db_username_exists("second_user"))
+  })
+})

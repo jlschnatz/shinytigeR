@@ -40,12 +40,22 @@ mod_register_server <- function(id, on_show_login) {
   moduleServer(id, function(input, output, session) {
     attempts <- reactiveVal(0L)
     locked   <- reactiveVal(FALSE)
+    # TRUE once an account was created in this session: the form is then
+    # locked until the reload to the login (1.8 s later). Without it, a
+    # second submit in that time, e.g. with another username, created a
+    # second account. Also catches double clicks: Shiny runs a session's
+    # events one after another, so a click queued during the first
+    # registration reaches the guard below after it has finished.
+    registered <- reactiveVal(FALSE)
 
     observeEvent(input$show_login, {
       on_show_login()
     })
 
     observeEvent(input$reg_submit, {
+      if (registered()) {
+        return()
+      }
       if (locked()) {
         output$reg_feedback <- renderUI(reg_msg(
           "Zu viele fehlgeschlagene Versuche. Bitte Seite neu laden.",
@@ -127,6 +137,10 @@ mod_register_server <- function(id, on_show_login) {
       tryCatch(
         {
           db_register_user(un, pw)
+          registered(TRUE)
+          for (f in c("reg_username", "reg_password", "reg_password2", "reg_code", "reg_submit")) {
+            shinyjs::disable(f)
+          }
           output$reg_feedback <- renderUI(reg_msg(
             "Konto erfolgreich erstellt! Du wirst zum Login weitergeleitet…",
             type = "success"
