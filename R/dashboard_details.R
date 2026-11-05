@@ -140,10 +140,14 @@ interval_card <- function(comp) {
     div(
       class = "la-card-title ivl-title",
       tags$span("Wie sicher ist die Einschätzung?"),
-      # Opens/closes the explainer next to the strips (client-side, ui.R)
+      # Opens/closes the explainer next to the strips (client-side,
+      # www/js/dashboard.js). Styled like the (i) of info_tip(), right after
+      # the title, with text: the rule in the dashboard is (i) = short
+      # reading hint (tooltip), "Wie wird das berechnet?" = the method,
+      # opened in place (too long for a tooltip)
       tags$button(
         type = "button",
-        class = "ivl-explain-btn",
+        class = "la-info la-info-text ivl-explain-btn",
         `data-explain-toggle` = "",
         `aria-expanded` = "false",
         `aria-controls` = "la-explainer",
@@ -254,7 +258,7 @@ detail_section <- function(comp) {
 
 # A small (i) button next to a card title that shows `text` as a tooltip —
 # the explanations that would otherwise take a line of their own. Tooltips
-# are any element with `data-tip`, shown by one shared script in ui.R (mouse
+# are any element with `data-tip`, shown by one shared script, www/js/tooltips.js (mouse
 # hover, keyboard focus, and a tap on touch screens).
 info_tip <- function(text) {
   tags$button(
@@ -609,7 +613,7 @@ coverage_card <- function(cov) {
 # list(n, children = list(correct, wrong, none)); nodes at the last level and
 # "none" nodes have no children. Plus `direction` and the numbers for the
 # takeaway sentence: `$mistakes` (forward) or `$latest` (backward).
-ANSWER_TREE_DEPTH <- 3L
+ANSWER_TREE_DEPTH <- 4L
 
 answer_tree_stats <- function(
   ud,
@@ -798,103 +802,89 @@ answer_tree_label <- function(cat, attempt, direction = "forward") {
   )
 }
 
-# A ring showing how a node splits into its children (correct/wrong/none)
-answer_tree_donut <- function(node) {
+# A ring showing how a node splits into its children (correct/wrong/none),
+# all grey for a node without children. As a string, see answer_tree_item_html()
+answer_tree_donut_html <- function(node) {
   counts <- vapply(node$children, `[[`, integer(1), "n")
-  pct <- if (sum(counts) > 0L) {
-    100 * cumsum(counts) / sum(counts)
-  } else {
-    c(0, 0, 0)
-  }
-  tags$span(
-    class = "lt-donut",
-    `aria-hidden` = "true",
-    style = sprintf("--a:%.1f%%;--b:%.1f%%;", pct[1], pct[2])
+  pct <- if (sum(counts) > 0L) 100 * cumsum(counts) / sum(counts) else c(0, 0, 0)
+  sprintf(
+    '<span class="lt-donut" aria-hidden="true" style="--a:%.1f%%;--b:%.1f%%;"></span>',
+    pct[1], pct[2]
   )
 }
 
 # One node and (recursively) its branch, as a <li>. Nodes with children are
-# buttons; the client-side toggle in ui.R flips the <li>'s .is-open, which
+# buttons; the client-side toggle in www/js/dashboard.js flips the <li>'s .is-open, which
 # shows or hides its child list — so any number of branches can be open.
 # `attempt` is the attempt this node stands for (0 = root).
+#
+# Built as an HTML string, not with htmltools tags: the card holds 16 trees
+# (2 directions x all + 7 areas), and building and rendering that many tag
+# objects (each with its own bs_icon() arrow) took about half of the
+# dashboard's render time. The markup is the same as the tag version had.
 answer_tree_item <- function(
   node,
   cat,
   attempt,
   parent_n,
   open_attempts,
-  direction = "forward"
+  direction = "forward",
+  chevron = as.character(bsicons::bs_icon("chevron-right"))
 ) {
+  HTML(answer_tree_item_html(node, cat, attempt, parent_n, open_attempts, direction, chevron))
+}
+
+answer_tree_item_html <- function(node, cat, attempt, parent_n, open_attempts, direction, chevron) {
   expandable <- !is.null(node$children) && node$n > 0L
   is_open <- expandable && attempt %in% open_attempts
   share <- if (parent_n > 0L) {
-    sprintf("%d %%", round(100 * node$n / parent_n))
-  } else {
-    NULL
-  }
-  # Donut left of the text, label and share on one line: keeps nodes flat
-  body <- tagList(
-    if (expandable) answer_tree_donut(node),
-    tags$span(
-      class = "lt-text",
-      tags$span(class = "lt-num", node$n),
-      tags$span(
-        class = "lt-lbl",
-        if (attempt == 0L) {
-          "Aufgaben"
-        } else {
-          answer_tree_label(cat, attempt, direction)
-        },
-        if (!is.null(share)) {
-          tags$span(
-            class = "lt-share",
-            tags$span(class = "lt-dot", "\u00b7\u00a0"),
-            share
-          )
-        }
-      )
+    sprintf(
+      # the spaces as the tag version had them: "richtig · 68 %"
+      ' <span class="lt-share"><span class="lt-dot">\u00b7\u00a0</span> %d %%</span>',
+      round(100 * node$n / parent_n)
     )
+  } else {
+    ""
+  }
+  label <- if (attempt == 0L) "Aufgaben" else answer_tree_label(cat, attempt, direction)
+  # Donut left of the text, label and share on one line: keeps nodes flat.
+  # "none" nodes (nicht bearbeitet / nicht wiederholt / erster Versuch) get a
+  # plain grey ring: nothing follows them, and the column stays aligned.
+  donut <- if (expandable || cat == "none") answer_tree_donut_html(node) else ""
+  body <- sprintf(
+    '%s<span class="lt-text"><span class="lt-num">%d</span><span class="lt-lbl">%s%s</span></span>',
+    donut, node$n, label, share # fixed labels (answer_tree_label()), no user text to escape
   )
   cls <- paste("lt-node", paste0("is-", cat), if (node$n == 0L) "is-empty")
   el <- if (expandable && attempt > 0L) {
-    tags$button(
-      type = "button",
-      class = paste(cls, "is-toggle"),
-      `data-node` = "",
-      `aria-expanded` = if (is_open) "true" else "false",
-      body,
-      tags$span(
-        class = "lt-chevron",
-        `aria-hidden` = "true",
-        bsicons::bs_icon("chevron-right")
-      )
+    sprintf(
+      paste0(
+        '<button type="button" class="%s is-toggle" data-node="" aria-expanded="%s">',
+        '%s<span class="lt-chevron" aria-hidden="true">%s</span></button>'
+      ),
+      cls, if (is_open) "true" else "false", body, chevron
     )
   } else {
-    div(class = cls, body)
+    sprintf('<div class="%s">%s</div>', cls, body)
   }
-  tags$li(
-    class = if (is_open || attempt == 0L) "is-open",
-    el,
-    if (expandable) {
-      # Empty nodes are left out: at deeper attempts most would be 0
-      kids <- Filter(
-        function(k) node$children[[k]]$n > 0L,
-        names(node$children)
-      )
-      tags$ul(
-        class = "lt-children",
-        lapply(kids, function(k) {
-          answer_tree_item(
-            node$children[[k]],
-            k,
-            attempt + 1L,
-            node$n,
-            open_attempts,
-            direction
-          )
-        })
-      )
-    }
+  kids <- ""
+  if (expandable) {
+    # Empty nodes are left out: at deeper attempts most would be 0
+    keep <- Filter(function(k) node$children[[k]]$n > 0L, names(node$children))
+    kids <- paste0(
+      '<ul class="lt-children">',
+      paste(vapply(keep, function(k) {
+        answer_tree_item_html(
+          node$children[[k]], k, attempt + 1L, node$n, open_attempts, direction, chevron
+        )
+      }, character(1)), collapse = ""),
+      "</ul>"
+    )
+  }
+  sprintf(
+    "<li%s>%s%s</li>",
+    if (is_open || attempt == 0L) ' class="is-open"' else "",
+    el, kids
   )
 }
 
@@ -935,7 +925,7 @@ retry_eligible <- function(oi, today = Sys.Date()) {
   oi[as.integer(today - oi$last_date) >= RETRY_MIN_DAYS, , drop = FALSE]
 }
 
-# The panel next to the tree, closing the loop back to practice: a button
+# The panel closing the loop back to practice: a button
 # that starts a practice queue with the retryable open mistakes
 # (`input$retry_open`; the dashboard server picks at most RETRY_MAX_ITEMS).
 # Deliberately no per-item list or solution lookup: looking up the answer
@@ -943,31 +933,59 @@ retry_eligible <- function(oi, today = Sys.Date()) {
 # Shiny.setInputValue() event, not an actionButton(), since this panel
 # re-renders after every answer (see item_id_badge() for that quirk). `ns` is
 # the dashboard's.
-open_items_panel <- function(oi, ns, today = Sys.Date()) {
+#
+# A full-width bar in "Dein Lernverhalten" (above the answer tree), since
+# retrying mistakes is the section's main action: the number of open mistakes, a sentence why retrying pays off, how
+# many mistakes were already fixed (`fixed`, see fixed_mistakes()), and the
+# button on the right.
+open_items_panel <- function(oi, ns, today = Sys.Date(), fixed = 0L) {
   n_open <- nrow(oi)
   n_ready <- nrow(retry_eligible(oi, today))
   n_wait <- n_open - n_ready
+  fixed_note <- if (fixed > 0L) {
+    tags$p(
+      class = "oi-fixed",
+      bsicons::bs_icon("check-circle-fill"),
+      tags$span(sprintf(
+        "Schon ausgebessert: %d %s nach einem Fehler richtig gelöst.",
+        fixed, if (fixed == 1L) "Aufgabe" else "Aufgaben"
+      ))
+    )
+  }
   div(
-    class = "la-card oi-card",
+    class = paste("la-card oi-card oi-hero", if (n_open == 0L) "is-clear"),
     div(
-      class = "la-card-title",
-      "Offene Fehler",
-      if (n_open > 0L) tags$span(class = "oi-count", n_open),
-      info_tip(
-        "Aufgaben, die du zuletzt falsch beantwortet hast (auch wenn du sie früher schon einmal richtig hattest). Du kannst diese Aufgaben frühestens 24 Stunden nach deiner letzten Antwort nochmal versuchen."
-      )
+      class = "oi-big",
+      tags$span(class = "oi-big-val", if (n_open == 0L) bsicons::bs_icon("check-lg") else n_open),
+      tags$span(class = "oi-big-lbl", if (n_open == 0L) "zuletzt alles richtig" else "zuletzt falsch")
     ),
-    if (n_open == 0L) {
-      tags$p(
-        class = "la-note mt-0",
-        "Keine! Deine letzte Antwort war überall richtig."
-      )
-    } else {
-      tagList(
+    div(
+      class = "oi-main",
+      div(
+        class = "la-card-title",
+        "Fehler nochmal üben",
+        info_tip(
+          "Aufgaben, die du zuletzt falsch beantwortet hast (auch wenn du sie früher schon einmal richtig hattest). Du kannst diese Aufgaben frühestens 24 Stunden nach deiner letzten Antwort nochmal versuchen."
+        )
+      ),
+      if (n_open == 0L) {
+        tags$p(class = "oi-lead", "Keine! Deine letzte Antwort war überall richtig.")
+      } else {
+        tags$p(
+          class = "oi-lead",
+          "Bei diesen Aufgaben war deine letzte Antwort falsch.",
+          "Ab dem nächsten Tag kannst du sie nochmal üben."
+        )
+      },
+      fixed_note
+    ),
+    if (n_open > 0L) {
+      div(
+        class = "oi-action",
         if (n_ready > 0L) {
           tags$button(
             type = "button",
-            class = "btn btn-sm btn-primary oi-retry",
+            class = "btn btn-primary oi-retry",
             onclick = sprintf(
               "Shiny.setInputValue('%s', Date.now(), {priority: 'event'})",
               ns("retry_open")
@@ -995,17 +1013,37 @@ open_items_panel <- function(oi, ns, today = Sys.Date()) {
   )
 }
 
+# Mistakes already fixed: items whose latest answer is right after at least
+# one earlier wrong answer (skips don't count, same rule as open_items()).
+fixed_mistakes <- function(ud, data_item) {
+  a <- answered_rows(ud, data_item)
+  if (nrow(a) == 0L) {
+    return(0L)
+  }
+  # answered_rows() sorts by time, so the last row is the latest answer
+  sum(vapply(split(a$bool_correct, a$id_item), function(x) {
+    x[length(x)] && any(!x[-length(x)])
+  }, logical(1)))
+}
+
 # One reading direction of the tree: takeaway, hint, the tree and its legend
-answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
+# `area` is the key of the learning-area filter ("all" or the area's index in
+# LEARNING_AREA_LEVELS); only the forward view of all areas is visible at
+# first, the client-side script (www/js/dashboard.js) shows the chosen one (`hidden`).
+answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH, area = "all",
+                             chevron = as.character(bsicons::bs_icon("chevron-right"))) {
   backward <- identical(tree$direction, "backward")
   heads <- if (backward) {
-    c("Letzter", "Vorletzter", "Drittletzter", sprintf("%d. letzter", 4:9))[seq_len(depth)]
+    c("Letzter", "Vorletzter", "Drittletzter", "Viertletzter", "Fünftletzter",
+      sprintf("%d. letzter", 6:9))[seq_len(depth)]
   } else {
     sprintf("%d. Versuch", seq_len(depth))
   }
   div(
     class = "lt-view",
     `data-view` = tree$direction,
+    `data-area` = area,
+    hidden = if (backward || area != "all") NA,
     div(class = "la-summary lt-takeaway", answer_tree_takeaway(tree)),
     div(
       class = "la-note lt-hint",
@@ -1019,6 +1057,8 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
       lang = "de",
       div(
         class = "lt-inner",
+        # columns: root + one per attempt (the widths in app.css follow it)
+        style = sprintf("--cols:%d;", depth + 1L),
         # Narrow cards drop the root column (CSS) and show the total here
         div(class = "lt-total", sprintf("%d Aufgaben insgesamt", tree$n)),
         div(
@@ -1027,7 +1067,8 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
           tags$span("Alle"),
           lapply(heads, tags$span)
         ),
-        # The 1st column's branches are open by default, deeper ones on click
+        # Only the 1st attempt's column shows at first; every branch opens
+        # on click (closed by default, so the tree starts compact)
         tags$ul(
           class = "lt-top",
           answer_tree_item(
@@ -1035,8 +1076,9 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
             "root",
             0L,
             0L,
-            open_attempts = 1L,
-            direction = tree$direction
+            open_attempts = integer(0),
+            direction = tree$direction,
+            chevron = chevron
           )
         )
       )
@@ -1059,10 +1101,12 @@ answer_tree_view <- function(tree, depth = ANSWER_TREE_DEPTH) {
 
 # The tree card. With `backward` (answer_tree_stats(direction = "backward"))
 # it gets a toggle between both reading directions: from the first attempt
-# on, or from the latest answer back. Both views are rendered; the switch is
-# client-side (ui.R), so it needs no round trip. The card's data-view says
-# which one is shown (forward by default).
-answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
+# on, or from the latest answer back. With `by_area` (a list named by
+# learning area of list(forward, backward), see answer_tree_by_area()) it
+# also gets a learning-area filter. Every view is rendered; switching is
+# client-side (www/js/dashboard.js), so it needs no round trip. The card's data-view and
+# data-area say which one is shown (forward, all areas by default).
+answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH, by_area = NULL) {
   switch_btn <- function(view, label, pressed) {
     tags$button(
       type = "button",
@@ -1072,32 +1116,88 @@ answer_tree_card <- function(tree, backward = NULL, depth = ANSWER_TREE_DEPTH) {
       label
     )
   }
+  area_key <- function(area) as.character(match(area, LEARNING_AREA_LEVELS))
+  # the arrow's SVG once for all nodes of all views
+  chevron <- as.character(bsicons::bs_icon("chevron-right"))
+  area_views <- lapply(names(by_area), function(area) {
+    tagList(
+      answer_tree_view(by_area[[area]]$forward, depth, area_key(area), chevron),
+      if (!is.null(backward)) answer_tree_view(by_area[[area]]$backward, depth, area_key(area), chevron)
+    )
+  })
   div(
     class = "la-card lt-card",
     `data-view` = "forward",
+    `data-area` = "all",
     div(
       class = "la-card-title",
       "Deine Antwortverläufe",
       info_tip(paste(
         "Jede Spalte ist ein Versuch, die Zeit läuft von links nach rechts.",
-        "„Ab 1. Versuch“ beginnt links bei allen Aufgaben und zeigt deinen 1., 2. und 3. Versuch.",
+        sprintf(
+          "„Ab 1. Versuch“ beginnt links bei allen Aufgaben und zeigt deine ersten %d Versuche.",
+          depth
+        ),
         "„Ab letztem Versuch“ beginnt rechts bei deiner letzten Antwort und geht zurück zu den Versuchen davor.",
         "Der Ring in einem Kasten zeigt, wie er sich in der nächsten Spalte aufteilt.",
         "Übersprungene Aufgaben zählen nicht."
       ))
     ),
-    if (!is.null(backward)) {
+    if (!is.null(backward) || length(by_area) > 0L) {
       div(
-        class = "lt-switch",
-        role = "group",
-        `aria-label` = "Ansicht des Baums",
-        switch_btn("forward", "Ab 1. Versuch", TRUE),
-        switch_btn("backward", "Ab letztem Versuch", FALSE)
+        class = "lt-controls",
+        if (!is.null(backward)) {
+          div(
+            class = "lt-switch",
+            role = "group",
+            `aria-label` = "Ansicht des Baums",
+            switch_btn("forward", "Ab 1. Versuch", TRUE),
+            switch_btn("backward", "Ab letztem Versuch", FALSE)
+          )
+        },
+        # One chip per area (its short label) plus "Alle"; plain buttons like
+        # the switch, handled by www/js/dashboard.js. No `title`: the native
+        # hover label looked out of place (same for the trajectory panels)
+        if (length(by_area) > 0L) {
+          area_chip <- function(key, label, pressed = FALSE) {
+            tags$button(
+              type = "button",
+              class = "lt-area-chip",
+              `data-lt-area` = key,
+              `aria-pressed` = if (pressed) "true" else "false",
+              label
+            )
+          }
+          div(
+            class = "lt-areas",
+            role = "group",
+            `aria-label` = "Themenbereich",
+            area_chip("all", "Alle", pressed = TRUE),
+            lapply(names(by_area), function(area) {
+              short <- names(LEARNING_AREA_LABELS)[match(area, LEARNING_AREA_LABELS)]
+              area_chip(area_key(area), if (is.na(short)) area else short)
+            })
+          )
+        }
       )
     },
-    answer_tree_view(tree, depth),
-    if (!is.null(backward)) answer_tree_view(backward, depth)
+    answer_tree_view(tree, depth, chevron = chevron),
+    if (!is.null(backward)) answer_tree_view(backward, depth, chevron = chevron),
+    area_views
   )
+}
+
+# The trees of each learning area in the pool (both directions), for the
+# card's filter: the same counts, restricted to that area's items.
+answer_tree_by_area <- function(ud, data_item, depth = ANSWER_TREE_DEPTH) {
+  areas <- intersect(LEARNING_AREA_LEVELS, data_item$learning_area)
+  stats::setNames(lapply(areas, function(area) {
+    pool <- data_item[data_item$learning_area %in% area, , drop = FALSE]
+    list(
+      forward = answer_tree_stats(ud, pool, depth),
+      backward = answer_tree_stats(ud, pool, depth, direction = "backward")
+    )
+  }), areas)
 }
 
 behaviour_section <- function(
@@ -1112,18 +1212,23 @@ behaviour_section <- function(
     icon = bsicons::bs_icon("calendar3"),
     div(
       class = "la-grid la-grid-behaviour",
-      # Narrow left column on wide screens: key numbers, calendar and the
-      # retry card; coverage and tree share the rest side by side (CSS)
+      # A narrow side column (key numbers, calendar) next to the coverage
+      # card; below them, each across the full width, the retry bar and the
+      # answer tree (CSS)
       div(
         class = "la-side",
         behaviour_tiles(behaviour_stats(ud, data_item, today), today),
-        calendar_card(ud, today),
-        open_items_panel(open_items(ud, data_item), ns, today = today)
+        calendar_card(ud, today)
       ),
       coverage_card(coverage_matrix(ud, data_item)),
+      open_items_panel(
+        open_items(ud, data_item), ns,
+        today = today, fixed = fixed_mistakes(ud, data_item)
+      ),
       answer_tree_card(
         answer_tree_stats(ud, data_item),
-        backward = answer_tree_stats(ud, data_item, direction = "backward")
+        backward = answer_tree_stats(ud, data_item, direction = "backward"),
+        by_area = answer_tree_by_area(ud, data_item)
       )
     )
   )

@@ -25,7 +25,10 @@ competency_scale_bar <- function(cl) {
   }
   div(
     class = if (cl$level == 0L) "comp-level is-empty" else "comp-level",
-    title = desc,
+    # the app's tooltip (www/js/tooltips.js), not a native `title`; tabindex
+    # -1 so a tap shows it on touch screens without adding a Tab stop
+    `data-tip` = desc,
+    tabindex = "-1",
     tags$span(class = "comp-level-label", cl$label),
     tags$span(
       class = "comp-scale",
@@ -111,7 +114,8 @@ certainty_dots <- function(theta, se, n_items, cl) {
   }
   tags$span(
     class = "ev-dots",
-    title = desc,
+    `data-tip` = desc, # app tooltip, see competency_scale_bar()
+    tabindex = "-1",
     role = "img",
     `aria-label` = desc,
     lapply(seq_len(3L), function(k) {
@@ -209,22 +213,116 @@ competency_band_shapes <- function(opacity = 0.2) {
 }
 
 # Shared time axis for all trajectory panels (so they line up), padded so the
-# first and last points aren't cut off at the panel edge.
-trajectory_x_range <- function(hist) {
+# first and last points aren't cut off at the panel edge. With `days` (one of
+# TRAJECTORY_WINDOWS) it's the last `days` days up to now instead, starting
+# exactly at the window's start: a line from an earlier estimate then enters
+# from the left edge, so the panel still shows where the student came from.
+trajectory_x_range <- function(hist, days = NA, now = Sys.time()) {
+  if (!is.na(days)) {
+    return(c(now - days * 86400, now + days * 86400 * 0.03))
+  }
   r <- range(hist$time)
   pad <- max(as.numeric(diff(r), units = "secs") * 0.06, 12 * 3600)
   r + c(-pad, pad)
 }
 
+# x-axis labels of the trajectory panels: `n` dates spread evenly over the
+# visible range (inset from the edges so the labels aren't clipped), each on
+# a full local day. Set explicitly because plotly's own "nice" ticks (weekly,
+# every two months, ...) often left only 2 labels on a panel. A short range
+# can yield fewer (two ticks on the same day collapse into one).
+# Returns list(vals = "YYYY-MM-DD", text = "dd.mm.").
+trajectory_ticks <- function(x_range, n = 4L) {
+  span <- as.numeric(difftime(x_range[2], x_range[1], units = "secs"))
+  at <- x_range[1] + span * seq(0.08, 0.92, length.out = n)
+  days <- unique(local_date(at))
+  midnight <- as.POSIXct(format(days), format = "%Y-%m-%d") # explicit format: guessing one was slow
+  days <- days[midnight >= x_range[1] & midnight <= x_range[2]]
+  list(vals = format(days, "%Y-%m-%d"), text = format(days, "%d.%m."))
+}
+
+# The latest saved estimate per learning area, in the learning_area/theta/
+# se/n_items shape estimate_competency() returns. Per area, not the latest
+# batch: compute_and_save_ability() only writes rows for the areas practised
+# since the last estimate, so an area's current value can be older than
+# another's. `computed_at` is the most recent update of any area (the date in
+# the card header). Areas without a row read as NA / 0 items ("Keine Daten").
+latest_ability <- function(ab) {
+  if (nrow(ab) == 0L) {
+    return(NULL)
+  }
+  ab <- ab[order(ab$computed_at), , drop = FALSE]
+  ab <- ab[!duplicated(ab$learning_area, fromLast = TRUE), , drop = FALSE]
+  idx <- match(LEARNING_AREA_LEVELS, ab$learning_area)
+  data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = ab$theta[idx],
+    # NA for estimates saved before the standard error was stored
+    se = if ("se" %in% names(ab)) as.numeric(ab$se[idx]) else NA_real_,
+    n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
+    computed_at = max(ab$computed_at, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}
+
+# Times for plotly.js: local wall-clock strings, no time zone (plotly.js
+# shows them as given, the same day the rest of the dashboard uses)
+trajectory_time <- function(t) format(t, "%Y-%m-%d %H:%M:%S")
+
+# The x axis of a time window (one of TRAJECTORY_WINDOWS): range and labels.
+# The same for every panel, so trajectory_section() computes it once per
+# window (the date/time-zone conversions are the slow part).
+trajectory_window_axis <- function(x_range) {
+  ticks <- trajectory_ticks(x_range)
+  list(
+    x_range = x_range,
+    range = trajectory_time(x_range),
+    tickvals = as.list(ticks$vals),
+    ticktext = as.list(ticks$text)
+  )
+}
+
+# The parts of a panel that depend on the time window: the window's axis
+# (trajectory_window_axis()) plus the note for an area without an estimate
+# in the window. The client-side script swaps them in.
+trajectory_window_layout <- function(d, axis) {
+  empty <- !any(d$time >= axis$x_range[1] & d$time <= axis$x_range[2])
+  list(
+    range = axis$range,
+    tickvals = axis$tickvals,
+    ticktext = axis$ticktext,
+    annotations = if (empty) {
+      list(list(
+        text = "In diesem Zeitraum nicht geübt", showarrow = FALSE,
+        xref = "paper", yref = "paper", x = 0.5, y = 0.5,
+        font = list(size = 12, color = "#5b6477"),
+        bgcolor = "rgba(255,255,255,0.85)", borderpad = 4
+      ))
+    } else {
+      list()
+    }
+  )
+}
+
 # One small-multiples panel: the trajectory of a single learning area (`d`,
-# rows of ability_trajectory_data() for that area) on the full theta range.
-# Markers show the saved estimates (hover: date + competency label), joined by
-# a plain line. Not smoothed: a lowess line visibly missed some of the points,
-# which read as an error; damping the jumps is the job of the displayed
-# estimate itself, not of the plot. No uncertainty is drawn here on purpose;
-# intervals belong to the detailed explanation of the current estimate.
-trajectory_panel_fig <- function(d, x_range) {
+# rows of ability_trajectory_data() for that area) on the full theta range,
+# as a plain plotly.js figure spec (data, layout, config), plus `windows`: the
+# window-dependent layout parts for each window in `axes` (a named list of
+# trajectory_window_axis(), or a single x range; the first is the default). Markers show the saved estimates (hover: date +
+# competency label), joined by a plain line. Not smoothed: a lowess line
+# visibly missed some of the points, which read as an error; damping the
+# jumps is the job of the displayed estimate itself, not of the plot. No
+# uncertainty is drawn here on purpose; intervals belong to the detailed
+# explanation of the current estimate.
+#
+# Not built with plotly's R package (plot_ly() + renderPlotly()): its R
+# pipeline (plotly_build, event registration, JSON) took ~50 ms per panel,
+# ~0.35 s for opening "Fähigkeitsverlauf", while the spec itself is tiny.
+# trajectory_section() embeds the specs, www/js/dashboard.js draws them with
+# plotly.js (Plotly.react) and switches the time window without a round trip.
+trajectory_panel_spec <- function(d, axes) {
   d <- d[order(d$time), ]
+  if (inherits(axes, "POSIXct")) axes <- list(all = trajectory_window_axis(axes))
   lbl <- COMPETENCY_SCALE$label[findInterval(d$theta, COMPETENCY_SCALE$lower)]
   n <- as.integer(d$n_items)
   basis <- ifelse(
@@ -237,36 +335,67 @@ trajectory_panel_fig <- function(d, x_range) {
     formatC(d$theta, format = "f", digits = 2, decimal.mark = "."),
     basis
   )
+  # I()/as.list(): arrays in the JSON even for a single estimate (a plain
+  # string for `text` made the hover template show placeholders)
+  x <- I(trajectory_time(d$time))
+  y <- I(d$theta)
+  # automargin: room for the date labels below the 4 px margin (plotly's R
+  # package turned it on by default, plotly.js doesn't)
   axis <- list(
     title = "", fixedrange = TRUE, showgrid = FALSE, zeroline = FALSE,
-    showline = TRUE, linecolor = "#c8ccd1", mirror = TRUE
+    showline = TRUE, linecolor = "#c8ccd1", mirror = TRUE, automargin = TRUE
   )
-  plotly::plot_ly() |>
-    plotly::add_lines(
-      x = d$time, y = d$theta, hoverinfo = "skip",
-      line = list(color = TRAJECTORY_COLOR, width = 3)
-    ) |>
-    plotly::add_markers(
-      # as.list(): with a single estimate, plotly would otherwise send `text`
-      # as a plain string instead of an array, and the hover template
-      # %{text} then shows placeholders instead of the text
-      x = d$time, y = d$theta, text = as.list(hover), hovertemplate = "%{text}<extra></extra>",
-      marker = list(color = TRAJECTORY_COLOR, size = 7, line = list(color = "white", width = 1))
-    ) |>
-    plotly::layout(
+  windows <- lapply(axes, function(a) trajectory_window_layout(d, a))
+  default <- windows[[1]]
+  list(
+    data = list(
+      list(
+        type = "scatter", mode = "lines", x = x, y = y, hoverinfo = "skip",
+        line = list(color = TRAJECTORY_COLOR, width = 3)
+      ),
+      list(
+        type = "scatter", mode = "markers", x = x, y = y,
+        text = as.list(hover), hovertemplate = "%{text}<extra></extra>",
+        marker = list(color = TRAJECTORY_COLOR, size = 9, line = list(color = "white", width = 1.5))
+      )
+    ),
+    layout = list(
       shapes = competency_band_shapes(),
+      annotations = default$annotations,
       showlegend = FALSE,
       # plotly doesn't inherit the page font; keep in sync with base_font in ui.R
       font = list(family = "'Fira Sans', sans-serif"),
       hoverlabel = list(font = list(family = "'Fira Sans', sans-serif")),
-      xaxis = c(axis, list(type = "date", range = x_range, tickformat = "%d.%m.", nticks = 4)),
+      xaxis = c(axis, list(
+        type = "date", range = default$range, tickmode = "array",
+        tickvals = default$tickvals, ticktext = default$ticktext
+      )),
       yaxis = c(axis, list(range = TRAJECTORY_Y_RANGE, showticklabels = FALSE, ticks = "")),
+      height = 170,
       margin = list(l = 4, r = 4, t = 4, b = 4),
       dragmode = FALSE,
       plot_bgcolor = "white",
       paper_bgcolor = "rgba(0,0,0,0)"
-    ) |>
-    plotly::config(displayModeBar = FALSE, scrollZoom = FALSE)
+    ),
+    config = list(displayModeBar = FALSE, scrollZoom = FALSE, responsive = TRUE),
+    windows = windows
+  )
+}
+
+# A panel's spec as JSON for a <script type="application/json"> ("</" is
+# escaped so the hover text's </b> can't end the script element)
+trajectory_spec_json <- function(spec) {
+  json <- jsonlite::toJSON(spec, auto_unbox = TRUE, null = "null", na = "null", digits = NA)
+  gsub("</", "<\\/", json, fixed = TRUE)
+}
+
+# plotly.js itself, from the plotly package (no htmlwidget around it)
+plotly_js_dependency <- function() {
+  htmltools::htmlDependency(
+    "plotly-main", as.character(utils::packageVersion("plotly")),
+    src = "htmlwidgets/lib/plotlyjs", package = "plotly",
+    script = "plotly-latest.min.js", all_files = FALSE
+  )
 }
 
 # Legend of the competency zones (the panels' background bands), highest
@@ -292,6 +421,30 @@ trajectory_legend <- function(class) {
   )
 }
 
+# Time-window switch above the trajectory grid (TRAJECTORY_WINDOWS), styled
+# like the answer tree's toggle. Plain buttons: www/js/dashboard.js redraws the
+# panels with the window's layout from their specs (no round trip) and keeps
+# the choice across dashboard re-renders; "all" stands for NA.
+trajectory_window_key <- function(days) if (is.na(days)) "all" else as.character(days)
+
+trajectory_window_switch <- function() {
+  div(
+    class = "lt-switch traj-switch",
+    role = "group",
+    `aria-label` = "Zeitraum des Verlaufs",
+    lapply(seq_along(TRAJECTORY_WINDOWS), function(k) {
+      days <- TRAJECTORY_WINDOWS[[k]]
+      tags$button(
+        type = "button",
+        class = "lt-switch-btn",
+        `data-traj-window` = trajectory_window_key(days),
+        `aria-pressed` = if (k == 1L) "true" else "false",
+        names(TRAJECTORY_WINDOWS)[k]
+      )
+    })
+  )
+}
+
 # The "Fähigkeitsverlauf" accordion panel: one small chart per learning area
 # in a wrapping grid of at most 4 columns (see .traj-grid in app.css: 4 on a
 # laptop, 2 on a tablet, 1 on a phone).
@@ -299,7 +452,7 @@ trajectory_legend <- function(class) {
 # empty last cell at 4 and 2 columns; when the grid is down to 1 column it
 # would end up below all charts, so a CSS container query swaps it for a row
 # above the grid instead. `hist` is ability_trajectory_data().
-trajectory_section <- function(hist, ns) {
+trajectory_section <- function(hist, ns = shiny::NS(NULL), now = Sys.time()) {
   n_batches <- length(unique(hist$computed_at))
   body <- if (n_batches < 2L) {
     tags$p(
@@ -308,15 +461,26 @@ trajectory_section <- function(hist, ns) {
       "Lernstands gibt (höchstens eine neue pro Sitzung)."
     )
   } else {
+    # one shared x axis per time window, so the panels line up
+    axes <- lapply(TRAJECTORY_WINDOWS, function(days) {
+      trajectory_window_axis(trajectory_x_range(hist, days, now))
+    })
+    names(axes) <- vapply(TRAJECTORY_WINDOWS, trajectory_window_key, character(1))
     panels <- lapply(seq_along(LEARNING_AREA_LEVELS), function(k) {
       area <- LEARNING_AREA_LEVELS[k]
       short <- names(LEARNING_AREA_LABELS)[match(area, LEARNING_AREA_LABELS)]
-      has_data <- any(hist$learning_area == area)
+      d <- hist[hist$learning_area == area, , drop = FALSE]
       div(
         class = "traj-panel",
-        div(class = "traj-panel-title", title = area, short),
-        if (has_data) {
-          plotly::plotlyOutput(ns(paste0("traj_", k)), height = "170px")
+        div(class = "traj-panel-title", short),
+        if (nrow(d) > 0L) {
+          tagList(
+            div(id = ns(paste0("traj_", k)), class = "traj-plot"),
+            tags$script(
+              type = "application/json", class = "traj-spec",
+              HTML(trajectory_spec_json(trajectory_panel_spec(d, axes)))
+            )
+          )
         } else {
           div(class = "traj-empty", "Noch keine Schätzung")
         }
@@ -324,6 +488,17 @@ trajectory_section <- function(hist, ns) {
     })
     div(
       class = "traj-wrap",
+      plotly_js_dependency(),
+      # the time switch with an (i) explaining how to read the panels
+      div(
+        class = "traj-controls",
+        trajectory_window_switch(),
+        info_tip(paste(
+          "Jeder Punkt ist eine gespeicherte Schätzung deines Lernstands in diesem Themenbereich.",
+          "Eine neue entsteht höchstens einmal pro Sitzung (beim Login oder über „Fähigkeitsverlauf aktualisieren“),",
+          "und nur für Bereiche, die du seitdem geübt hast. Die farbigen Bänder sind die Kompetenzstufen."
+        ))
+      ),
       trajectory_legend("traj-legend-top"),
       div(class = "traj-grid", panels, trajectory_legend("traj-legend-panel"))
     )
@@ -388,35 +563,15 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       needs_ability_update() && !isTRUE(ability_computed_this_session())
     })
 
-    # The persisted ability snapshot (most recent computed_at batch), reshaped
-    # to the same learning_area/theta/n_items shape estimate_competency()
-    # returns, so nothing downstream needs to change.
-    competency <- reactive({
-      ability_version()
-      ab <- db_get_ability(credentials()$info$user_name)
-      if (nrow(ab) == 0L) {
-        return(NULL)
-      }
-      latest_batch <- max(ab$computed_at, na.rm = TRUE)
-      ab <- ab[ab$computed_at == latest_batch, ]
-      idx <- match(LEARNING_AREA_LEVELS, ab$learning_area)
-      data.frame(
-        learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
-        theta = ab$theta[idx],
-        # NA for snapshots saved before the standard error was stored
-        se = if ("se" %in% names(ab)) as.numeric(ab$se[idx]) else NA_real_,
-        n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
-        computed_at = latest_batch,
-        stringsAsFactors = FALSE
-      )
-    })
-
-    # Full ability history (every saved batch, not just the latest) — feeds
-    # the "Fähigkeitsverlauf" trajectory plot below.
+    # Full ability history (every saved row, not just the latest), feeds the
+    # "Fähigkeitsverlauf" trajectory plot below.
     ability_history <- reactive({
       ability_version()
       db_get_ability(credentials()$info$user_name)
     })
+
+    # The latest saved estimate per learning area (latest_ability()).
+    competency <- reactive(latest_ability(ability_history()))
 
     observeEvent(input$refresh_ability, {
       req(can_refresh_ability())
@@ -475,7 +630,8 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                     tags$tr(
                       tags$th(tags$span(class = "visually-hidden", "Themenbereich")),
                       tags$th(
-                        title = "Wie sicher die Einstufung ist (●●● = wahrscheinlich zutreffend)",
+                        `data-tip` = "Wie sicher die Einstufung ist (●●● = wahrscheinlich zutreffend)",
+                        tabindex = "-1",
                         "Evidenz"
                       ),
                       tags$th("Kompetenz")
@@ -541,7 +697,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
             id = session$ns("dash_sections"),
             open = FALSE,
             multiple = TRUE,
-            trajectory_section(trajectory_hist(), session$ns),
+            trajectory_ui(),
             detail_section(comp),
             behaviour_section(ud, data_item, session$ns)
           )
@@ -552,18 +708,14 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     # ── Ability trajectory: one small chart per learning area ────────────────
     # Small multiples instead of one chart with 7 crossing lines: each panel
     # stays readable without a color per area, and the panels wrap with the
-    # screen width (see trajectory_section()). Still plotly rather than
+    # screen width (see trajectory_section()). Still plotly.js rather than
     # renderPlot: a server-rendered image doesn't reflow on a phone, it just
-    # gets scaled down.
+    # gets scaled down. The panels are drawn client-side from specs embedded
+    # in dash_content (trajectory_panel_spec()), no output per panel.
     trajectory_hist <- reactive(ability_trajectory_data(ability_history()))
-
-    lapply(seq_along(LEARNING_AREA_LEVELS), function(k) {
-      output[[paste0("traj_", k)]] <- plotly::renderPlotly({
-        hist <- trajectory_hist()
-        d <- hist[hist$learning_area == LEARNING_AREA_LEVELS[k], ]
-        req(nrow(d) > 0L)
-        trajectory_panel_fig(d, trajectory_x_range(hist))
-      })
-    })
+    # Cached: the trajectory only changes with a new estimate, while
+    # dash_content re-renders after every answer (building the 7 specs takes
+    # ~0.1 s)
+    trajectory_ui <- reactive(trajectory_section(trajectory_hist(), session$ns))
   })
 }

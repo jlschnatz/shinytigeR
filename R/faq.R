@@ -89,7 +89,7 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
         "Es zählt also, wie viele Aufgaben du richtig gelöst hast, gemessen an ihrer Schwierigkeit:",
         "7 von 10 richtig bei schweren Aufgaben ergibt eine höhere Einschätzung als 7 von 10 bei leichten.",
         "\n\nDas geschieht für jeden Themenbereich getrennt, und pro Aufgabe zählt deine letzte Antwort.",
-        "Mehr dazu findest du unter **Fortschritt** bei **Dein Lernstand im Detail**."
+        "Mehr dazu findest du unter **Fortschritt** bei **Dein Lernstand im Detail** (**Wie wird das berechnet?**)."
       )
     ),
     # Rasch difficulty b: the ability at which P(correct) = 50 %, on the same
@@ -122,10 +122,10 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
     ),
     list(
       topic = "Fortschritt",
-      q = "Was sind „Offene Fehler“, und warum kann ich sie erst am nächsten Tag nochmal üben?",
+      q = "Wie übe ich meine Fehler nochmal, und warum erst am nächsten Tag?",
       a = paste(
-        "Offene Fehler sind Aufgaben, die du zuletzt falsch beantwortet hast.",
-        "Unter **Fortschritt** kannst du bis zu 10 davon nochmal üben, frühestens ab dem Tag nach deiner letzten Antwort:",
+        "Unter **Fortschritt** zeigt dir **Fehler nochmal üben**, wie viele Aufgaben du zuletzt falsch beantwortet hast.",
+        "Bis zu 10 davon kannst du dort nochmal üben, frühestens ab dem Tag nach deiner letzten Antwort:",
         "Mit etwas Abstand bleibt die Lösung besser hängen, als wenn du dieselbe Aufgabe gleich noch einmal machst."
       )
     ),

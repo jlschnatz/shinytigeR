@@ -84,10 +84,10 @@ test_that("login's silent ability catch-up does not block the dashboard button f
       )
       session$flushReact()
 
-      # Auto-catch-up fired: one batch, item 1 only.
+      # Auto-catch-up fired: one row (only the practised area), item 1 only.
       snapshot <- db_get_ability("test")
-      expect_equal(nrow(snapshot), length(LEARNING_AREA_LEVELS))
       area1 <- LEARNING_AREA_LEVELS[1]
+      expect_equal(snapshot$learning_area, area1)
       expect_equal(snapshot$n_items[snapshot$learning_area == area1], 1L)
 
       # New practice THIS session, driven through the real selector + practice

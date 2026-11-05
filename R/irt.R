@@ -46,8 +46,13 @@ estimate_theta <- function(responses, b) {
   fit$par
 }
 
-estimate_competency <- function(responses, items) {
-  result <- lapply(LEARNING_AREA_LEVELS, function(area) {
+# One row per learning area in `areas` (default: all, in LEARNING_AREA_LEVELS
+# order). Each area is estimated on its own, so leaving areas out doesn't
+# change the others' estimates; compute_and_save_ability() passes only the
+# practised ones. (A future joint model across areas would break that.)
+estimate_competency <- function(responses, items, areas = LEARNING_AREA_LEVELS) {
+  areas <- intersect(LEARNING_AREA_LEVELS, areas)
+  result <- lapply(areas, function(area) {
     rows <- responses[
       !is.na(responses$learning_area) &
         responses$learning_area == area &
@@ -72,7 +77,7 @@ estimate_competency <- function(responses, items) {
   })
 
   data.frame(
-    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    learning_area = factor(areas, levels = LEARNING_AREA_LEVELS),
     theta = vapply(result, `[[`, numeric(1), "theta"),
     se = vapply(result, `[[`, numeric(1), "se"),
     n_items = vapply(result, function(x) as.integer(x$n), integer(1)),
@@ -80,10 +85,13 @@ estimate_competency <- function(responses, items) {
   )
 }
 
-# Computes a fresh competency snapshot from a user's full response history
-# (deduped to the latest attempt per item) and persists it to db_ability.sqlite.
-# The single call site for both the login-time auto-check and the dashboard's
-# refresh button (see R/server.R and R/mod_dashboard.R).
+# Computes a fresh competency estimate from a user's full response history
+# (deduped to the latest attempt per item) and persists it to db_ability.sqlite,
+# but only for the learning areas practised since the last saved estimate:
+# one new row per such area, none for the others (their latest row stays
+# current). So each area's trajectory has a point exactly where it was
+# practised. The single call site for both the login-time auto-check and the
+# dashboard's refresh button (see R/server.R and R/mod_dashboard.R).
 compute_and_save_ability <- function(user_id, session_token, items,
                                      user_path = DB_USERS(),
                                      ability_path = DB_ABILITY()) {
@@ -95,12 +103,20 @@ compute_and_save_ability <- function(user_id, session_token, items,
   # Drop skips *before* picking the latest attempt: a skip carries no ability
   # information, so an item answered earlier and skipped on a repeat should
   # count with its latest real answer instead of dropping out entirely.
-  # A user who only ever skipped still gets a batch (all areas NA), so the
-  # dashboard shows "Keine Daten" and ability_needs_update() settles.
+  # Skips don't count as practice either (ability_needs_update() ignores them
+  # too, so a skip-only session doesn't leave it stuck at TRUE).
   ud <- ud[!is.na(ud$bool_correct), , drop = FALSE]
+  ab <- db_get_ability(user_id, path = ability_path)
+  since <- if (nrow(ab) > 0L) max(ab$computed_at, na.rm = TRUE) else -Inf
+  practised <- intersect(LEARNING_AREA_LEVELS, ud$learning_area[ud$id_datetime > since])
+  if (length(practised) == 0L) {
+    return(invisible(NULL))
+  }
   la <- latest_attempts(ud)
   la$learning_area <- factor(la$learning_area, levels = LEARNING_AREA_LEVELS)
-  comp <- estimate_competency(la, items)
+  # Only the practised areas are estimated (each from its full history);
+  # the others keep their latest saved row
+  comp <- estimate_competency(la, items, areas = practised)
   rows <- build_ability_rows(comp, user_id, session_token)
   db_write_ability(user_id, rows, path = ability_path)
   invisible(rows)

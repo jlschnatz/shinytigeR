@@ -809,6 +809,14 @@
    takes over. A container query, not a media query, so the swap happens
    exactly when the grid itself drops to one column. */
 .traj-wrap { container-type: inline-size; }
+/* time switch and its (i) in one row above the grid */
+.traj-controls { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.85rem; }
+/* the switch takes .lt-switch's align-self/margin from the answer tree, which
+   made the row taller than the switch and the (i) sit ~4 px below its centre */
+.traj-controls > .lt-switch { align-self: center; margin-bottom: 0; }
+.traj-controls > .la-info { margin-left: 0; }
+.traj-switch { display: flex; width: fit-content; }
+.traj-plot { height: 170px; }
 /* Columns of at least 260px and at least a quarter of the width, so there are
    never more than 4: with 7 charts + the legend tile that gives 4 + 4 on wide
    screens instead of 5 + 3. Below 4 * 260px + 3 gaps it drops to 3, 2, 1. */
@@ -888,27 +896,13 @@
 @media (prefers-reduced-motion: reduce) {
   .la-grid-detail[data-explain="open"] > .la-explainer { animation: none; }
 }
-.ivl-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 1rem; }
-.ivl-explain-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.55rem;
-  border: 1px solid #d5dae0;
-  border-radius: 999px;
-  background: #f6f7f9;
-  font-size: 0.78rem;
-  font-weight: 400;
-  color: #5b6470;
-  white-space: nowrap;
-}
-.ivl-explain-btn > span { display: inline-flex; align-items: center; gap: 0.35rem; }
-.ivl-explain-btn:hover { color: var(--tiger-primary); border-color: var(--tiger-primary); }
+.ivl-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; }
 .ivl-explain-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
 .ivl-explain-btn[aria-expanded="false"] .ivl-explain-open,
 .ivl-explain-btn[aria-expanded="true"] .ivl-explain-closed { display: none; }
-/* Three columns from 1200 px: a narrow side column (tiles, calendar, retry),
-   then coverage and tree side by side. Between 768 and 1200 px the tree goes
-   full width below; on phones everything stacks. */
+/* From 768 px a narrow side column (tiles, calendar) next to the coverage
+   card; below them the retry bar and the answer tree, each across the full
+   width; on phones everything stacks. */
 /* Key numbers above the behaviour cards: small, three side by side even on
    a phone (not bslib value boxes, which would dominate the section) */
 .la-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
@@ -933,10 +927,9 @@
   .la-side .la-tile { display: grid; grid-template-columns: 4.3rem minmax(0, 1fr); column-gap: 0.4rem; align-items: center; padding: 0.3rem 0.65rem; }
   .la-side .la-tile-val { grid-row: span 2; font-size: 1.15rem; }
 }
-@media (min-width: 1200px) {
-  .la-grid-behaviour { grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr) minmax(0, 1.25fr); }
-  .la-grid-behaviour > .lt-card { grid-column: auto; }
-}
+/* Retry bar and answer tree below the columns, each full width */
+.la-grid-behaviour > .oi-hero,
+.la-grid-behaviour > .lt-card { grid-column: 1 / -1; }
 /* Equal-height columns without gaps below shorter cards: the columns stretch
    to the tallest one, the last card of the side column grows to the bottom,
    the coverage rows spread out and the tree centres vertically */
@@ -1156,6 +1149,48 @@
 .oi-card > .la-card-title { margin-bottom: 0.5rem; }
 .oi-retry { display: flex; justify-content: center; align-items: center; gap: 0.35rem; width: 100%; }
 .oi-wait { margin-top: 0.3rem; }
+/* The retry bar: count left, text in the middle, button
+   right; stacked on phones. A card like the others, only the count in the
+   "wrong" colour while mistakes are open (the "correct" colour when there are
+   none), so it stands out without dominating. */
+.oi-hero {
+  --oi-accent: var(--tiger-incorrect);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem;
+}
+.oi-hero.is-clear { --oi-accent: var(--tiger-correct); }
+@media (min-width: 1200px) { .oi-hero.is-clear { grid-template-columns: 6rem minmax(0, 1fr); } }
+.oi-hero > .oi-main > .la-card-title { margin-bottom: 0.2rem; }
+.oi-big { display: flex; align-items: baseline; gap: 0.5rem; }
+.oi-big-val { font-size: 1.6rem; font-weight: 700; line-height: 1; color: var(--oi-accent); }
+.oi-big-lbl { font-size: 0.78rem; font-weight: 600; color: #374151; }
+.oi-lead { margin: 0; font-size: 0.85rem; color: #374151; }
+.oi-fixed { margin: 0.3rem 0 0; font-size: 0.8rem; color: var(--tiger-correct); display: flex; align-items: flex-start; gap: 0.35rem; }
+.oi-fixed > svg { flex: none; margin-top: 0.22em; }
+.oi-action { display: flex; flex-direction: column; justify-content: center; }
+.oi-hero .oi-retry { padding: 0.4rem 0.75rem; }
+.oi-hero .oi-retry > svg { flex: none; }
+@media (max-width: 575.98px) {
+  .oi-hero .oi-retry { font-size: 0.95rem; padding: 0.4rem 0.5rem; }
+  /* the card is only ~230 px wide here: drop the icon so the label fits on one line */
+  .oi-hero .oi-retry > svg { display: none; }
+}
+.oi-hero .oi-wait { text-align: center; }
+/* From 768 px: the count as its own column; the button below the text,
+   from 1200 px in a third column on the right */
+@media (min-width: 768px) {
+  .oi-hero { grid-template-columns: 6rem minmax(0, 1fr); align-items: center; column-gap: 1rem; row-gap: 0.5rem; }
+  .oi-hero > .oi-big { grid-row: span 2; }
+  .oi-hero > .oi-action { grid-column: 2; align-items: flex-start; }
+  .oi-hero > .oi-action .oi-wait { text-align: left; }
+  .oi-big { flex-direction: column; align-items: center; text-align: center; gap: 0.2rem; }
+  .oi-big-val { font-size: 1.9rem; }
+}
+@media (min-width: 1200px) {
+  .oi-hero { grid-template-columns: 6rem minmax(0, 1fr) minmax(12rem, 15rem); }
+  .oi-hero > .oi-big { grid-row: auto; }
+  .oi-hero > .oi-action { grid-column: auto; align-items: stretch; }
+  .oi-hero > .oi-action .oi-wait { text-align: center; }
+}
 .lt-takeaway { font-weight: 600; }
 /* Toggle between the tree's two reading directions (segmented control) */
 .lt-switch {
@@ -1183,21 +1218,41 @@
 }
 .lt-switch-btn[aria-pressed="true"] { background: var(--tiger-primary); color: #fff; }
 .lt-switch-btn:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
-.lt-card[data-view="forward"] > .lt-view[data-view="backward"],
-.lt-card[data-view="backward"] > .lt-view[data-view="forward"] { display: none; }
+/* Direction switch, below it the learning-area chips (wrapping); which view
+   shows is set by the script in ui.R (`hidden`) */
+.lt-controls { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; }
+.lt-controls > .lt-switch { margin-bottom: 0; }
+.lt-areas { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.lt-area-chip {
+  padding: 0.15rem 0.65rem;
+  border: 1px solid #d5dae0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.78rem;
+  color: #5b6470;
+  white-space: nowrap;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+.lt-area-chip:hover { border-color: var(--tiger-primary); color: var(--tiger-primary); }
+.lt-area-chip[aria-pressed="true"] { background: var(--tiger-primary); border-color: var(--tiger-primary); color: #fff; }
+.lt-area-chip:focus-visible { outline: 2px solid var(--tiger-primary); outline-offset: 1px; }
+@media (max-width: 575.98px) {
+  .lt-area-chip { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+}
+.lt-view[hidden] { display: none; }
 .lt-hint { margin: 0.3rem 0 0.2rem; }
 .lt-tree { container-type: inline-size; overflow-x: auto; }
+/* --cols (root + one column per attempt) is set inline by answer_tree_view() */
 .lt-inner {
   --gap: 1.6rem;
-  --w: min(9rem, calc((100cqi - 3 * var(--gap)) / 4));
+  --w: min(9rem, calc((100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols)));
   --line: #c3c8cf;
   width: fit-content;
   margin: 0.5rem auto 0;
 }
 .lt-total { display: none; }
 .lt-head {
-  display: grid;
-  grid-template-columns: repeat(4, var(--w));
+  display: flex;
   column-gap: var(--gap);
   margin-bottom: 0.4rem;
   font-size: 0.72rem;
@@ -1205,6 +1260,7 @@
   text-align: center;
   color: #6b7280;
 }
+.lt-head > span { flex: none; width: var(--w); }
 .lt-inner ul { list-style: none; margin: 0; padding: 0; }
 .lt-inner li { display: flex; align-items: center; }
 .lt-inner .lt-children { position: relative; display: flex; flex-direction: column; padding-inline-start: calc(var(--gap) / 2); }
@@ -1236,7 +1292,10 @@
   color: inherit;
 }
 .lt-text { display: flex; flex-direction: column; min-width: 0; }
-.lt-node.is-root { --cat: var(--tiger-primary); }
+/* The root is just the pool, not a result: no colour stripe */
+.lt-node.is-root { --cat: #e5e7eb; }
+.lt-node.is-root,
+.lt-view[data-view="backward"] .lt-node.is-root { border-left-width: 1px; border-right-width: 1px; }
 .lt-node.is-correct { --cat: var(--tiger-correct); }
 .lt-node.is-wrong { --cat: var(--tiger-incorrect); }
 .lt-node.is-none { --cat: #b8bec6; }
@@ -1280,9 +1339,14 @@
 /* Narrow card (phone): no root column, so three columns share the width; the
    total moves into .lt-total, the arrow below the text, the donut goes */
 @container (max-width: 480px) {
-  .lt-inner { --gap: 0.9rem; --w: min(9rem, calc((100cqi - 2 * var(--gap)) / 3)); }
+  /* At most 3 attempt columns here (a 4th doesn't fit a phone): the 4th
+     header is hidden, and the 3rd attempt's nodes don't open any further */
+  .lt-inner { --narrow: min(3, var(--cols) - 1); --gap: 0.9rem; --w: min(9rem, calc((100cqi - (var(--narrow) - 1) * var(--gap)) / var(--narrow))); }
+  .lt-head > span:nth-child(n+5),
+  .lt-top > li > ul > li > ul > li > ul > li > .lt-children { display: none; }
+  .lt-top > li > ul > li > ul > li > ul > li > .lt-node { pointer-events: none; padding-bottom: 0.2rem; }
+  .lt-top > li > ul > li > ul > li > ul > li > .lt-node .lt-chevron { display: none; }
   .lt-total { display: block; margin-bottom: 0.35rem; font-size: 0.75rem; text-align: center; color: #6b7280; }
-  .lt-head { grid-template-columns: repeat(3, var(--w)); }
   .lt-head > span:first-child,
   .lt-top > li > .lt-node,
   .lt-top > li > .lt-children::before,
@@ -1307,9 +1371,9 @@
 .lt-view[data-view="backward"] .lt-node,
 .lt-view[data-view="backward"] .lt-head > span,
 .lt-view[data-view="backward"] .lt-total { direction: ltr; }
+/* Mirrored only on the outside (stripe right, arrow left); inside, donut and
+   left-aligned text as in the forward view, so both read the same way */
 .lt-view[data-view="backward"] .lt-node {
-  flex-direction: row-reverse;
-  text-align: right;
   border-left-width: 1px;
   border-right: 3px solid var(--cat);
 }
@@ -1358,6 +1422,11 @@
 }
 .la-info:hover,
 .la-info:focus-visible { color: var(--tiger-primary); }
+/* The same (i), with a label: opens an explanation in place instead of a
+   tooltip ("Wie wird das berechnet?" in "Lernstand im Detail") */
+.la-info-text { margin-left: 0; font-size: 0.78rem; font-weight: 400; cursor: pointer; white-space: nowrap; }
+.la-info-text > span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.la-info-text:hover > span { text-decoration: underline; text-underline-offset: 2px; }
 /* Hover affordance: these have a tooltip with the details */
 .cal-cell[data-tip] { cursor: default; transition: box-shadow 0.1s; }
 .cal-cell[data-tip]:hover,

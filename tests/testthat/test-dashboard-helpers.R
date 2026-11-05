@@ -155,42 +155,50 @@ test_that("trajectory_x_range pads the time range, also for a single day", {
   expect_gte(as.numeric(diff(r2), units = "hours"), 24)
 })
 
-test_that("trajectory_panel_fig plots the saved estimates with the competency label on hover", {
+# a spec as the browser gets it: through JSON
+spec_json <- function(spec) jsonlite::fromJSON(trajectory_spec_json(spec), simplifyVector = FALSE)
+
+test_that("trajectory_panel_spec plots the saved estimates with the competency label on hover", {
   h <- traj_hist(theta = c(-0.5, 1.2))
-  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
-  markers <- Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]
-  expect_equal(as.numeric(markers$y), c(-0.5, 1.2))
-  line <- Filter(function(tr) identical(tr$mode, "lines"), b$x$data)[[1]]
-  expect_equal(as.numeric(line$y), c(-0.5, 1.2)) # not smoothed
+  f <- spec_json(trajectory_panel_spec(h, trajectory_x_range(h)))
+  markers <- Filter(function(tr) identical(tr$mode, "markers"), f$data)[[1]]
+  expect_equal(unlist(markers$y), c(-0.5, 1.2))
+  line <- Filter(function(tr) identical(tr$mode, "lines"), f$data)[[1]]
+  expect_equal(unlist(line$y), c(-0.5, 1.2)) # not smoothed
   txt <- unlist(markers$text)
   expect_match(txt[1], "Basis")
   expect_match(txt[2], "Fortgeschritten")
   expect_match(txt[2], "1.20", fixed = TRUE)
-  expect_length(b$x$layout$shapes, nrow(COMPETENCY_SCALE))
+  expect_length(f$layout$shapes, nrow(COMPETENCY_SCALE))
+  expect_equal(unlist(markers$x), format(h$time, "%Y-%m-%d %H:%M:%S"))
+  expect_true(f$layout$xaxis$automargin) # else the date labels are cut off
 })
 
-test_that("trajectory_panel_fig shows how many items each estimate is based on", {
+test_that("trajectory_panel_spec shows how many items each estimate is based on", {
   h <- traj_hist(theta = c(-0.5, 1.2))
   h$n_items <- c(1L, 12L)
-  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
-  txt <- unlist(Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]$text)
+  txt <- unlist(spec_json(trajectory_panel_spec(h, trajectory_x_range(h)))$data[[2]]$text)
   expect_match(txt[1], "Basierend auf 1 Aufgabe", fixed = TRUE)
   expect_false(grepl("1 Aufgaben", txt[1], fixed = TRUE))
   expect_match(txt[2], "Basierend auf 12 Aufgaben", fixed = TRUE)
   h$n_items <- NA_integer_
-  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
-  txt <- unlist(Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]$text)
+  txt <- unlist(spec_json(trajectory_panel_spec(h, trajectory_x_range(h)))$data[[2]]$text)
   expect_false(any(grepl("Basierend", txt, fixed = TRUE)))
 })
 
-test_that("trajectory_panel_fig sends the hover text as an array also for a single estimate", {
+test_that("trajectory_panel_spec sends arrays also for a single estimate", {
   h <- traj_hist(times = 1700000000, theta = 0.3)
-  b <- plotly::plotly_build(trajectory_panel_fig(h, trajectory_x_range(h)))
-  markers <- Filter(function(tr) identical(tr$mode, "markers"), b$x$data)[[1]]
-  json <- as.character(plotly:::to_JSON(markers["text"]))
-  # an array, not a plain string: otherwise %{text} shows placeholders
+  json <- trajectory_spec_json(trajectory_panel_spec(h, trajectory_x_range(h)))
+  # arrays, not plain values: otherwise %{text} shows placeholders
   expect_match(json, '"text":["', fixed = TRUE)
+  expect_match(json, '"y":[0.3]', fixed = TRUE)
   expect_match(json, "Solide", fixed = TRUE)
+})
+
+test_that("trajectory_spec_json can't end its script element", {
+  json <- trajectory_spec_json(trajectory_panel_spec(traj_hist(), trajectory_x_range(traj_hist())))
+  expect_false(grepl("</", json, fixed = TRUE))
+  expect_match(spec_json(trajectory_panel_spec(traj_hist(), trajectory_x_range(traj_hist())))$data[[2]]$text[[1]], "</b>", fixed = TRUE)
 })
 
 test_that("trajectory_section asks for a second estimate before showing panels", {
@@ -303,7 +311,7 @@ test_that("answer_tree_stats splits the pool attempt by attempt", {
     id_item      = c(1L, 2L, 2L, 3L, 3L, 3L, 4L, 4L),
     bool_correct = c(TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE)
   )
-  tr <- answer_tree_stats(ud, pool)
+  tr <- answer_tree_stats(ud, pool, depth = 3L)
   n <- function(node) vapply(node$children, `[[`, integer(1), "n")
   expect_equal(tr$n, 6L)
   # 1st attempt: 1, 4 right; 2, 3 wrong; 5, 6 not worked on
@@ -317,6 +325,26 @@ test_that("answer_tree_stats splits the pool attempt by attempt", {
   # "none" nodes and the last attempt's nodes are leaves
   expect_null(tr$children$none$children)
   expect_null(tr$children$wrong$children$wrong$children$correct$children)
+})
+
+test_that("the answer tree goes ANSWER_TREE_DEPTH attempts deep by default", {
+  expect_equal(ANSWER_TREE_DEPTH, 4L)
+  ud <- tree_ud(id_item = rep(1L, 4), bool_correct = c(FALSE, FALSE, FALSE, TRUE))
+  tr <- answer_tree_stats(ud, data.frame(id_item = 1L))
+  leaf <- tr$children$wrong$children$wrong$children$wrong$children$correct
+  expect_equal(leaf$n, 1L)
+  expect_null(leaf$children)
+  html <- as.character(answer_tree_card(tr))
+  expect_match(html, "--cols:5;", fixed = TRUE)
+  expect_match(html, "4. Versuch", fixed = TRUE)
+})
+
+test_that("answer tree: grey ring on nodes nothing follows, none on leaves of the last attempt", {
+  ud <- tree_ud(id_item = c(1L, 2L), bool_correct = c(TRUE, FALSE))
+  html <- as.character(answer_tree_card(answer_tree_stats(ud, data.frame(id_item = 1:3), depth = 1L)))
+  # root only (its children are the last attempt) + the "nicht bearbeitet" node
+  expect_equal(lengths(regmatches(html, gregexpr("lt-donut", html, fixed = TRUE))), 2L)
+  expect_match(html, "--a:0.0%;--b:0.0%;", fixed = TRUE) # all grey
 })
 
 test_that("answer_tree_stats ignores rows without a result and items outside the pool", {
@@ -333,14 +361,15 @@ test_that("answer_tree_stats ignores rows without a result and items outside the
   expect_equal(tr$children$wrong$children$none$n, 1L)
 })
 
-test_that("answer_tree_card opens the 1st attempt's branches and only makes non-empty nodes clickable", {
+test_that("answer_tree_card starts with every branch closed and only makes non-empty nodes clickable", {
   pool <- data.frame(id_item = 1:3)
   ud <- tree_ud(id_item = c(1L, 1L, 2L), bool_correct = c(FALSE, TRUE, FALSE))
   html <- as.character(answer_tree_card(answer_tree_stats(ud, pool)))
-  # wrong at the 1st attempt (open) and right at the 2nd (closed) are
-  # clickable; the right-at-1st node is empty, so not a button
+  # wrong at the 1st attempt and right at the 2nd are clickable, both closed;
+  # the right-at-1st node is empty, so not a button
   expect_equal(lengths(regmatches(html, gregexpr("data-node", html, fixed = TRUE))), 2L)
-  expect_equal(lengths(regmatches(html, gregexpr('aria-expanded="true"', html, fixed = TRUE))), 1L)
+  expect_equal(lengths(regmatches(html, gregexpr('aria-expanded="true"', html, fixed = TRUE))), 0L)
+  expect_equal(lengths(regmatches(html, gregexpr('<li class="is-open">', html, fixed = TRUE))), 1L) # root
   expect_match(html, "nicht bearbeitet", fixed = TRUE)
   expect_false(grepl("noch nicht bearbeitet", html, fixed = TRUE))
   expect_match(html, "nicht wiederholt", fixed = TRUE)
@@ -588,6 +617,30 @@ test_that("open_items_panel offers the retry only for mistakes past their time-o
   expect_match(as.character(open_items_panel(oi(integer(0)), ns, today)), "überall richtig")
 })
 
+test_that("open_items_panel shows the open count big and the fixed mistakes", {
+  today <- as.Date("2026-10-28")
+  oi <- data.frame(id_item = 1:3, learning_area = "Regression", type_item = "content", last_date = today - 3L)
+  ns <- shiny::NS("d")
+  html <- as.character(open_items_panel(oi, ns, today, fixed = 2L))
+  expect_match(html, '<span class="oi-big-val">3</span>', fixed = TRUE)
+  expect_match(html, "zuletzt falsch", fixed = TRUE)
+  expect_match(html, "Schon ausgebessert: 2 Aufgaben", fixed = TRUE)
+  expect_match(as.character(open_items_panel(oi, ns, today, fixed = 1L)), "1 Aufgabe nach", fixed = TRUE)
+  expect_false(grepl("ausgebessert", as.character(open_items_panel(oi, ns, today)), fixed = TRUE))
+  expect_match(as.character(open_items_panel(oi[0, ], ns, today)), "oi-hero is-clear", fixed = TRUE)
+})
+
+test_that("fixed_mistakes counts items answered right after an earlier mistake", {
+  pool <- data.frame(id_item = 1:4)
+  ud <- tree_ud(
+    id_item = c(1L, 1L, 2L, 2L, 3L, 4L, 4L),
+    bool_correct = c(FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE)
+  )
+  # only item 1: wrong, then right (2 regressed, 3 right at once, 4 still wrong)
+  expect_equal(fixed_mistakes(ud, pool), 1L)
+  expect_equal(fixed_mistakes(ud[0, ], pool), 0L)
+})
+
 test_that("the detail section labels the interval as a confidence interval and explains it in four steps", {
   html <- as.character(detail_section(NULL))
   expect_match(html, "Konfidenzintervall", fixed = TRUE)
@@ -599,4 +652,125 @@ test_that("the detail section labels the interval as a confidence interval and e
   expect_match(ex, '^<div id="la-explainer" class="la-card la-explainer">')
   expect_equal(lengths(regmatches(ex, gregexpr('class="la-step"', ex))), 4L)
   expect_match(ex, "gemessen an der Schwierigkeit", fixed = TRUE)
+})
+
+# ── latest_ability / time windows ─────────────────────────────────────────────
+
+test_that("latest_ability takes each area's latest row, not the latest batch", {
+  ab <- data.frame(
+    computed_at = c(100L, 100L, 200L),
+    learning_area = LEARNING_AREA_LEVELS[c(1, 2, 2)],
+    theta = c(0.5, -1, 1.5), se = c(0.4, 0.6, 0.3), n_items = c(4L, 2L, 6L)
+  )
+  comp <- latest_ability(ab)
+  expect_equal(nrow(comp), length(LEARNING_AREA_LEVELS))
+  expect_equal(comp$theta[1:2], c(0.5, 1.5)) # area 1 kept from the older batch
+  expect_equal(comp$n_items[1:3], c(4L, 6L, 0L))
+  expect_true(is.na(comp$theta[3]))
+  expect_equal(comp$computed_at[1], 200L)
+  expect_null(latest_ability(data.frame()))
+})
+
+test_that("trajectory_x_range with a window covers the last days up to now", {
+  h <- traj_hist()
+  now <- as.POSIXct(1700086400, origin = "1970-01-01")
+  r <- trajectory_x_range(h, days = 14, now = now)
+  expect_equal(r[1], now - 14 * 86400)
+  expect_true(r[2] > now)
+  expect_equal(trajectory_x_range(h, NA), trajectory_x_range(h))
+})
+
+test_that("trajectory_panel_spec has each window's layout and notes an area without estimates in it", {
+  h <- traj_hist()
+  far <- trajectory_x_range(h, days = 14, now = max(h$time) + 60 * 86400)
+  f <- spec_json(trajectory_panel_spec(h, list(
+    all = trajectory_window_axis(trajectory_x_range(h)), "14" = trajectory_window_axis(far)
+  )))
+  expect_named(f$windows, c("all", "14"))
+  expect_length(f$windows$all$annotations, 0L)
+  expect_match(f$windows[["14"]]$annotations[[1]]$text, "nicht geübt", fixed = TRUE)
+  expect_equal(unlist(f$windows[["14"]]$range), format(far, "%Y-%m-%d %H:%M:%S"))
+  # the first window is the default layout
+  expect_equal(f$layout$xaxis$range, f$windows$all$range)
+})
+
+test_that("trajectory_section shows the time-window switch with the panels", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  for (lbl in names(TRAJECTORY_WINDOWS)) expect_match(html, lbl, fixed = TRUE)
+  # one spec per panel with data, with a layout for every window
+  specs <- regmatches(html, gregexpr('(?<=<script type="application/json" class="traj-spec">).*?(?=</script>)', html, perl = TRUE))[[1]]
+  expect_length(specs, 1L)
+  expect_named(jsonlite::fromJSON(specs[1], simplifyVector = FALSE)$windows, c("all", "28", "14"))
+  expect_match(html, 'id="d-traj_1" class="traj-plot"', fixed = TRUE)
+  expect_match(html, 'data-traj-window="all" aria-pressed="true"', fixed = TRUE)
+})
+
+test_that("trajectory_ticks spreads 4 day labels over the range", {
+  now <- as.POSIXct("2026-11-04 12:00")
+  for (days in c(14, 28, 180)) {
+    t <- trajectory_ticks(c(now - days * 86400, now))
+    expect_length(t$vals, 4L)
+    expect_match(t$text, "^\\d{2}\\.\\d{2}\\.$")
+    expect_false(anyDuplicated(t$vals) > 0)
+  }
+  # a one-day range can't hold 4 distinct days
+  short <- trajectory_ticks(c(now - 12 * 3600, now + 12 * 3600))
+  expect_lte(length(short$vals), 2L)
+  f <- spec_json(trajectory_panel_spec(traj_hist(), c(now - 14 * 86400, now)))
+  expect_equal(f$layout$xaxis$tickmode, "array")
+  expect_length(f$layout$xaxis$ticktext, 4L)
+})
+
+test_that("answer_tree_by_area restricts each area's trees to its items", {
+  pool <- data.frame(id_item = 1:3, learning_area = LEARNING_AREA_LEVELS[c(1, 1, 3)])
+  ud <- tree_ud(id_item = c(1L, 3L, 3L), bool_correct = c(TRUE, FALSE, TRUE))
+  ba <- answer_tree_by_area(ud, pool)
+  expect_equal(names(ba), LEARNING_AREA_LEVELS[c(1, 3)])
+  expect_equal(ba[[1]]$forward$n, 2L)
+  expect_equal(ba[[2]]$forward$children$wrong$n, 1L)
+  expect_equal(ba[[2]]$backward$direction, "backward")
+})
+
+test_that("answer_tree_card with by_area adds the area chips and hides all but the default view", {
+  pool <- data.frame(id_item = 1:3, learning_area = LEARNING_AREA_LEVELS[c(1, 1, 3)])
+  ud <- tree_ud(id_item = c(1L, 3L), bool_correct = c(TRUE, FALSE))
+  html <- as.character(answer_tree_card(
+    answer_tree_stats(ud, pool),
+    backward = answer_tree_stats(ud, pool, direction = "backward"),
+    by_area = answer_tree_by_area(ud, pool)
+  ))
+  expect_match(html, 'data-lt-area="all" aria-pressed="true">Alle</button>', fixed = TRUE)
+  expect_match(html, 'data-lt-area="3" aria-pressed="false">Inferenz</button>', fixed = TRUE)
+  expect_false(grepl("lt-area-chip[^>]*title=", html)) # no native hover label
+  expect_equal(lengths(regmatches(html, gregexpr("lt-area-chip", html, fixed = TRUE))), 3L) # Alle + 2 areas
+  views <- regmatches(html, gregexpr('<div class="lt-view"[^>]*>', html))[[1]]
+  expect_length(views, 6L) # (all + 2 areas) x 2 directions
+  expect_equal(sum(!grepl("hidden", views)), 1L)
+  expect_match(views[!grepl("hidden", views)], 'data-view="forward" data-area="all"', fixed = TRUE)
+})
+
+test_that("trajectory panel titles have no native hover tooltip", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  expect_false(grepl('class="traj-panel-title" title=', html, fixed = TRUE))
+})
+
+test_that("the Lernstand card uses the app tooltip, not native titles", {
+  cl <- competency_label(0.3, 12L)
+  dots <- as.character(certainty_dots(0.3, 0.4, 12L, cl))
+  bar <- as.character(competency_scale_bar(cl))
+  expect_match(dots, 'data-tip="[^"]*Wahrscheinlichkeit')
+  expect_match(bar, 'data-tip="Kompetenz: ')
+  expect_false(grepl(" title=", dots, fixed = TRUE))
+  expect_false(grepl(" title=", bar, fixed = TRUE))
+})
+
+test_that("the trajectory has an (i) explaining its points next to the time switch", {
+  html <- as.character(trajectory_section(traj_hist(), shiny::NS("d")))
+  expect_match(html, '<div class="traj-controls">', fixed = TRUE)
+  expect_match(html, 'class="la-info" data-tip="Jeder Punkt ist eine gespeicherte Schätzung', fixed = TRUE)
+})
+
+test_that("the explainer's button looks like the (i) hints, right after the card title", {
+  html <- as.character(detail_section(NULL))
+  expect_match(html, '<span>Wie sicher ist die Einschätzung\\?</span>\\s*<button type="button" class="la-info la-info-text ivl-explain-btn"')
 })

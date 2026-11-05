@@ -125,7 +125,7 @@ test_that("estimate_competency excludes a response without a result (bool_correc
 
 # ── compute_and_save_ability ──────────────────────────────────────────────────
 
-test_that("compute_and_save_ability writes one persisted snapshot from the user's latest attempts", {
+test_that("compute_and_save_ability writes the practised area's estimate from the user's latest attempts", {
   user_path <- tempfile(fileext = ".sqlite")
   ability_path <- tempfile(fileext = ".sqlite")
 
@@ -158,9 +158,10 @@ test_that("compute_and_save_ability writes one persisted snapshot from the user'
 
   result <- compute_and_save_ability("alice", "tok", items, user_path, ability_path)
 
-  expect_equal(nrow(result), length(LEARNING_AREA_LEVELS))
+  # only the area that was practised gets a row, not all seven
+  expect_equal(nrow(result), 1L)
   saved <- db_get_ability("alice", ability_path)
-  expect_equal(nrow(saved), length(LEARNING_AREA_LEVELS))
+  expect_equal(saved$learning_area, LEARNING_AREA_LEVELS[1])
   area1_n <- saved$n_items[saved$learning_area == LEARNING_AREA_LEVELS[1]]
   # Both items count once each (deduped to latest attempt), not the 3 raw rows
   expect_equal(area1_n, 2L)
@@ -194,7 +195,7 @@ test_that("compute_and_save_ability uses the latest non-skipped attempt when the
   expect_equal(area1$theta, estimate_theta(1L, b = 0))
 })
 
-test_that("compute_and_save_ability saves an all-NA batch when every response is a skip", {
+test_that("compute_and_save_ability writes nothing when every response is a skip", {
   user_path <- tempfile(fileext = ".sqlite")
   ability_path <- tempfile(fileext = ".sqlite")
   items <- data.frame(id_item = 1L, irt_discr = 1, irt_diff = 0)
@@ -203,12 +204,38 @@ test_that("compute_and_save_ability saves an all-NA batch when every response is
     id_item = 1L, learning_area = LEARNING_AREA_LEVELS[1], selected_option = 4L,
     answer_correct = 1L, bool_correct = NA, skipped = TRUE
   ), user_path)
-  compute_and_save_ability("carl", "tok", items, user_path, ability_path)
-  saved <- db_get_ability("carl", ability_path)
-  expect_equal(nrow(saved), length(LEARNING_AREA_LEVELS))
-  expect_true(all(is.na(saved$theta)))
-  expect_true(all(saved$n_items == 0L))
   expect_false(ability_needs_update("carl", user_path, ability_path))
+  compute_and_save_ability("carl", "tok", items, user_path, ability_path)
+  expect_equal(nrow(db_get_ability("carl", ability_path)), 0L)
+})
+
+test_that("compute_and_save_ability only adds rows for areas practised since the last estimate", {
+  user_path <- tempfile(fileext = ".sqlite")
+  ability_path <- tempfile(fileext = ".sqlite")
+  items <- data.frame(id_item = 1:3, irt_discr = 1, irt_diff = 0)
+  row <- function(item_id, area, dt, correct = TRUE) {
+    data.frame(
+      id_user = "dora", id_session = "s", id_date = 1L, id_datetime = dt,
+      id_item = item_id, learning_area = LEARNING_AREA_LEVELS[area],
+      selected_option = 1L, answer_correct = 1L, bool_correct = correct,
+      skipped = is.na(correct)
+    )
+  }
+  now <- as.integer(Sys.time())
+  # session 1: areas 1 and 2
+  db_write_response("dora", row(1L, 1, now - 300L), user_path)
+  db_write_response("dora", row(2L, 2, now - 290L), user_path)
+  db_write_ability("dora", data.frame(
+    id_user = "dora", id_session = "s0", computed_at = now - 200L,
+    learning_area = LEARNING_AREA_LEVELS[1:2], theta = c(1, 1), se = 1, n_items = 1L
+  ), ability_path)
+  # session 2: area 3 answered, area 2 only skipped
+  db_write_response("dora", row(3L, 3, now - 100L), user_path)
+  db_write_response("dora", row(2L, 2, now - 90L, correct = NA), user_path)
+
+  rows <- compute_and_save_ability("dora", "tok", items, user_path, ability_path)
+  expect_equal(rows$learning_area, LEARNING_AREA_LEVELS[3])
+  expect_equal(nrow(db_get_ability("dora", ability_path)), 3L)
 })
 
 test_that("compute_and_save_ability is a no-op for a user with no responses", {
@@ -288,4 +315,18 @@ test_that("estimate_competency returns an SE for estimated areas and NA otherwis
   reg <- comp[comp$learning_area == "Regression", ]
   expect_equal(reg$se, sem_1pl(reg$theta, items$irt_diff))
   expect_true(all(is.na(comp$se[comp$learning_area != "Regression"])))
+})
+
+test_that("estimate_competency only estimates the requested areas, without changing them", {
+  items <- data.frame(id_item = 1:3, irt_discr = 1, irt_diff = c(-0.5, 0, 0.5))
+  responses <- data.frame(
+    id_item = 1:3, learning_area = LEARNING_AREA_LEVELS[c(1, 1, 3)],
+    bool_correct = c(TRUE, FALSE, TRUE)
+  )
+  all <- estimate_competency(responses, items)
+  some <- estimate_competency(responses, items, areas = LEARNING_AREA_LEVELS[c(3, 1)])
+  expect_equal(as.character(some$learning_area), LEARNING_AREA_LEVELS[c(1, 3)])
+  expect_equal(levels(some$learning_area), LEARNING_AREA_LEVELS)
+  expect_equal(some$theta, all$theta[c(1, 3)])
+  expect_equal(nrow(estimate_competency(responses, items, areas = character())), 0L)
 })

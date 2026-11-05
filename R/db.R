@@ -146,10 +146,13 @@ db_write_ability <- function(user_id, df, path = DB_ABILITY()) {
   )
 }
 
-# TRUE if there's response data newer than the most recently saved ability
-# snapshot for this user (or if no snapshot exists yet but responses do).
+# TRUE if there's an answer (not a skip) newer than the most recently saved
+# ability estimate for this user (or if none is saved yet but answers exist).
+# Skips are ignored like in compute_and_save_ability(), which writes nothing
+# for them; counting them here would keep this TRUE after every update.
 ability_needs_update <- function(user_id, user_path = DB_USERS(), ability_path = DB_ABILITY()) {
   ud <- db_get_userdata(user_id, path = user_path)
+  ud <- ud[!is.na(ud$bool_correct), , drop = FALSE]
   if (nrow(ud) == 0L) {
     return(FALSE)
   }

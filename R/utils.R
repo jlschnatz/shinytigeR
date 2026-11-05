@@ -178,7 +178,7 @@ latest_attempts <- function(user_data) {
   ud[!duplicated(ud$id_item, fromLast = TRUE), ]
 }
 
-# One row per learning area for a single computed_at batch (see estimate_competency()).
+# One row per estimated learning area, all with the same computed_at (one update; see estimate_competency()).
 build_ability_rows <- function(competency, user_id, session_token) {
   data.frame(
     id_user = as.character(user_id),
@@ -342,7 +342,8 @@ item_id_badge <- function(id_item, input_id, class = NULL) {
 }
 
 # Appends the file's modification time as a version query (`?v=...`) so a
-# changed stylesheet is re-fetched instead of served from browser cache.
+# changed stylesheet or script (www/css/, www/js/) is re-fetched instead of
+# served from browser cache.
 # Falls back to the bare href if the file isn't found (e.g. app_ui() called
 # outside runApp(), as in tests).
 css_href <- function(path, href) {
