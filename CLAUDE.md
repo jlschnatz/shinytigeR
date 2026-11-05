@@ -261,7 +261,7 @@ Single source of truth for:
 | `LEARNING_AREA_LEVELS` | `character` vector | Canonical ordering of the 7 topic areas; used as factor levels throughout |
 | `LEARNING_AREA_LABELS` | named `character` | Short display names → full DB values (e.g. `"Inferenz" = "Grundlagen der Inferenzstatistik"`) |
 | `ITEM_TYPE_LABELS` | named `character` | `"Inhaltlich" = "content"`, `"R-Code" = "coding"` — these must match `type_item` values in `db_item.sqlite` |
-| `PRIMARY_COLOR` | `character` | `"#285f8a"` (Goethe blue) — used in theme and CSS variables |
+| `PRIMARY_COLOR` | `character` | `"#006290"`, the logo's blue (`www/logo/tiger_logo.svg`); before Nov 2026 `#285f8a`. Used in the theme and as `--tiger-primary` in `app.css` (keep both in sync). Practically the same as `ANSWER_COLORS$correct` (`#00618f`) |
 | `ANSWER_COLORS` | named list | Hex colors for correct/incorrect/skip states |
 | `SKIP_FEEDBACK` | `character` | Feedback text after the skip button, MC and numeric alike (skipping isn't stored in the item DB) |
 | `THETA_RANGE` | `numeric(2)` | `c(-3, 3)`: bounds of `estimate_theta()`, also the effective ends of `COMPETENCY_SCALE` when computing label certainty |
@@ -593,7 +593,7 @@ Table: `credentials_db` — columns `user_name` and `password_hashed` (sodium-ha
 ### CSS (`inst/app/www/css/app.css`)
 
 Key CSS variables (defined on `:root`):
-- `--tiger-primary: #285f8a`
+- `--tiger-primary: #006290` (= `PRIMARY_COLOR`)
 - `--tiger-correct: #00618f`
 - `--tiger-incorrect: #D81B60`
 - `--tiger-skip: #FFA000`
