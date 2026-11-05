@@ -626,18 +626,26 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                 class = "p-0",
                 tags$table(
                   class = "table mb-0 dashboard-comp-table",
+                  # explicit roles: on phones the rows are laid out as a grid
+                  # (app.css), which makes some browsers drop the table
+                  # semantics for screen readers
+                  role = "table",
                   tags$thead(
+                    role = "rowgroup",
                     tags$tr(
-                      tags$th(tags$span(class = "visually-hidden", "Themenbereich")),
+                      role = "row",
+                      tags$th(role = "columnheader", tags$span(class = "visually-hidden", "Themenbereich")),
                       tags$th(
+                        role = "columnheader",
                         `data-tip` = "Wie sicher die Einstufung ist (●●● = wahrscheinlich zutreffend)",
                         tabindex = "-1",
                         "Evidenz"
                       ),
-                      tags$th("Kompetenz")
+                      tags$th(role = "columnheader", "Kompetenz")
                     )
                   ),
                   tags$tbody(
+                    role = "rowgroup",
                     lapply(LEARNING_AREA_LEVELS, function(area) {
                       # Both columns come from the saved snapshot, so the
                       # certainty always describes the label shown next to it
@@ -649,16 +657,17 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                       cl <- competency_label(theta, n_a)
 
                       tags$tr(
-                        tags$td(class = "comp-area", area),
-                        tags$td(certainty_dots(theta, se, n_a, cl)),
-                        tags$td(competency_scale_bar(cl))
+                        role = "row",
+                        tags$td(role = "cell", class = "comp-area", area),
+                        tags$td(role = "cell", certainty_dots(theta, se, n_a, cl)),
+                        tags$td(role = "cell", competency_scale_bar(cl))
                       )
                     })
                   )
                 )
               ),
               bslib::card_footer(
-                class = "d-flex justify-content-between align-items-center gap-2",
+                class = "d-flex justify-content-between align-items-center gap-2 comp-footer",
                 tags$span(
                   class = "text-muted small",
                   if (is.null(comp)) {

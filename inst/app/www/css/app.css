@@ -875,6 +875,29 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   .comp-scale { gap: 2px; }
   .ev-dots { gap: 0.2rem; }
   .ev-dot { width: 0.6rem; height: 0.6rem; }
+  /* Each row in two lines: the area name across the full width, below it
+     the dots and the level; the header row labels the second line. Before,
+     the three columns didn't fit and the level column was cut off. */
+  .dashboard-comp-table,
+  .dashboard-comp-table > thead,
+  .dashboard-comp-table > tbody { display: block; }
+  .dashboard-comp-table tr {
+    display: grid;
+    grid-template-columns: 4rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0.35rem;
+    align-items: center;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .dashboard-comp-table tbody tr:last-child { border-bottom: 0; }
+  .dashboard-comp-table tr > th,
+  .dashboard-comp-table tr > td { width: auto; padding: 0; border: 0; }
+  .dashboard-comp-table thead th:first-child { display: none; }
+  .dashboard-comp-table thead tr { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .dashboard-comp-table td.comp-area { grid-column: 1 / -1; }
+  /* footer: note above, button full width */
+  .comp-footer { flex-direction: column; align-items: stretch !important; }
 }
 
 /* ── Dashboard — AI feedback card (placeholder) ────────────────────────────── */
