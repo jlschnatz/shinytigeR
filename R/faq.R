@@ -134,7 +134,7 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
     list(
       topic = "Konto und Daten",
       q = "Ich habe mein Passwort vergessen. Was nun?",
-      a = sprintf("Schreib uns an %s.", mail)
+      a = "Da du dich nur über deinen pseudonymen Namen ohne E-Mail Adresse registrierst, gibt es für uns keine Möglichkeit dein Passwort wiederherzustellen oder zu ändern. In diesem Fall musst du dir also ein neues Konto erstellen. Merk dir dein Passwort also gut und schreibe es dir am besten auf."
     ),
     list(
       topic = "Konto und Daten",
