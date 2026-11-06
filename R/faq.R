@@ -1,12 +1,3 @@
-# FAQ entries for the FAQ tab (mod_faq.R), as data: to add a question, add an
-# entry here. `topic` groups the entries (shown in the order of FAQ_TOPICS),
-# `q` is the question, `a` the answer in Markdown (rendered with render_md(),
-# so **bold**, lists and links work). Keep the wording in sync with the app's
-# labels, and keep the data-protection answer to what the app itself stores
-# (the server is run by the university, so no claims about it here). No
-# "anonymous" promise either: username + responses are pseudonymous under
-# the GDPR; the details belong in a privacy policy, not the FAQ.
-
 FAQ_TOPICS <- c("Üben", "Fortschritt", "Konto und Daten", "Hilfe")
 
 faq_entries <- function(contact = CONTACT_EMAIL) {
