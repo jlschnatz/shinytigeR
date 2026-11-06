@@ -113,9 +113,9 @@ interval_sentence <- function(theta, se, n_items) {
   from <- scale_label_at(ivl[1])
   to <- scale_label_at(ivl[2])
   range_txt <- if (from == to) {
-    sprintf("„%s“", from)
+    sprintf("im Bereich „%s“", from)
   } else {
-    sprintf("zwischen „%s“ und „%s“", from, to)
+    sprintf("zwischen dem Bereich „%s“ und „%s“", from, to)
   }
   sprintf("Dein Stand liegt wahrscheinlich %s (%s).", range_txt, aufgaben)
 }
