@@ -485,3 +485,11 @@ test_that("an answer image gets a separate magnifier button (the image click sel
   expect_match(html, '<button type="button" class="img-zoom-btn" data-zoom-src="img_item/b.png"', fixed = TRUE)
   expect_no_match(html, "is-zoomable", fixed = TRUE)
 })
+
+test_that("build_ability_rows stores the preliminary-difficulty count, NA without it", {
+  comp <- data.frame(learning_area = LEARNING_AREA_LEVELS[1], theta = 0.4, se = 0.5,
+                     n_items = 6L, n_provisional = 2L)
+  expect_equal(build_ability_rows(comp, "alice", "tok")$n_provisional, 2L)
+  comp$n_provisional <- NULL
+  expect_true(is.na(build_ability_rows(comp, "alice", "tok")$n_provisional))
+})

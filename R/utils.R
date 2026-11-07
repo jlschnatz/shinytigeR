@@ -238,6 +238,7 @@ build_ability_rows <- function(competency, user_id, session_token) {
     theta = competency$theta,
     se = if (is.null(competency$se)) NA_real_ else competency$se,
     n_items = as.integer(competency$n_items),
+    n_provisional = if (is.null(competency$n_provisional)) NA_integer_ else as.integer(competency$n_provisional),
     stringsAsFactors = FALSE
   )
 }

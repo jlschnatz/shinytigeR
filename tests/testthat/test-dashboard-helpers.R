@@ -774,3 +774,18 @@ test_that("the explainer's button looks like the (i) hints, right after the card
   html <- as.character(detail_section(NULL))
   expect_match(html, '<span>Wie sicher ist die Einschätzung\\?</span>\\s*<button type="button" class="la-info la-info-text ivl-explain-btn"')
 })
+
+test_that("latest_ability reads n_provisional, NA for snapshots without it", {
+  ab <- data.frame(computed_at = 100L, learning_area = LEARNING_AREA_LEVELS[1],
+                   theta = 0.5, se = 0.4, n_items = 4L)
+  expect_true(is.na(latest_ability(ab)$n_provisional[1]))
+  ab$n_provisional <- 3L
+  expect_equal(latest_ability(ab)$n_provisional[1], 3L)
+})
+
+test_that("interval_sentence names the items with a preliminary difficulty", {
+  expect_match(interval_sentence(0.2, 0.4, 12L, 4L), "12 Aufgaben, davon 4 mit vorläufiger Schwierigkeit", fixed = TRUE)
+  expect_no_match(interval_sentence(0.2, 0.4, 12L, 0L), "vorläufig")
+  expect_no_match(interval_sentence(0.2, 0.4, 12L), "vorläufig")
+  expect_no_match(interval_sentence(0.2, NA, 12L, NA_integer_), "vorläufig")
+})

@@ -1,7 +1,19 @@
 FAQ_TOPICS <- c("Üben", "Fortschritt", "Konto und Daten", "Hilfe")
 
-faq_entries <- function(contact = CONTACT_EMAIL) {
+# `provisional`: the pool's count of items with a preliminary difficulty,
+# c(n = , total = ) from provisional_item_count(); NULL leaves that sentence out.
+faq_entries <- function(contact = CONTACT_EMAIL, provisional = NULL) {
   mail <- sprintf("[%s](mailto:%s)", contact, contact)
+  provisional_txt <- if (is.null(provisional)) {
+    NULL
+  } else if (provisional[["n"]] == 0L) {
+    "Zurzeit ist die Schwierigkeit aller Aufgaben aus Antworten berechnet."
+  } else {
+    sprintf(
+      "Zurzeit ist das bei %d von %d Aufgaben der Fall.",
+      as.integer(provisional[["n"]]), as.integer(provisional[["total"]])
+    )
+  }
   list(
     # ── Üben ──────────────────────────────────────────────────────────────────
     list(
@@ -83,16 +95,35 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
         "Mehr dazu findest du unter **Fortschritt** bei **Dein Lernstand im Detail** (**Wie wird das berechnet?**)."
       )
     ),
+    # Same rules as compute_and_save_ability()/estimate_competency()
+    list(
+      topic = "Fortschritt",
+      q = "Welche Aufgaben zählen für meinen Lernstand?",
+      a = paste(
+        "Für deinen Lernstand in einem Themenbereich zählen die Aufgaben aus diesem Bereich, und zwar so:",
+        "\n\n- Jede Aufgabe, die du **beantwortet** hast, ob richtig oder falsch. Nicht erkannte Zahleneingaben zählen als falsch.",
+        "\n- Hast du eine Aufgabe mehrmals bearbeitet, zählt deine **letzte Antwort**.",
+        "\n- **Übersprungene** Aufgaben zählen nicht.",
+        "\n\nWie viele Aufgaben es in jedem Themenbereich sind, steht unter **Fortschritt** bei **Dein Lernstand im Detail**,",
+        "dort auch, bei wie vielen davon die Schwierigkeit noch vorläufig ist (siehe die nächste Frage)."
+      )
+    ),
     # Rasch difficulty b: the ability at which P(correct) = 50 %, on the same
     # scale as theta
     list(
       topic = "Fortschritt",
       q = "Was bedeutet die „Schwierigkeit“ einer Aufgabe?",
       a = paste(
-        "Jede Aufgabe hat einen festen Schwierigkeitswert. Er liegt auf derselben Skala wie dein Lernstand,",
+        "Jede Aufgabe hat einen Schwierigkeitswert. Er liegt auf derselben Skala wie dein Lernstand,",
         "also auf den Zahlen von −3 bis 3, die du unter **Dein Lernstand im Detail** siehst.",
         "Die Schwierigkeit gibt an, bei welchem Lernstand man die Aufgabe mit 50% Wahrscheinlichkeit löst:",
-        "Liegt deine Fähigkeit deutlich über der Schwierigkeit einer Aufgabe, löst du sie wahrscheinlich, liegt er darunter, eher nicht."
+        "Liegt deine Fähigkeit deutlich über der Schwierigkeit einer Aufgabe, löst du sie wahrscheinlich, liegt sie darunter, eher nicht.",
+        "\n\nBerechnet wird die Schwierigkeit aus den Antworten der Studierenden, die die Aufgabe schon bearbeitet haben.",
+        "Für neue Aufgaben gibt es dafür noch nicht genug Antworten: Ihre Schwierigkeit ist zunächst eine **vorläufige Schätzung**",
+        "durch ein KI-Sprachmodell (LLM) und wird durch die aus den Antworten berechnete ersetzt, sobald genug Antworten vorliegen.",
+        provisional_txt,
+        "Deine Einschätzung kann sich deshalb bei der nächsten Aktualisierung etwas verschieben, auch wenn sich dein Können nicht verändert hat.",
+        "Frühere Punkte im **Fähigkeitsverlauf** bleiben so, wie sie damals berechnet wurden."
       )
     ),
     list(
@@ -177,6 +208,20 @@ faq_entries <- function(contact = CONTACT_EMAIL) {
       a = "Ja, die Ansicht passt sich der Bildschirmgröße an. Für ein optimales User Interface empfehlen wir dir jedoch die Nutzung eines Laptops."
     )
   )
+}
+
+# How many items of the pool only have a preliminary difficulty
+# (item_provisional(), the item DB's irt_provisional column), for the FAQ.
+# NULL if the pool has no such column or can't be read (the FAQ then just
+# leaves the sentence out). Read when app_ui() is built, i.e. at app start: on
+# ShinyProxy every session starts its own container, so it's always current.
+provisional_item_count <- function(path = DB_ITEMS()) {
+  # file.exists() first: opening a missing path would create an empty DB
+  items <- if (file.exists(path)) tryCatch(db_get_items(path), error = function(e) NULL)
+  if (is.null(items) || !"irt_provisional" %in% names(items)) {
+    return(NULL)
+  }
+  c(n = sum(item_provisional(items)), total = nrow(items))
 }
 
 # An answer's Markdown as HTML, with every link opening in a new tab: in the

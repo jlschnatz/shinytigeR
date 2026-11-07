@@ -68,6 +68,12 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
 
     no_diff <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db WHERE irt_diff IS NULL")$n
     if (no_diff > 0L) warn(sprintf("%d item(s) without irt_diff: they don't count towards the estimate", no_diff))
+    if ("irt_provisional" %in% cols) {
+      n_prov <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db WHERE irt_provisional = 1")$n
+      warn(sprintf("%d item(s) with a preliminary difficulty (irt_provisional = 1)", n_prov))
+    } else {
+      warn("no irt_provisional column: every difficulty counts as calibrated")
+    }
 
     imgs <- DBI::dbGetQuery(con, "SELECT stimulus_image FROM item_db WHERE stimulus_image IS NOT NULL AND stimulus_image <> ''")$stimulus_image
     img_dir <- file.path("inst", "app", "www", "img_item")

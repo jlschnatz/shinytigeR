@@ -1,4 +1,4 @@
-# The FAQ tab: static UI, no server part. The contact line on top, then the
+# The FAQ tab: static UI, no server part (built once at app start). The contact line on top, then the
 # questions (including the links to pandaR and otter), which are data in R/faq.R.
 mod_faq_ui <- function(id) {
   div(
@@ -16,7 +16,8 @@ mod_faq_ui <- function(id) {
         "."
       )
     ),
-    # The questions themselves live in R/faq.R (one entry per question)
-    faq_section()
+    # The questions themselves live in R/faq.R (one entry per question); the
+    # difficulty answer says how many items currently have a preliminary one
+    faq_section(faq_entries(provisional = provisional_item_count()))
   )
 }

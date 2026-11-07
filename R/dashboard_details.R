@@ -95,10 +95,15 @@ interval_axis <- function(type = c("names", "numbers")) {
   )
 }
 
-# One sentence per area, in words rather than numbers
-interval_sentence <- function(theta, se, n_items) {
+# One sentence per area, in words rather than numbers. Says how many items the
+# estimate is based on, and how many of them only have a preliminary
+# difficulty (n_provisional; NA for snapshots saved before it was counted)
+interval_sentence <- function(theta, se, n_items, n_provisional = NA_integer_) {
   cl <- competency_label(theta, n_items)
   aufgaben <- sprintf("%d Aufgabe%s", n_items, if (n_items == 1L) "" else "n")
+  if (!is.na(n_provisional) && n_provisional > 0L) {
+    aufgaben <- sprintf("%s, davon %d mit vorläufiger Schwierigkeit", aufgaben, n_provisional)
+  }
   if (cl$level == 0L) {
     return("Noch keine Daten – bearbeite Aufgaben aus diesem Bereich.")
   }
@@ -128,11 +133,12 @@ interval_card <- function(comp) {
     theta <- if (!is.null(r)) r$theta else NA_real_
     se <- if (!is.null(r)) r$se else NA_real_
     n <- if (!is.null(r)) r$n_items else 0L
+    n_prov <- if (!is.null(r) && !is.null(r$n_provisional)) r$n_provisional else NA_integer_
     div(
       class = "ivl-row",
       div(class = "ivl-area", area),
       interval_strip(theta, se),
-      div(class = "ivl-text", interval_sentence(theta, se, n))
+      div(class = "ivl-text", interval_sentence(theta, se, n, n_prov))
     )
   })
   div(
@@ -212,7 +218,7 @@ explainer_card <- function() {
         "Richtige Antworten, gemessen an der Schwierigkeit",
         # Rasch: given the items worked on, the number correct is sufficient,
         # so which of them were solved doesn't matter, only how hard the set is
-        "Gezählt wird, wie viele Aufgaben du richtig hast. Was das bedeutet, hängt davon ab, wie schwer die bearbeiteten Aufgaben sind: 7\u00a0von\u00a010 richtig bei schweren Aufgaben ergibt eine höhere Einschätzung als 7\u00a0von\u00a010 bei leichten."
+        "Gezählt wird, wie viele Aufgaben du richtig hast. Was das bedeutet, hängt davon ab, wie schwer die bearbeiteten Aufgaben sind: 7\u00a0von\u00a010 richtig bei schweren Aufgaben ergibt eine höhere Einschätzung als 7\u00a0von\u00a010 bei leichten. Bei neuen Aufgaben ist die Schwierigkeit noch vorläufig, bis genug Antworten vorliegen."
       ),
       step(
         2,

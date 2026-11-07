@@ -260,6 +260,8 @@ latest_ability <- function(ab) {
     # NA for estimates saved before the standard error was stored
     se = if ("se" %in% names(ab)) as.numeric(ab$se[idx]) else NA_real_,
     n_items = ifelse(is.na(ab$n_items[idx]), 0L, as.integer(ab$n_items[idx])),
+    # NA for estimates saved before preliminary difficulties were counted
+    n_provisional = if ("n_provisional" %in% names(ab)) as.integer(ab$n_provisional[idx]) else NA_integer_,
     computed_at = max(ab$computed_at, na.rm = TRUE),
     stringsAsFactors = FALSE
   )

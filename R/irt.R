@@ -46,12 +46,27 @@ estimate_theta <- function(responses, b) {
   fit$par
 }
 
+# Which items only have a preliminary difficulty: the item DB's optional
+# `irt_provisional` column (1 = preliminary, e.g. estimated before there were
+# enough answers; 0/NULL = calibrated from data). Recalibration in tigertools
+# sets it back to 0. Pools without the column count as calibrated throughout.
+item_provisional <- function(items) {
+  if (!"irt_provisional" %in% names(items)) {
+    return(rep(FALSE, nrow(items)))
+  }
+  v <- suppressWarnings(as.integer(items$irt_provisional))
+  !is.na(v) & v == 1L
+}
+
 # One row per learning area in `areas` (default: all, in LEARNING_AREA_LEVELS
-# order). Each area is estimated on its own, so leaving areas out doesn't
+# order). `n_items` counts the items the estimate is based on (those with a
+# difficulty), `n_provisional` how many of them only have a preliminary one
+# (item_provisional()). Each area is estimated on its own, so leaving areas out doesn't
 # change the others' estimates; compute_and_save_ability() passes only the
 # practised ones. (A future joint model across areas would break that.)
 estimate_competency <- function(responses, items, areas = LEARNING_AREA_LEVELS) {
   areas <- intersect(LEARNING_AREA_LEVELS, areas)
+  prov <- item_provisional(items)
   result <- lapply(areas, function(area) {
     rows <- responses[
       !is.na(responses$learning_area) &
@@ -61,19 +76,19 @@ estimate_competency <- function(responses, items, areas = LEARNING_AREA_LEVELS) 
       drop = FALSE
     ]
     if (nrow(rows) < 1L) {
-      return(list(theta = NA_real_, se = NA_real_, n = 0L))
+      return(list(theta = NA_real_, se = NA_real_, n = 0L, n_prov = 0L))
     }
     idx <- match(rows$id_item, items$id_item)
     ok <- !is.na(idx) & !is.na(items$irt_diff[idx])
     rows <- rows[ok, , drop = FALSE]
     idx <- idx[ok]
     if (nrow(rows) < 1L) {
-      return(list(theta = NA_real_, se = NA_real_, n = 0L))
+      return(list(theta = NA_real_, se = NA_real_, n = 0L, n_prov = 0L))
     }
     b <- items$irt_diff[idx]
     theta <- estimate_theta(as.integer(rows$bool_correct), b)
     se <- if (is.na(theta)) NA_real_ else sem_1pl(theta, b)
-    list(theta = theta, se = se, n = nrow(rows))
+    list(theta = theta, se = se, n = nrow(rows), n_prov = sum(prov[idx]))
   })
 
   data.frame(
@@ -81,6 +96,7 @@ estimate_competency <- function(responses, items, areas = LEARNING_AREA_LEVELS) 
     theta = vapply(result, `[[`, numeric(1), "theta"),
     se = vapply(result, `[[`, numeric(1), "se"),
     n_items = vapply(result, function(x) as.integer(x$n), integer(1)),
+    n_provisional = vapply(result, function(x) as.integer(x$n_prov), integer(1)),
     stringsAsFactors = FALSE
   )
 }

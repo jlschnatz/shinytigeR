@@ -330,3 +330,24 @@ test_that("estimate_competency only estimates the requested areas, without chang
   expect_equal(some$theta, all$theta[c(1, 3)])
   expect_equal(nrow(estimate_competency(responses, items, areas = character())), 0L)
 })
+
+test_that("estimate_competency counts the items with a preliminary difficulty", {
+  responses <- data.frame(
+    id_item = 1:4,
+    learning_area = LEARNING_AREA_LEVELS[c(1, 1, 1, 2)],
+    bool_correct = c(TRUE, FALSE, TRUE, TRUE),
+    stringsAsFactors = FALSE
+  )
+  items <- data.frame(
+    id_item = 1:4, irt_diff = c(0, 0.5, NA, 1),
+    irt_provisional = c(1L, 0L, 1L, NA)
+  )
+  result <- estimate_competency(responses, items)
+  # item 3 has no difficulty, so it counts neither as used nor as preliminary
+  expect_equal(result$n_items[1:2], c(2L, 1L))
+  expect_equal(result$n_provisional[1:3], c(1L, 0L, 0L))
+
+  # pools without the column: everything counts as calibrated
+  items$irt_provisional <- NULL
+  expect_equal(estimate_competency(responses, items)$n_provisional[1:2], c(0L, 0L))
+})
