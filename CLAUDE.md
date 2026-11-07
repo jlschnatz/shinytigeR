@@ -43,12 +43,7 @@ Note `docker/Dockerfile.dev` (used by `SETUP.md`'s Docker option) is dev-only (l
 
 ### Manually testing numeric items
 
-```bash
-rv run dev/add_numeric_samples.R   # idempotent — runs both migrations, then (re)writes 4 numeric sample items (ids 90001-90004) in your local db_item.sqlite
-rv run dev/run.R
-```
-
-Log in and either select the matching learning area (Deskriptivstatistik/Wahrscheinlichkeit/Regression) in the selector, or use "Spezifische Aufgabe auswählen" to jump straight to an id — the direct-ID lookup goes to `mod_inspect.R`, not the practice queue, so to exercise the practice flow (typing an answer, matching/unmatched/skip, the check button) use the selector. `dev/db_item_sample.sqlite` (what a fresh clone gets via `dev/seed_db.R`) already has these four items baked in too.
+The full pool has real numeric items (`answer_mode = "num"`); the committed sample pool (`dev/db_item_sample.sqlite`, what a fresh clone gets via `dev/seed_db.R`) has four synthetic ones. Exercise the practice flow (typing an answer, matching/unmatched/skip, the check button) through the selector; "Spezifische Aufgabe auswählen" goes to `mod_inspect.R` instead.
 
 The four sample items (all `type_item = "content"`; see "Numeric item rules" under Databases for what the columns mean):
 
@@ -59,9 +54,9 @@ The four sample items (all `type_item = "content"`; see "Numeric item rules" und
 | `90003` | Regression | ŷ for x = 4 given y = 2x + 3 | `11` / `9` / `8` / `24` | none (exact) | `1` |
 | `90004` | Deskriptivstatistik | Variance of 2, 4, 6, 8, two decimals | `6.67` / `5` / `20` / `2.58` / `2.24` | 01: 6.66–6.67, 04: 2.58–2.59, 05: 2.23–2.24; 02/03 exact | `1;2` |
 
-Useful manual cases: exact match (`5` on 90001), comma decimal (`0,25` on 90002), exact-only near-miss (`5.01` on 90001 → unmatched), matched distractor (`4.5` on 90001 → incorrect + its feedback), in-range value (`6,66` on 90004 → correct), second correct option (`5` on 90004 → correct, different feedback), ranged distractor (`2.59` on 90004 → incorrect), unmatched (`7`), and the skip button.
+Useful manual cases: exact match (`5` on 90001), comma decimal (`0,25` on 90002), exact-only near-miss (`5.01` on 90001 → unmatched), matched distractor (`4.5` on 90001 → incorrect + its feedback), in-range value (`6,66` on 90004 → correct), second correct option (`5` on 90004 → correct, different feedback), ranged distractor (`2.59` on 90004 → incorrect), unmatched (`7`), and the skip button. They're only in the sample pool, not in the real one: to try them, seed a separate folder with `TIGER_DB_DIR=<new folder> rv run dev/seed_db.R` and run the app on it with `TIGER_DB_DIR=<new folder> rv run dev/run.R`.
 
-`dev/add_numeric_samples.R` is dev/local-only (it inserts fake practice items) — **never** run it against a production DB. For just the item-DB migrations (no sample items — safe against production), use `dev/migrate_answer_mode.R`, `dev/migrate_numeric_bounds.R` and `dev/migrate_drop_mc_skip.R` directly; see the Deployment section below for when they have to run.
+**Item DB format:** the pool comes from `tigertools` in the current format. The scripts that migrated older pools in place (`migrate_answer_mode.R`, `migrate_numeric_bounds.R`, `migrate_drop_mc_skip.R`) and the one that added the numeric samples to a full pool (`add_numeric_samples.R`) were removed in Nov 2026 (see git history); `dev/check_deploy_dbs.R` still detects an old format.
 
 ### Dependency management (rv)
 
@@ -139,11 +134,7 @@ app_v3/
 │   ├── run.R                    # local dev entrypoint — rv run dev/run.R
 │   ├── seed_db.R                 # creates db_credentials.sqlite + empty db_user.sqlite; copies db_item_sample.sqlite in if db_item.sqlite is missing
 │   ├── make_sample_items.R       # regenerates dev/db_item_sample.sqlite from the full local db_item.sqlite (maintainers only)
-│   ├── migrate_answer_mode.R     # production-safe: idempotently adds answer_mode column + backfills to 'mc'. No sample items — run this before deploying
-│   ├── migrate_numeric_bounds.R  # production-safe: idempotently adds lower_/upper_answeroption_0X columns (table rebuild, after if_answeroption_06) + makes answer_correct TEXT. No items — run this before deploying
-│   ├── migrate_drop_mc_skip.R    # production-safe: idempotently removes the old trailing skip option (+ its feedback) from MC items. No items — run this before deploying
-│   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (migrated? sample items? files present?)
-│   ├── add_numeric_samples.R     # dev-only: sources both migrations, then (re)writes 4 numeric sample items — never run against production
+│   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (current format? sample items? images? files present?)
 │   ├── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │   └── img_item_sample/          # the sample items' images; seed_db.R copies them to <DB folder>/img_item
 │
@@ -421,7 +412,7 @@ Two separate `renderUI` outputs, to avoid unnecessary re-renders:
 **Answer coloring** is done via CSS classes:
 
 - `.radio-result-correct`, `.radio-result-incorrect`, `.radio-result-skip` — defined in `app.css`, MC only
-- **Skipping** is one "Aufgabe überspringen" button (`input$skip`) owned by `mod_practice` itself, in the action row left of "Antwort prüfen", for MC and numeric items alike — not an answer option in the item DB (the old trailing "Frage überspringen." / `www/skip.png` MC option was removed by `dev/migrate_drop_mc_skip.R`). It's shown/hidden together with "Antwort prüfen", calls `finish_check("skip")` (→ `skipped = TRUE`, `selected_option`/`bool_correct` NA), and the child modules render the "Übersprungen" card with `SKIP_FEEDBACK`. No option needs to be selected to skip
+- **Skipping** is one "Aufgabe überspringen" button (`input$skip`) owned by `mod_practice` itself, in the action row left of "Antwort prüfen", for MC and numeric items alike — not an answer option in the item DB (the old trailing "Frage überspringen." / `www/skip.png` MC option was removed from the pool by a since-deleted migration). It's shown/hidden together with "Antwort prüfen", calls `finish_check("skip")` (→ `skipped = TRUE`, `selected_option`/`bool_correct` NA), and the child modules render the "Übersprungen" card with `SKIP_FEEDBACK`. No option needs to be selected to skip
 
 **State** is managed by a `reactiveValues` object inside `mod_practice_server`:
 ```r
@@ -539,7 +530,7 @@ Table: `item_db`
 | `bloom_taxonomy` | text | `"knowledge"`, `"comprehension"`, or `"application"` |
 | `stimulus_text` | text | Markdown + LaTeX preamble (nullable) |
 | `stimulus_image` | text | Path like `www/img_item/foo.png` (stripped to `img_item/foo.png` at load) |
-| `answeroption_01`…`answeroption_06` | text | Answer choices — real options only; skipping is the app's skip button, not a stored option (MC items used to end in "Frage überspringen." / `www/skip.png`, removed by `dev/migrate_drop_mc_skip.R`). For numeric (`answer_mode = "num"`) rows, these are distractor *values* as numeric strings (e.g. `"4.5"`) — reused rather than adding a parallel set of columns |
+| `answeroption_01`…`answeroption_06` | text | Answer choices — real options only; skipping is the app's skip button, not a stored option (MC items used to end in "Frage überspringen." / `www/skip.png`, since removed from the pool). For numeric (`answer_mode = "num"`) rows, these are distractor *values* as numeric strings (e.g. `"4.5"`) — reused rather than adding a parallel set of columns |
 | `if_answeroption_01`…`if_answeroption_06` | text | Per-answer feedback text (Markdown + LaTeX); same reuse for numeric distractor feedback |
 | `lower_answeroption_01`…`lower_answeroption_06` | real | Numeric only: inclusive lower bound of the range that matches this option. See "Numeric item rules" below |
 | `upper_answeroption_01`…`upper_answeroption_06` | real | Numeric only: inclusive upper bound. See "Numeric item rules" below |
@@ -552,7 +543,7 @@ Table: `item_db`
 
 #### Numeric item rules (`answer_mode = "num"`)
 
-> Implemented by `evaluate_numeric_answer()`/`get_numeric_options()` in `R/utils.R`; the columns are added by `dev/migrate_numeric_bounds.R`. Item **validation** (rules 2–5) is deliberately **not** done in this app — it lives in the separate item-authoring package **`tigertools`** (`../tigertools`, github.com/jlschnatz/tigertools: `create(answer_mode = "num")` template, `validate_item()`, `push()`), which enforces these same rules — keep the two in sync when a rule changes. At runtime the app never rejects an item: an invalid half-set range is treated as exact match, and overlapping ranges resolve to the lowest-numbered option.
+> Implemented by `evaluate_numeric_answer()`/`get_numeric_options()` in `R/utils.R`; older pools without these columns read them as NA (exact match). Item **validation** (rules 2–5) is deliberately **not** done in this app — it lives in the separate item-authoring package **`tigertools`** (`../tigertools`, github.com/jlschnatz/tigertools: `create(answer_mode = "num")` template, `validate_item()`, `push()`), which enforces these same rules — keep the two in sync when a rule changes. At runtime the app never rejects an item: an invalid half-set range is treated as exact match, and overlapping ranges resolve to the lowest-numbered option.
 
 Each answer option `0X` of a numeric item is described by four columns: its value `answeroption_0X`, its range `lower_answeroption_0X`/`upper_answeroption_0X`, and its feedback `if_answeroption_0X`. The item's `answer_correct` says which options are correct.
 
@@ -724,22 +715,18 @@ Two things the first local image test (`linux/amd64`, real server data mounted) 
 ### ShinyProxy
 
 The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`, port 3838, DB folder mounted at `/opt/shinyapp`); we don't have its `application.yml`. The DB folder (`shinyapps/shinytigeR-DB/` on the server, uploaded by SFTP) holds:
-- `db_item.sqlite` (migrated, see below), `db_user.sqlite`, `db_credentials.sqlite`
+- `db_item.sqlite` (from `tigertools`, current format, see below), `db_user.sqlite`, `db_credentials.sqlite`
 - `db_ability.sqlite`: must exist (even as an empty file) in case single files are bind-mounted
 - `img_item/`: the item images (every image `db_item.sqlite` refers to). This relies on the whole folder being mounted, not single files; very likely already the case (the old app's SQLite writes needed a writable folder), still to confirm with the admin
 - `reg_code.txt`: the semester code (first non-empty line). `read_secret()` (`R/utils.R`) prefers the env var **`TIGER_REG_CODE`** if ShinyProxy's `container-env` sets it, else reads this file on every registration attempt, so it can be changed by SFTP without the admin or a rebuild. Never under `www/` (served to browsers), never in the image. The planned LLM API key should use the same helper.
 
 The folder itself must be writable for uid 1002, not just the files: SQLite (WAL mode) writes `-wal`/`-shm` files next to the databases.
 
-**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only; default `../db`): files present, item DB migrated, no dev sample items (90001–90004), every item image (stimulus and answer options) present in `img_item/`, accounts count. Exits non-zero on problems.
+**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only; default `../db`): files present, item DB in the current format, no dev sample items (90001–90004), every item image (stimulus and answer options) present in `img_item/`, accounts count. Exits non-zero on problems.
 
 **Old user tables** (2023/24, 372 tables) have no `skipped` column; the old app never stored skips (option 6, the skip option, was never chosen in 33,787 answers). `db_get_userdata()` adds `skipped = 0` for them. Without it, the dashboard's skip filter matched nothing and old students saw no answers at all.
 
-> **Required one-time migration before deploying any build that includes numeric items:** the production `db_item.sqlite` needs the `answer_mode` column added and backfilled to `'mc'` before this code runs against it — run `TIGER_DB_DIR=<mount path> rv run dev/migrate_answer_mode.R` against it first (idempotent, safe to re-run, inserts no items). **Skipping this doesn't crash the app** — `item$answer_mode` on a column that doesn't exist yet resolves to `NULL`, not an error, and both `mod_mc_answer.R`'s and `mod_numeric_answer.R`'s dispatch checks (`identical(item$answer_mode[1], "mc"/"num")`) are `FALSE` for `NULL` either way. The practice view's answer area just renders blank and "Antwort prüfen" never enables — for *every* item, MC included, with no error shown anywhere. Do **not** use `dev/add_numeric_samples.R` for this — it also inserts fake sample items, which don't belong in the real student-facing pool.
->
-> **Also run `TIGER_DB_DIR=<mount path> rv run dev/migrate_numeric_bounds.R`** (same properties: idempotent, inserts no items). It rebuilds `item_db` in one transaction to add the `lower_`/`upper_answeroption_0X` columns after `if_answeroption_06` and make `answer_correct` TEXT; existing data is copied unchanged (verified row-for-row against the local pool). Skipping it doesn't break the app either — missing bound columns read as NA, so every numeric option just falls back to exact match.
->
-> **And run `TIGER_DB_DIR=<mount path> rv run dev/migrate_drop_mc_skip.R`** before deploying a build with the shared skip button (idempotent, inserts no items; also takes a file path as argument). It removes the old trailing skip option ("Frage überspringen." / `www/skip.png`) and its feedback from every MC item, aborting without changes if a skip option is ever marked correct. **Skipping this one *does* change behaviour:** the old skip option would show up as an ordinary answer option and be scored as incorrect. `db_user.sqlite` needs no migration — legacy skip rows already have `skipped = TRUE`.
+> **Item DB format:** the pool that goes live comes from `tigertools` in the current format (`answer_mode`, the `lower_`/`upper_answeroption_0X` range columns, text `answer_correct`, no stored skip option). An old-format pool doesn't crash the app but breaks it quietly: without `answer_mode` no item can be answered (the answer area renders blank, "Antwort prüfen" never enables), without the range columns numeric options fall back to exact match, and an old skip option shows up as an ordinary (wrong) answer. `dev/check_deploy_dbs.R` checks all three. `db_user.sqlite` needs nothing: legacy skip rows already have `skipped = TRUE`.
 
 The `CMD` starts the app as:
 ```

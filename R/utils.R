@@ -257,8 +257,7 @@ parse_numeric_input <- function(x) {
 # like get_answeroptions(), so row i always is option i even if an earlier
 # option column is empty. Returns a data.frame with one row per non-empty
 # option: idx, value, lower, upper, feedback, is_correct. Bound columns that
-# don't exist yet (DB not migrated — see dev/migrate_numeric_bounds.R) read as
-# NA, i.e. exact match.
+# don't exist (an item DB in an old format) read as NA, i.e. exact match.
 get_numeric_options <- function(item) {
   col <- function(prefix, i) {
     v <- item[[sprintf("%sansweroption_%02d", prefix, i)]]

@@ -2,11 +2,11 @@
 #
 #   rv run dev/check_deploy_dbs.R <folder>
 #
-# Reports what's missing or not migrated; exits with status 1 if anything
-# would break the app. Fix item-DB problems with the three migrations:
-#   TIGER_DB_DIR=<folder> rv run dev/migrate_answer_mode.R
-#   TIGER_DB_DIR=<folder> rv run dev/migrate_numeric_bounds.R
-#   TIGER_DB_DIR=<folder> rv run dev/migrate_drop_mc_skip.R
+# Reports what's missing or in an old format; exits with status 1 if anything
+# would break the app. An item DB in an old format (missing columns, old skip
+# options) comes from an old export: export the pool again with tigertools.
+# (The migrations that used to fix old pools in place were removed in Nov 2026,
+# see git history.)
 
 args <- commandArgs(trailingOnly = TRUE)
 dir <- if (length(args)) args[1] else Sys.getenv("TIGER_DB_DIR", "../db")
@@ -46,25 +46,25 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
 
     if ("answer_mode" %in% cols) {
       bad <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db WHERE answer_mode IS NULL OR answer_mode NOT IN ('mc', 'num')")$n
-      if (bad == 0L) ok("answer_mode set on every item") else fail(sprintf("%d item(s) without a valid answer_mode: run migrate_answer_mode.R", bad))
+      if (bad == 0L) ok("answer_mode set on every item") else fail(sprintf("%d item(s) without a valid answer_mode: old item DB format, export it again with tigertools", bad))
     } else {
-      fail("no answer_mode column: run migrate_answer_mode.R (without it no item can be answered)")
+      fail("no answer_mode column: old item DB format, export it again with tigertools (without it no item can be answered)")
     }
 
     if (all(sprintf("lower_answeroption_%02d", 1:6) %in% cols)) {
       ok("numeric range columns")
     } else {
-      warn("no lower_/upper_ range columns: run migrate_numeric_bounds.R (numeric items fall back to exact match)")
+      warn("no lower_/upper_ range columns: old item DB format, export it again with tigertools (numeric items fall back to exact match)")
     }
 
     skip_vals <- c("Frage überspringen.", "www/skip.png")
     opt_cols <- intersect(sprintf("answeroption_%02d", 1:6), cols)
     where <- paste(sprintf("%s IN ('%s')", opt_cols, paste(skip_vals, collapse = "', '")), collapse = " OR ")
     n_skip <- DBI::dbGetQuery(con, paste("SELECT COUNT(*) AS n FROM item_db WHERE", where))$n
-    if (n_skip == 0L) ok("no old skip options") else fail(sprintf("%d item(s) still have the old skip option: run migrate_drop_mc_skip.R", n_skip))
+    if (n_skip == 0L) ok("no old skip options") else fail(sprintf("%d item(s) still have the old skip option: old item DB format, export it again with tigertools", n_skip))
 
     samples <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db WHERE id_item BETWEEN 90001 AND 90004")$n
-    if (samples == 0L) ok("no dev sample items") else fail("contains the dev sample items 90001-90004 (dev/add_numeric_samples.R)")
+    if (samples == 0L) ok("no dev sample items") else fail("contains the dev sample items 90001-90004 (the dev sample pool, dev/db_item_sample.sqlite)")
 
     no_diff <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db WHERE irt_diff IS NULL")$n
     if (no_diff > 0L) warn(sprintf("%d item(s) without irt_diff: they don't count towards the estimate", no_diff))

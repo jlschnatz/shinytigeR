@@ -115,14 +115,9 @@ any `-wal`/`-shm` files, if present) and keep it untouched.
 
 Then, in a separate local folder:
 
-- **`db_item.sqlite`**: the item pool that goes live, **migrated** (all three
-  are safe to re-run and insert no items):
-  ```bash
-  TIGER_DB_DIR=<folder> rv run dev/migrate_answer_mode.R
-  TIGER_DB_DIR=<folder> rv run dev/migrate_numeric_bounds.R
-  TIGER_DB_DIR=<folder> rv run dev/migrate_drop_mc_skip.R
-  ```
-  Never use `dev/add_numeric_samples.R` on it (inserts fake items).
+- **`db_item.sqlite`**: the item pool that goes live, as exported by
+  `tigertools` (already in the current format; the check below says so if
+  it's an old one).
 - **`db_ability.sqlite`**: an empty file (`touch db_ability.sqlite`).
 - **`reg_code.txt`**: the semester code on the first line.
 - **`img_item/`**: the item images, i.e. the local `app/db/img_item/` (every
@@ -170,7 +165,8 @@ docker build -t shinytiger .
 - Via SFTP: `db_ability.sqlite` has grown, `db_user.sqlite-wal` may appear.
 
 For later app updates only steps 1, 3 (build folder) and 4 are needed; the DB
-folder stays as it is (unless new migrations come along).
+folder stays as it is. New or changed items: upload `db_item.sqlite` and
+their images in `img_item/`, no build needed.
 
 ## Testing locally
 
@@ -222,6 +218,6 @@ docker exec <name> sh -c 'id; echo $TZ $HOME; ls -la /opt/shinyapp'
 | `object 'app_server' not found` at startup | `inst/app/app.R` must call `shinytigeR::app_ui()` / `shinytigeR::app_server` (the `CMD` doesn't attach the package) |
 | `rv sync` fails on `cran.r-project.org/__linux__/...` | the CRAN entry in `rproject.toml` needs `force_source = true` (rv looks for Linux binaries in every repository; only PPM has them) |
 | `Could not find an R version matching 4.6` | corrupted base image (see disk-full note above); remove it and rebuild |
-| Practice view shows no answer options, "Antwort prüfen" never enables | `db_item.sqlite` not migrated (`answer_mode` missing): run the migrations, check with `check_deploy_dbs.R` |
+| Practice view shows no answer options, "Antwort prüfen" never enables | `db_item.sqlite` in an old format (`answer_mode` missing): export the pool again with `tigertools`, check with `check_deploy_dbs.R` |
 | Registration says "derzeit nicht verfügbar" | no semester code: `reg_code.txt` missing/empty and `TIGER_REG_CODE` unset |
 | Old student sees an empty dashboard | shouldn't happen any more (`db_get_userdata()` handles old tables without `skipped`); check that the build includes that fix |
