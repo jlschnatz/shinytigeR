@@ -144,15 +144,15 @@ app_v3/
 │   ├── migrate_drop_mc_skip.R    # production-safe: idempotently removes the old trailing skip option (+ its feedback) from MC items. No items — run this before deploying
 │   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (migrated? sample items? files present?)
 │   ├── add_numeric_samples.R     # dev-only: sources both migrations, then (re)writes 4 numeric sample items — never run against production
-│   └── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
+│   ├── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
+│   └── img_item_sample/          # the sample items' images; seed_db.R copies them to <DB folder>/img_item
 │
 ├── inst/app/
 │   ├── app.R              # loaded by runApp(); skips library() if already loaded via load_all()
 │   └── www/
 │       ├── css/app.css    # all custom CSS
 │       ├── js/            # page scripts: practice.js, dashboard.js, tooltips.js (linked in ui.R)
-│       ├── logo/          # app branding: tiger_logo.svg (Goethe blue), tiger_logo_white.svg (navbar, login card), favicon.png (180 px, from the SVG)
-│       └── img_item/      # item content images — path baked into db_item.sqlite; do not rename without migrating
+│       └── logo/          # app branding: tiger_logo.svg (Goethe blue), tiger_logo_white.svg (navbar, login card), favicon.png (180 px, from the SVG)
 │
 ├── deploy/
 │   ├── build.R            # generates Dockerfile + builds tarball (run this, not the Dockerfile directly)
@@ -173,11 +173,23 @@ app_v3/
 ├── docs/                  # gitignored — forward-looking research memos, not shipped code docs
 │                           # (dashboard/IRT redesign literature reviews, model comparisons)
 │
-├── db_item.sqlite         # item pool (gitignored in production, present locally)
-├── db_user.sqlite         # per-user response log (gitignored)
-├── db_ability.sqlite      # persisted per-user ability (theta) snapshots (gitignored)
-└── db_credentials.sqlite  # hashed passwords (gitignored)
 ```
+
+**The DB folder is not in the repo, it sits next to it** (`app/db/`, `TIGER_DB_DIR`, default `../db`), laid out like the server's `shinytigeR-DB/` (mounted at `/opt/shinyapp`):
+
+```
+app/
+├── shinytigeR/            # this repo
+└── db/
+    ├── db_item.sqlite         # item pool
+    ├── db_user.sqlite         # per-user response log
+    ├── db_ability.sqlite      # persisted per-user ability (theta) snapshots
+    ├── db_credentials.sqlite  # hashed passwords
+    ├── reg_code.txt           # semester code (optional locally)
+    └── img_item/              # item images; paths baked into db_item.sqlite, don't rename without migrating
+```
+
+Until Nov 2026 the databases lived in the repo root and the images in the package (`inst/app/www/img_item`): new items then needed a new build, and items and images could get out of sync on the server.
 
 ---
 
@@ -272,7 +284,7 @@ Single source of truth for:
 | `RETRY_MAX_ITEMS` / `RETRY_MIN_DAYS` | `integer` | 10 and 1: "Offene Fehler" retry queue — at most 10 items per queue (drawn at random), and a mistake is only retryable once its latest answer is ≥ 1 calendar day old (time-out against redoing the same items within minutes). Random selector draws are unaffected |
 | `TRAJECTORY_COLOR` | `character` | Line/marker color of the "Fähigkeitsverlauf" panels — a dark neutral that stays readable on every competency band |
 | `TRAJECTORY_WINDOWS` | named `numeric` | Time windows of the "Fähigkeitsverlauf" switch: `Gesamt` = NA (whole history), `4 Wochen` = 28, `2 Wochen` = 14 days back from now. Names are the button labels, the first is the default |
-| `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` | functions | Return full paths to the four SQLite files; read `TIGER_DB_DIR` env var (default `"."`) |
+| `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` / `DB_ABILITY()` / `ITEM_IMG_DIR()` | functions | Return full paths to the four SQLite files and the item image folder; read `TIGER_DB_DIR` env var (default `DB_DIR_DEFAULT` = `"../db"`, also when set but empty) |
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
 | `REG_USERNAME_PATTERN` / `REG_PW_MIN_LENGTH` / `REG_MAX_ATTEMPTS` / `REG_ATTEMPT_DELAY_S` | validation constants | Used by `mod_register.R` — see that section below |
 | `REG_CODE_FILE` | `character` | `"reg_code.txt"`: semester-code file in the DB folder, used when `TIGER_REG_CODE` isn't set (`read_secret()`) |
@@ -299,7 +311,7 @@ All database access. Uses a simple open/close pattern (`db_with()`) — no conne
 | `db_username_exists(username)` | `TRUE`/`FALSE`; case-sensitive. Used by `mod_register.R` |
 | `db_register_user(username, password_plain)` | Inserts a new row into `credentials_db` inside a `BEGIN IMMEDIATE` transaction (dupe-check + insert are atomic); hashes with `sodium::password_store()`; `stop("username_taken")` if the username exists |
 
-**DB path resolution:** All functions default to `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` which read `TIGER_DB_DIR` from the environment. Locally this defaults to `"."` (project root). In Docker it is set to `/opt/shinyapp` (the mounted volume).
+**DB path resolution:** All functions default to `DB_ITEMS()` / `DB_USERS()` / `DB_CREDS()` which read `TIGER_DB_DIR` from the environment. Locally `dev/run.R` sets it to `../db` (the folder next to the repo, absolute path). In Docker it is set to `/opt/shinyapp` (the mounted volume); the dev compose setup mounts `../db` at `/db`.
 
 ### `R/irt.R`
 
@@ -351,6 +363,7 @@ Items and feedback can contain LaTeX math delimited by `$...$` (inline) or `$$..
 | `safe_sample(x, size)` | `sample()` that handles `length(x) < size` gracefully |
 | `css_href(path, href)` | Appends the file's mtime as `?v=` for cache-busting the stylesheet and script links in `ui.R` (`www/css/`, `www/js/`); falls back to the bare `href` if the file isn't found |
 | `is_img_path(x)` | Returns `TRUE` for strings ending in `.png/.jpg/.jpeg/.svg/.gif` |
+| `add_item_image_path(dir)` | Serves `img_item/` from the DB folder (`ITEM_IMG_DIR()`) via `shiny::addResourcePath()`, called by `app_ui()` at startup. Does nothing if the folder doesn't exist (the deploy check reports missing images) |
 | `stimulus_img(src)` / `answer_img(src, style)` | Item images that **enlarge on click** (practice and inspect alike). A stimulus image is itself the button (`.is-zoomable`, `role`/`tabindex` for the keyboard). An answer image sits inside its option's `<label>`, where a click selects the answer, so it gets a magnifier button in its corner (`.img-zoom-btn`, `data-zoom-src`) and the image click keeps selecting. The enlarged view is one native `<dialog>` (`.img-zoom`, created on first use in `www/js/practice.js`): scaled to fit the window, small images up to 3×, closed by Esc, a click or ×, focus returns to the image |
 | `item_id_badge(id_item, input_id, class)` | Click-to-copy item-ID badge shared by `mod_practice.R` and `mod_inspect.R`, built on `rclipboard::rclipButton()` for the `bslib::tooltip()` hover label. `input_id` must be the caller's `ns("copy_item_id")` — a fixed, namespaced ID, since each module is instantiated once. **Never observed server-side, on purpose** — confirmed against `shiny.js`: `unbindInputs()` (run before every `renderUI` re-render) tears down the JS binding but never calls the client's `InputNoResendDecorator.forget()`, so a freshly recreated `actionButton` resends its reset value (`0`), which differs from the cached post-click value and gets treated as a genuine change. Since both badges live inside a `renderUI` that reruns on every item change, a server `observeEvent` on this input would fire "copied" on every item advance, not just on real clicks — confirmed by testing this exact scenario with a debug observer before settling on the client-only approach. The "✓ Kopiert" confirmation is instead a single, page-lifetime `ClipboardJS('.practice-item-id-btn').on('success', …)` listener registered once in `www/js/practice.js` (`DOMContentLoaded`), never per-render. |
 
@@ -669,11 +682,11 @@ Static files are served via Shiny's **built-in `www/` auto-serving convention** 
 | Prefix | Filesystem location | Content |
 |---|---|---|
 | `logo` | `inst/app/www/logo/` | The tigeR logo as SVG: `tiger_logo.svg` (Goethe blue, also the favicon and in `README.md`) and `tiger_logo_white.svg` (same paths, white fill: navbar and login card, both on `PRIMARY_COLOR`). `favicon.png` is rendered from the blue SVG for browsers without SVG favicons and iOS (`rsvg-convert -w 164`, padded to 180 × 180 with ImageMagick). Replaced the old `img_app/` PNGs (hex logo), Nov 2026 |
-| `img_item` | `inst/app/www/img_item/` | Item stimulus and answer images |
+| `img_item` | `<DB folder>/img_item/` (**not** in the package) | Item stimulus and answer images, registered by `add_item_image_path()` |
 | `css` | `inst/app/www/css/` | `app.css` |
 | `js` | `inst/app/www/js/` | The page scripts, plain browser JS (no build step), linked in `ui.R` with `css_href()` cache-busting: `practice.js` (MathJax re-typeset, item-ID badge confirmation, code blocks' copy button, image zoom, scrolling to the feedback), `dashboard.js` (answer tree, trajectory panels and time window, explainer), `tooltips.js` (`data-tip`). They used to be one long inline `tags$script()` in `ui.R` |
 
-`inst/app/app.R` previously called `shiny::addResourcePath()` with `system.file(...)` to register these explicitly — this was removed because it was both redundant with the built-in convention *and* fragile: `system.file()` only resolves correctly if the package is genuinely installed or `pkgload` is present (which isn't in `rv.lock`/`DESCRIPTION`), so on some setups it silently returned `""` and **overrode** the working default with a broken one, causing missing CSS/images for contributors without `pkgload` in a personal library. **Do not re-add `addResourcePath()` for these three prefixes** — the auto-serving convention already covers them and doesn't depend on how the package was loaded.
+`inst/app/app.R` previously called `shiny::addResourcePath()` with `system.file(...)` to register these explicitly — this was removed because it was both redundant with the built-in convention *and* fragile: `system.file()` only resolves correctly if the package is genuinely installed or `pkgload` is present (which isn't in `rv.lock`/`DESCRIPTION`), so on some setups it silently returned `""` and **overrode** the working default with a broken one, causing missing CSS/images for contributors without `pkgload` in a personal library. **Do not re-add `addResourcePath()` for the `www/` prefixes** — the auto-serving convention already covers them and doesn't depend on how the package was loaded. The one exception is `img_item`: its folder is outside the package, in the DB folder, and its path comes from `TIGER_DB_DIR` (absolute), not from `system.file()`, so the problem above doesn't apply.
 
 `app.css` is linked as `css/app.css?v=<mtime>` via `css_href()` (`R/utils.R`), because browsers otherwise keep a stale cached copy after CSS changes, and new markup then renders unstyled (hit once: new dashboard scale segments showed up without colour). It relies on `runApp()` setting the working directory to the app dir, which is true for both `dev/run.R` and `run_app()`.
 
@@ -713,11 +726,12 @@ Two things the first local image test (`linux/amd64`, real server data mounted) 
 The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`, port 3838, DB folder mounted at `/opt/shinyapp`); we don't have its `application.yml`. The DB folder (`shinyapps/shinytigeR-DB/` on the server, uploaded by SFTP) holds:
 - `db_item.sqlite` (migrated, see below), `db_user.sqlite`, `db_credentials.sqlite`
 - `db_ability.sqlite`: must exist (even as an empty file) in case single files are bind-mounted
+- `img_item/`: the item images (every image `db_item.sqlite` refers to). This relies on the whole folder being mounted, not single files; very likely already the case (the old app's SQLite writes needed a writable folder), still to confirm with the admin
 - `reg_code.txt`: the semester code (first non-empty line). `read_secret()` (`R/utils.R`) prefers the env var **`TIGER_REG_CODE`** if ShinyProxy's `container-env` sets it, else reads this file on every registration attempt, so it can be changed by SFTP without the admin or a rebuild. Never under `www/` (served to browsers), never in the image. The planned LLM API key should use the same helper.
 
 The folder itself must be writable for uid 1002, not just the files: SQLite (WAL mode) writes `-wal`/`-shm` files next to the databases.
 
-**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only): files present, item DB migrated, no dev sample items (90001–90004), stimulus images present, accounts count. Exits non-zero on problems.
+**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only; default `../db`): files present, item DB migrated, no dev sample items (90001–90004), every item image (stimulus and answer options) present in `img_item/`, accounts count. Exits non-zero on problems.
 
 **Old user tables** (2023/24, 372 tables) have no `skipped` column; the old app never stored skips (option 6, the skip option, was never chosen in 33,787 answers). `db_get_userdata()` adds `skipped = 0` for them. Without it, the dashboard's skip filter matched nothing and old students saw no answers at all.
 

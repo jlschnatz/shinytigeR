@@ -293,10 +293,25 @@ test_that("DB_ITEMS/USERS/CREDS/ABILITY use TIGER_DB_DIR env var", {
   })
 })
 
-test_that("DB path functions default to current directory when env var is unset", {
+test_that("DB path functions default to ../db (next to the repo) when the env var is unset or empty", {
   withr::with_envvar(c(TIGER_DB_DIR = ""), {
-    expect_match(DB_ITEMS(), "db_item.sqlite$")
+    expect_equal(DB_ITEMS(), file.path(normalizePath("../db", mustWork = FALSE), "db_item.sqlite"))
   })
+})
+
+test_that("item images live in the DB folder's img_item/", {
+  withr::with_envvar(c(TIGER_DB_DIR = "/custom/path"), {
+    expect_equal(ITEM_IMG_DIR(), "/custom/path/img_item")
+  })
+})
+
+test_that("add_item_image_path serves img_item/ from the DB folder, if it exists", {
+  dir <- withr::local_tempdir()
+  expect_false(add_item_image_path(file.path(dir, "img_item")))
+  dir.create(file.path(dir, "img_item"))
+  withr::defer(shiny::removeResourcePath("img_item"))
+  expect_true(add_item_image_path(file.path(dir, "img_item")))
+  expect_equal(unname(shiny::resourcePaths()["img_item"]), normalizePath(file.path(dir, "img_item")))
 })
 
 # ── db_write_ability: schema migration ────────────────────────────────────────

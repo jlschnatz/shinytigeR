@@ -44,8 +44,14 @@ TRAJECTORY_WINDOWS <- c("Gesamt" = NA, "4 Wochen" = 28, "2 Wochen" = 14)
 # alike). Skipping is an app action, not an answer option stored in the item DB.
 SKIP_FEEDBACK <- "Alles klar! Du hast die Aufgabe übersprungen."
 
+# The DB folder: the databases, reg_code.txt and the item images (img_item/).
+# On the server TIGER_DB_DIR=/opt/shinyapp (the mounted shinytigeR-DB folder);
+# locally it's the folder next to the repo, ../db (dev/run.R sets it). Same
+# layout in both places, so the app finds its files the same way.
+DB_DIR_DEFAULT <- "../db"
 .db_dir <- function() {
-  d <- Sys.getenv("TIGER_DB_DIR", unset = ".")
+  d <- Sys.getenv("TIGER_DB_DIR", unset = DB_DIR_DEFAULT)
+  if (!nzchar(d)) d <- DB_DIR_DEFAULT
   normalizePath(d, mustWork = FALSE)
 }
 
@@ -53,6 +59,9 @@ DB_ITEMS <- function() file.path(.db_dir(), "db_item.sqlite")
 DB_USERS <- function() file.path(.db_dir(), "db_user.sqlite")
 DB_CREDS <- function() file.path(.db_dir(), "db_credentials.sqlite")
 DB_ABILITY <- function() file.path(.db_dir(), "db_ability.sqlite")
+# Item images live next to the item DB, not in the package: items and their
+# images are uploaded together (SFTP), without a new build
+ITEM_IMG_DIR <- function() file.path(.db_dir(), "img_item")
 
 CONTACT_EMAIL <- "tiger@psych.uni-frankfurt.de"
 

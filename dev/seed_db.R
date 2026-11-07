@@ -23,7 +23,8 @@ TEST_PW <- "test123"
 args <- commandArgs(trailingOnly = TRUE)
 force <- "--force" %in% args
 
-db_dir <- Sys.getenv("TIGER_DB_DIR", unset = ".")
+db_dir <- Sys.getenv("TIGER_DB_DIR", unset = "../db")
+dir.create(db_dir, showWarnings = FALSE, recursive = TRUE)
 creds_path <- file.path(db_dir, "db_credentials.sqlite")
 users_path <- file.path(db_dir, "db_user.sqlite")
 ability_path <- file.path(db_dir, "db_ability.sqlite")
@@ -92,7 +93,11 @@ items_note <- if (file.exists(items_path)) {
   paste0("  ", items_path, "  (left as is)\n")
 } else if (file.exists(sample_path)) {
   file.copy(sample_path, items_path)
-  paste0("  ", items_path, "  (copied from sample pool, 14 items)\n")
+  # The sample items' images go next to it, like on the server (img_item/)
+  img_dir <- file.path(db_dir, "img_item")
+  dir.create(img_dir, showWarnings = FALSE)
+  file.copy(list.files(file.path("dev", "img_item_sample"), full.names = TRUE), img_dir)
+  paste0("  ", items_path, "  (copied from sample pool, with its images in img_item/)\n")
 } else {
   paste0("  ", items_path, "  MISSING — and no sample found. See SETUP.md.\n")
 }

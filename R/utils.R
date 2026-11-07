@@ -331,13 +331,27 @@ local_date <- function(x) {
   as.Date(x, tz = "")
 }
 
+# Serves the item images at img_item/ (the paths db_get_items() produces) from
+# the DB folder's img_item/ subfolder, locally and on the server alike. Called
+# by app_ui(), i.e. once when the app starts. Not system.file() (see CLAUDE.md,
+# Resource paths): the folder comes from TIGER_DB_DIR, an absolute path.
+# Returns whether the folder exists; without it the items show no images, which
+# dev/check_deploy_dbs.R reports before an upload.
+add_item_image_path <- function(dir = ITEM_IMG_DIR()) {
+  if (!dir.exists(dir)) {
+    return(invisible(FALSE))
+  }
+  shiny::addResourcePath("img_item", normalizePath(dir))
+  invisible(TRUE)
+}
+
 # A secret (semester code, later the LLM API key): the environment variable
 # if set (ShinyProxy's container-env), else the first line of a file in the
 # DB folder (TIGER_DB_DIR), which can be uploaded and changed by SFTP without
 # the server admin or a rebuild. Read on every use, so a new file takes effect
 # at once. Never under www/ (that's served to browsers). Returns "" if neither
 # exists; trims whitespace, so a trailing newline or CRLF doesn't matter.
-read_secret <- function(env_var, file_name, dir = Sys.getenv("TIGER_DB_DIR", ".")) {
+read_secret <- function(env_var, file_name, dir = .db_dir()) {
   val <- Sys.getenv(env_var)
   if (nzchar(val)) {
     return(val)

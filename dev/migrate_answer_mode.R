@@ -50,5 +50,5 @@ migrate_answer_mode <- function(path) {
 # gets migrate_answer_mode() without this file running the migration a second
 # time redundantly.
 if (!exists(".migrate_answer_mode_sourced_only", inherits = FALSE)) {
-  migrate_answer_mode(file.path(Sys.getenv("TIGER_DB_DIR", unset = "."), "db_item.sqlite"))
+  migrate_answer_mode(file.path(Sys.getenv("TIGER_DB_DIR", unset = "../db"), "db_item.sqlite"))
 }

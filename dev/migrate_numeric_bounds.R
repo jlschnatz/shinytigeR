@@ -94,5 +94,5 @@ migrate_numeric_bounds <- function(path) {
 # Only auto-run when invoked directly (rv run/Rscript). dev/add_numeric_samples.R
 # sets .migrate_numeric_bounds_sourced_only before source()-ing this file.
 if (!exists(".migrate_numeric_bounds_sourced_only", inherits = FALSE)) {
-  migrate_numeric_bounds(file.path(Sys.getenv("TIGER_DB_DIR", unset = "."), "db_item.sqlite"))
+  migrate_numeric_bounds(file.path(Sys.getenv("TIGER_DB_DIR", unset = "../db"), "db_item.sqlite"))
 }

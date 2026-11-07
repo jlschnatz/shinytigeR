@@ -1,5 +1,5 @@
 # Adds a small set of numeric-item (answer_mode = "num") samples to whatever
-# db_item.sqlite TIGER_DB_DIR points at (default: project root). Dev/local
+# db_item.sqlite TIGER_DB_DIR points at (default: ../db, next to the repo). Dev/local
 # testing only — never run this against the production DB, since it inserts
 # fake practice items into the real item pool. For the production-safe
 # schema migration alone (answer_mode column + backfill, no sample items),
@@ -33,7 +33,7 @@ source("dev/migrate_answer_mode.R") # defines migrate_answer_mode(), doesn't aut
 .migrate_numeric_bounds_sourced_only <- TRUE
 source("dev/migrate_numeric_bounds.R") # defines migrate_numeric_bounds(), doesn't auto-run it
 
-path <- file.path(Sys.getenv("TIGER_DB_DIR", unset = "."), "db_item.sqlite")
+path <- file.path(Sys.getenv("TIGER_DB_DIR", unset = "../db"), "db_item.sqlite")
 migrate_answer_mode(path)
 migrate_numeric_bounds(path)
 

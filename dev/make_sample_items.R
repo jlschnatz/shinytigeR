@@ -14,7 +14,7 @@
 #   rv run dev/make_sample_items.R
 
 PER_AREA <- 2L
-SRC <- file.path(Sys.getenv("TIGER_DB_DIR", unset = "."), "db_item.sqlite")
+SRC <- file.path(Sys.getenv("TIGER_DB_DIR", unset = "../db"), "db_item.sqlite")
 OUT <- file.path("dev", "db_item_sample.sqlite")
 
 if (!file.exists(SRC)) {
@@ -86,6 +86,17 @@ out <- DBI::dbConnect(RSQLite::SQLite(), OUT)
 invisible(DBI::dbExecute(out, schema))
 invisible(DBI::dbAppendTable(out, "item_db", sample_items))
 DBI::dbDisconnect(out)
+
+# The sample items' images, committed next to the sample pool (the full image
+# folder lives in the DB folder, outside git); dev/seed_db.R copies them over
+img_cols <- grep("^(stimulus_image|answeroption_0[1-6])$", names(sample_items), value = TRUE)
+imgs <- unique(unlist(sample_items[img_cols], use.names = FALSE))
+imgs <- basename(imgs[!is.na(imgs) & grepl("\\.(png|jpe?g|svg|gif)$", imgs, ignore.case = TRUE)])
+img_out <- file.path("dev", "img_item_sample")
+unlink(img_out, recursive = TRUE)
+dir.create(img_out)
+copied <- file.copy(file.path(dirname(SRC), "img_item", imgs), img_out)
+if (!all(copied)) warning("images not found in the DB folder: ", paste(imgs[!copied], collapse = ", "))
 
 message(
   "Wrote ", OUT, " — ", nrow(sample_items), " items\n",

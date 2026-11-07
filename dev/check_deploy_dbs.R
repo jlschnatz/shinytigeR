@@ -9,7 +9,7 @@
 #   TIGER_DB_DIR=<folder> rv run dev/migrate_drop_mc_skip.R
 
 args <- commandArgs(trailingOnly = TRUE)
-dir <- if (length(args)) args[1] else Sys.getenv("TIGER_DB_DIR", ".")
+dir <- if (length(args)) args[1] else Sys.getenv("TIGER_DB_DIR", "../db")
 dir <- normalizePath(dir, mustWork = TRUE)
 cat("Checking", dir, "\n\n")
 
@@ -75,12 +75,20 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
       warn("no irt_provisional column: every difficulty counts as calibrated")
     }
 
-    imgs <- DBI::dbGetQuery(con, "SELECT stimulus_image FROM item_db WHERE stimulus_image IS NOT NULL AND stimulus_image <> ''")$stimulus_image
-    img_dir <- file.path("inst", "app", "www", "img_item")
-    if (length(imgs) && dir.exists(img_dir)) {
-      missing <- imgs[!file.exists(file.path(img_dir, basename(imgs)))]
-      if (length(missing) == 0L) ok(sprintf("all %d stimulus images exist in %s", length(imgs), img_dir))
-      else fail(sprintf("%d stimulus image(s) not in %s, e.g. %s", length(missing), img_dir, missing[1]))
+    # Every image an item refers to (stimulus and image answer options) must be
+    # in the folder's img_item/, which the app serves (add_item_image_path())
+    img_cols <- intersect(c("stimulus_image", sprintf("answeroption_%02d", 1:6)), cols)
+    vals <- unlist(DBI::dbGetQuery(con, paste("SELECT", paste(img_cols, collapse = ", "), "FROM item_db")), use.names = FALSE)
+    imgs <- unique(basename(vals[!is.na(vals) & grepl("\\.(png|jpe?g|svg|gif)$", vals, ignore.case = TRUE)]))
+    img_dir <- file.path(dir, "img_item")
+    if (length(imgs) == 0L) {
+      ok("no item images referenced")
+    } else if (!dir.exists(img_dir)) {
+      fail(sprintf("%d item image(s) referenced, but there is no img_item/ folder", length(imgs)))
+    } else {
+      missing <- imgs[!file.exists(file.path(img_dir, imgs))]
+      if (length(missing) == 0L) ok(sprintf("all %d item images exist in img_item/", length(imgs)))
+      else fail(sprintf("%d item image(s) not in img_item/, e.g. %s", length(missing), missing[1]))
     }
   })
 }

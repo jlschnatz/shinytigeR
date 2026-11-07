@@ -23,8 +23,17 @@ On the server (paths as seen via SFTP, home of the `beitner` account):
 ```
 shinyapps/
 ├── shinytigeR/deploy-sd/   build folder: Dockerfile, tarball, rv.lock, ...
-└── shinytigeR-DB/          DB folder, mounted into the container at /opt/shinyapp
+└── shinytigeR-DB/          DB folder, mounted into the container at /opt/shinyapp:
+    ├── db_item.sqlite, db_user.sqlite, db_credentials.sqlite, db_ability.sqlite
+    ├── reg_code.txt
+    └── img_item/           the item images (since Nov 2026, before: in the package)
 ```
+
+Locally the same layout: the repo in `app/shinytigeR/`, the DB folder next to
+it in `app/db/` (`dev/run.R` sets `TIGER_DB_DIR=../db`, as the image sets
+`/opt/shinyapp`). So a local run finds its files exactly as the server does,
+and a backup downloaded from the server can be used directly
+(`TIGER_DB_DIR=<backup> rv run dev/run.R`).
 
 ## What changed compared with the old version
 
@@ -39,7 +48,8 @@ shinyapps/
 | Time zone | UTC | `TZ=Europe/Berlin` (calendar, "zuletzt geübt", retry time-out use the local day) |
 | Fonts | – | Fira Sans/Mono bundled in the app, no request to Google |
 | `CMD` | `options(port, host, fullstacktrace, sass.cache ...); getwd(); sass::sass_cache_get(); library(shinytigeR); run_app()` | `options(shiny.port = 3838, shiny.host = '0.0.0.0'); shinytigeR::run_app()`. Same port and host; the rest was debugging and cache workarounds |
-| DB folder | `db_item`, `db_user`, `db_credentials` | the same plus `db_ability.sqlite` and `reg_code.txt` |
+| DB folder | `db_item`, `db_user`, `db_credentials` | the same plus `db_ability.sqlite`, `reg_code.txt` and `img_item/` |
+| Item images | in the package (`inst/app/www/img_item`), so new items needed a new build | in the DB folder (`img_item/`), uploaded together with `db_item.sqlite`, no build |
 | Semester code | – | env var `TIGER_REG_CODE`, else `reg_code.txt` in the DB folder |
 
 Unchanged for ShinyProxy: image name `shinytiger`, port 3838, uid 1002 / gid
@@ -79,6 +89,12 @@ server's data in the DB folder):
 4. **ShinyProxy config.** We don't have `application.yml`. As long as the
    admin's config still points to the image `shinytiger` and mounts
    `shinytigeR-DB` at `/opt/shinyapp`, nothing changes.
+5. **The whole folder must be mounted, not single files,** or `img_item/`
+   won't be visible in the container (the items then show no images). Very
+   likely already the case: the old app wrote 33,787 answers, and SQLite's
+   journal file next to `db_user.sqlite` needs a writable folder in the
+   container, which a single-file mount wouldn't give. Still, confirm with the
+   admin.
 
 ## Steps for a release
 
@@ -109,6 +125,8 @@ Then, in a separate local folder:
   Never use `dev/add_numeric_samples.R` on it (inserts fake items).
 - **`db_ability.sqlite`**: an empty file (`touch db_ability.sqlite`).
 - **`reg_code.txt`**: the semester code on the first line.
+- **`img_item/`**: the item images, i.e. the local `app/db/img_item/` (every
+  image `db_item.sqlite` refers to; the check below verifies that).
 - `db_user.sqlite` and `db_credentials.sqlite` stay **the server's** (don't
   upload local copies over them). They need no migration: old user tables are
   read as they are, missing columns are added on the next write.
@@ -129,7 +147,9 @@ It must end with "Ready to upload". It also lists items without `irt_diff`
   `shinytigeR_*.tar.gz`). Rename the old folder first (e.g. `deploy-sd.old`) to
   keep it.
 - DB folder `shinyapps/shinytigeR-DB/`: add `db_item.sqlite` (replaces the old
-  one), `db_ability.sqlite` and `reg_code.txt`.
+  one), `db_ability.sqlite`, `reg_code.txt` and the folder `img_item/`.
+  New items later: upload `db_item.sqlite` and their images in `img_item/`,
+  no new build needed.
 
 ### 4. Admin builds
 

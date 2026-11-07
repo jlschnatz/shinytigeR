@@ -101,7 +101,7 @@ if (!exists(".migrate_drop_mc_skip_sourced_only", inherits = FALSE)) {
     if (length(args) >= 1L) {
       args[1]
     } else {
-      file.path(Sys.getenv("TIGER_DB_DIR", unset = "."), "db_item.sqlite")
+      file.path(Sys.getenv("TIGER_DB_DIR", unset = "../db"), "db_item.sqlite")
     }
   )
 }

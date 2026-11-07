@@ -2,6 +2,7 @@
 #' @return A [bslib::page_navbar()] UI definition.
 #' @export
 app_ui <- function() {
+  add_item_image_path()
   bslib::page_navbar(
     title = actionLink(
       inputId = "brand_home",

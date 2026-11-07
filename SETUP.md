@@ -90,7 +90,7 @@ The app is at `http://localhost:7331`.
 Notes:
 
 - `docker/Dockerfile.dev` builds an image with R 4.6, `rv`, and `libsodium-dev` — it auto-detects the container architecture (x86_64 vs arm64) so it works on Apple Silicon without Rosetta.
-- The project root is bind-mounted into the container, so code edits, the synced `rv/` package library, and the `db_*.sqlite` files persist on the host between runs — no rebuild needed after the first `rv sync`.
+- The project root is bind-mounted into the container, so code edits and the synced `rv/` package library persist on the host between runs — no rebuild needed after the first `rv sync`. The DB folder next to the repo (`../db`, see [Databases](#databases)) is mounted at `/db`; create it with `rv run dev/seed_db.R` first.
 
 To stop:
 
@@ -100,8 +100,21 @@ docker compose -f docker/docker-compose.yml down
 
 ## Databases
 
-The app reads four SQLite files from `TIGER_DB_DIR` (default: the project root).
-**None of them are in the repository**, and all four are gitignored:
+The app reads its data from one folder, `TIGER_DB_DIR`: four SQLite files, the
+item images (`img_item/`) and, for self-registration, `reg_code.txt`. Locally
+that's **`../db`, a folder next to the repository** (`dev/run.R` sets it):
+
+```
+app/
+├── shinytigeR/   this repository (the code)
+└── db/           db_*.sqlite, img_item/, reg_code.txt
+```
+
+That's the same layout as on the server, where the folder `shinytigeR-DB` is
+mounted at `/opt/shinyapp` (see `deploy/DEPLOYMENT.md`). To run against another
+folder, e.g. a backup from the server: `TIGER_DB_DIR=<folder> rv run dev/run.R`.
+
+**None of it is in the repository:**
 
 | File | Contains | Why it isn't committed |
 | --- | --- | --- |
@@ -109,6 +122,7 @@ The app reads four SQLite files from `TIGER_DB_DIR` (default: the project root).
 | `db_user.sqlite` | Every response ever recorded | Personal research data — and it changes on every local practice session, so tracking it would mean a dirty binary file after every run |
 | `db_ability.sqlite` | Persisted per-user ability (θ) snapshots, derived from `db_user.sqlite` | Same reason as `db_user.sqlite` — derived, changes locally, personal data |
 | `db_item.sqlite` | The item pool | The full pool is the assessment content of a graded module; this repository is public |
+| `img_item/` | The items' images | Part of the item pool, same reason; they belong to `db_item.sqlite` and are uploaded with it |
 
 Run the seed script to create working local copies:
 
@@ -116,10 +130,10 @@ Run the seed script to create working local copies:
 rv run dev/seed_db.R
 ```
 
-It creates a credentials database with a single **`test` / `test123`** account,
+It creates `../db` if needed, a credentials database with a single **`test` / `test123`** account,
 an empty user database, an empty ability database, and — if no item pool is
-present — copies the committed 14-item sample (`dev/db_item_sample.sqlite`) into
-place. That sample covers all seven learning areas, both item types, and
+present — copies the committed sample pool (`dev/db_item_sample.sqlite`) into
+place, with its images (`dev/img_item_sample/` → `img_item/`). That sample covers all seven learning areas, both item types, and
 includes image items, which is enough to develop against.
 
 The script **refuses to overwrite existing databases** unless run with `--force`,
@@ -139,5 +153,6 @@ With the full `db_item.sqlite` present:
 rv run dev/make_sample_items.R
 ```
 
-This rewrites `dev/db_item_sample.sqlite`. The selection is seeded, so re-running
+This rewrites `dev/db_item_sample.sqlite` and copies the sample items' images
+from `../db/img_item/` to `dev/img_item_sample/`. The selection is seeded, so re-running
 without pool changes produces no diff.

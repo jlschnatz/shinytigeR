@@ -14,8 +14,8 @@ db_get_items <- function(path = DB_ITEMS()) {
   df <- db_with(path, function(con) {
     DBI::dbGetQuery(con, "SELECT * FROM item_db")
   })
-  # Adjust image paths: DB stores "www/foo.png"; Shiny serves www/ as root
-  # so we strip the "www/" prefix.  img_item/ is symlinked under www/.
+  # Image paths: the DB stores "www/foo.png" (from the old app); the images
+  # are served at img_item/ from the DB folder (add_item_image_path())
   img_cols <- grep("^(stimulus_image|answeroption_)", names(df), value = TRUE)
   for (col in img_cols) {
     df[[col]] <- sub("^www/", "img_item/", df[[col]])

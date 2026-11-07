@@ -32,7 +32,7 @@ MOCK_USER <- "mockuser"
 MOCK_PW <- "mockuser123"
 DO_IRT_BACKFILL <- "--irt-backfill" %in% commandArgs(trailingOnly = TRUE)
 
-db_dir <- Sys.getenv("TIGER_DB_DIR", unset = ".")
+db_dir <- Sys.getenv("TIGER_DB_DIR", unset = "../db")
 items_path <- file.path(db_dir, "db_item.sqlite")
 users_path <- file.path(db_dir, "db_user.sqlite")
 creds_path <- file.path(db_dir, "db_credentials.sqlite")
