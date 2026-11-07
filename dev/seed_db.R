@@ -4,18 +4,21 @@
 #   db_user.sqlite         — empty; tables are created per user on first write
 #   db_ability.sqlite      — empty; tables are created per user on first write
 #
-# Neither file is tracked by git (see .gitignore). They are derived artifacts:
-# regenerate them rather than committing them, so that local practice sessions
-# writing to db_user.sqlite never show up as changes to commit.
+# They go into the DB folder: TIGER_DB_DIR if set, else ../db, i.e. app/db
+# next to the repo when run from the project root (created if missing). The
+# same folder dev/run.R uses, laid out like the server's shinytigeR-DB. It's
+# outside the repo, so nothing in it can end up in git.
 #
-# If db_item.sqlite is missing, the committed 14-item sample pool
-# (dev/db_item_sample.sqlite) is copied into place so the app runs immediately.
-# An existing db_item.sqlite is never touched — maintainers keep the full pool.
+# If db_item.sqlite is missing, the committed sample pool
+# (dev/db_item_sample.sqlite, 18 items) is copied into place with its images
+# (dev/img_item_sample/ -> img_item/), so the app runs immediately. An existing
+# db_item.sqlite is never touched — maintainers keep the full pool.
 #
 # Usage, from the project root:
 #
-#   rv run dev/seed_db.R           # creates missing files, refuses to clobber
-#   rv run dev/seed_db.R --force   # overwrites existing files
+#   rv run dev/seed_db.R                          # into ../db; creates missing files, refuses to clobber
+#   rv run dev/seed_db.R --force                  # overwrites existing files (not db_item.sqlite)
+#   TIGER_DB_DIR=<folder> rv run dev/seed_db.R    # into another folder
 
 TEST_USER <- "test"
 TEST_PW <- "test123"

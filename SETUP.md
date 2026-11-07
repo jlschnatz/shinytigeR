@@ -139,20 +139,8 @@ includes image items, which is enough to develop against.
 The script **refuses to overwrite existing databases** unless run with `--force`,
 and it never overwrites an existing `db_item.sqlite` at all.
 
-> **Note on the sample pool:** only 32 of the 116 items in the full pool carry IRT
-> parameters, and three learning areas have none. The sample prefers
-> parameterised items where they exist, but two of its areas have none — so the
-> competency dashboard will legitimately show "Keine Daten" for those. That is
-> the real behaviour, not a setup problem.
-
-### Maintainers: regenerating the sample
-
-With the full `db_item.sqlite` present:
-
-```bash
-rv run dev/make_sample_items.R
-```
-
-This rewrites `dev/db_item_sample.sqlite` and copies the sample items' images
-from `../db/img_item/` to `dev/img_item_sample/`. The selection is seeded, so re-running
-without pool changes produces no diff.
+> **Note on the sample pool:** it's a fixed test fixture of 18 items (14 MC,
+> 4 numeric), not a current extract of the real pool: the repository is public
+> and the pool is exam content. Two of its areas have no item difficulties, so
+> the competency dashboard legitimately shows "Keine Daten" for them. If the
+> item format changes, edit the sample directly.

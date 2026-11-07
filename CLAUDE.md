@@ -130,10 +130,9 @@ app_v3/
 │   ├── legal.R            # Impressum & Datenschutz page (legal_sections(), legal_page()) + the footer (app_footer())
 │   └── dashboard_details.R  # dashboard's bottom sections: "Lernstand im Detail" + "Lernverhalten" (pure helpers, no module)
 │
-├── dev/
+├── dev/                     # README.md: which script is needed when
 │   ├── run.R                    # local dev entrypoint — rv run dev/run.R
 │   ├── seed_db.R                 # creates db_credentials.sqlite + empty db_user.sqlite; copies db_item_sample.sqlite in if db_item.sqlite is missing
-│   ├── make_sample_items.R       # regenerates dev/db_item_sample.sqlite from the full local db_item.sqlite (maintainers only)
 │   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (current format? sample items? images? files present?)
 │   ├── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │   └── img_item_sample/          # the sample items' images; seed_db.R copies them to <DB folder>/img_item
