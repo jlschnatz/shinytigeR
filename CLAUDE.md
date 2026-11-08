@@ -127,6 +127,7 @@ app_v3/
 │   ├── mod_dashboard.R    # module: progress dashboard
 │   ├── mod_faq.R          # module: FAQ tab (static UI: contact line, questions from faq.R)
 │   ├── faq.R              # FAQ entries as data: faq_entries(), FAQ_TOPICS, faq_section()
+│   ├── exam_literature.R  # dashboard: "Zum Nacharbeiten" (exam literature for the weakest area), rank_weak_areas()
 │   ├── legal.R            # Impressum & Datenschutz page (legal_sections(), legal_page()) + the footer (app_footer())
 │   └── dashboard_details.R  # dashboard's bottom sections: "Lernstand im Detail" + "Lernverhalten" (pure helpers, no module)
 │
@@ -136,6 +137,9 @@ app_v3/
 │   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (current format? sample items? images? files present?)
 │   ├── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │   └── img_item_sample/          # the sample items' images; seed_db.R copies them to <DB folder>/img_item
+│
+├── inst/extdata/
+│   └── lookup_exam.csv    # exam literature per learning area (textbook sections, pandaR links), see R/exam_literature.R
 │
 ├── inst/app/
 │   ├── app.R              # loaded by runApp(); skips library() if already loaded via load_all()
@@ -492,6 +496,8 @@ This also seeds a **history** in `db_ability.sqlite` rather than throwing the es
 The outer labels (Aufbau, Souverän) are evaluated as `[-3, -1)` and `[2, 3]` (clipped to `THETA_RANGE`), not out to ±∞. Without that, an all-wrong or all-right start (θ̂ stuck at ±3, SE of 2.5+) put most of its probability mass into the open interval and showed 3 dots after only 4 items. This was found by simulating a student against the real item pool. With the current pool, middle labels (0.5–0.75 wide) rarely reach 3 dots; that honestly reflects the pool's measurement precision (SE ≈ 0.5 even after 20 items), not a bug.
 
 Snapshots saved before `se` was stored fall back to item-count dots (`evidence_label()`: ≥ `EVIDENCE_HIGH` = 8 items → 3, ≥ `EVIDENCE_MED` = 3 → 2, ≥ 1 → 1) until the next update.
+
+**"Zum Nacharbeiten" card** (below "Dein Lernstand", `exam_literature_card()` in `R/exam_literature.R`): the deterministic part of the kiwi feedback, not AI-generated. For the **weakest area** (`rank_weak_areas()`: lowest saved θ among the areas whose estimate rests on ≥ `WEAK_AREA_MIN_ITEMS` = 5 items, ties in `LEARNING_AREA_LEVELS` order; with fewer items an area looks weak by chance) one sentence („Am meisten Nachholbedarf hast du gerade in dem Thema … (▬ Aufbau).“, the level with its coloured segment from the strip in „Dein Lernstand“, same `.comp-seg` classes, kept on one line), then one line each for the exam-relevant textbook sections („Abschnitte 17.1 – 17.8, 19.13“) and the pandaR articles (links in a new tab), the book's citation (`EXAM_BOOK`) below. An empty line is left out; before any area qualifies, a note asks for more practice. Only the weakest area on purpose (one clear recommendation); the AI feedback is meant to take the first three of the same ranking, so both talk about the same areas. The data is **`inst/extdata/lookup_exam.csv`** (`EXAM_LOOKUP_FILE`), maintained by hand: **one row per entry**, in display order, columns `learning_area` (full name), `type` (`lehrbuch`: the sections of Eid et al. as text, e.g. „17.1 – 17.8, 19.13“; `pandar`: an article), `text` (the sections or the article title) and `url` (pandaR only). One row per entry rather than several links in one cell (tried first): nothing to parse, and each entry can get its own columns later. A CSV in the package, not a database: only read, changes a few times a semester, versioned and tested with the code (`test-exam-literature.R`: known areas and types, complete rows, pandaR URLs, every area has sections and an article). Read once per process (`exam_lookup()`). The AI feedback (part 2) gets its own, larger lookup table. **Layout of the top row:** left column (`.dash-left`) „Dein Lernstand“ with this card below it, right the AI card as tall as both.
 
 **"Persönliches Feedback" card** (top right, next to "Dein Lernstand") is rendered by `ai_feedback_card(feedback)`. It's currently a placeholder (`feedback = NULL`: explanatory text, a "Bald verfügbar" badge and shimmering skeleton lines, which stop animating under `prefers-reduced-motion`). Passing a Markdown string renders it via `render_md()` instead. Personalized LLM feedback is planned for the "kiwi" project, and this function is where it plugs in.
 

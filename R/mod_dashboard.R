@@ -609,11 +609,13 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
         div(
           class = "row g-3 mb-3",
 
-          # Competency map ("Dein Lernstand")
+          # Left: competency map ("Dein Lernstand") and below it the compact
+          # literature recommendation for the weakest area; right: the AI
+          # feedback, as tall as the whole left column
           div(
-            class = "col-lg-7",
+            class = "col-lg-7 dash-left",
             bslib::card(
-              height = "100%",
+              class = "comp-card",
               bslib::card_header(
                 class = "d-flex justify-content-between align-items-center",
                 tags$b("Dein Lernstand"),
@@ -690,7 +692,8 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                   disabled = if (!can_refresh) "disabled" else NULL
                 )
               )
-            )
+            ),
+            exam_literature_card(comp)
           ),
 
           # AI feedback (placeholder until the "kiwi" LLM feedback lands)

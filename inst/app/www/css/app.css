@@ -995,6 +995,44 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 }
 .ai-feedback-text p:last-child { margin-bottom: 0; }
 
+/* ── Dashboard — top row: left column and "Zum Nacharbeiten" ──────────────── */
+/* Left: "Dein Lernstand" with the compact literature card below it; right:
+   the AI feedback card, as tall as both (height: 100% on the row's column).
+   The cards' own bottom margin is dropped here, the gap does it */
+.dash-left { display: flex; flex-direction: column; gap: var(--gap-card); }
+.dash-left > .bslib-card,
+.dash-left + div > .bslib-card { margin-bottom: 0; }
+.exam-lit-tag {
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-semibold);
+  color: #7c4a1e;
+  background: #f7efe6;
+  border-radius: 999px;
+  padding: 0.2em 0.75em;
+  white-space: nowrap;
+}
+.exam-lit-card .card-body { gap: 0.35rem; }
+/* the title keeps one line on a phone, the tag moves instead */
+.exam-lit-card .card-header { flex-wrap: wrap; }
+.exam-lit-card .card-header > div { flex-shrink: 0; }
+.exam-lit-lead, .exam-lit-note { font-size: var(--fs-secondary); }
+/* the level's segment from the competency strip, inline before its label;
+   "(▬ Aufbau)." never breaks inside */
+.exam-lit-level { white-space: nowrap; }
+.exam-lit-seg { display: inline-block; vertical-align: 0.1em; margin: 0 0.35em 0 0.15em; }
+/* One line per kind: label left, entries flowing (wrap on narrow screens) */
+.exam-lit-line {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  font-size: var(--fs-secondary);
+  line-height: 1.45;
+}
+.exam-lit-kind { color: var(--bs-secondary-color); font-weight: var(--fw-semibold); }
+.exam-lit-sep { color: var(--bs-secondary-color); margin: 0 0.4em; }
+.exam-lit-ext { margin-left: 0.25em; vertical-align: -0.05em; }
+.exam-lit-cite { font-size: var(--fs-tiny); color: var(--bs-secondary-color); }
+
 /* ── Dashboard — ability trajectory (small multiples) ───────────────────────── */
 /* The legend is the grid's 8th tile (.traj-legend-panel). Below 532px (two
    260px columns + the 12px gap) the grid has one column and the tile would

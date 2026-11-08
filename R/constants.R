@@ -106,6 +106,14 @@ ESTIMATE_INTERVAL_LEVEL <- 0.8
 RETRY_MAX_ITEMS <- 10L
 RETRY_MIN_DAYS <- 1L
 
+# "Zum Nacharbeiten" on the dashboard (R/exam_literature.R): the lookup table
+# in inst/extdata, and how many items an area's estimate needs before the area
+# can count as the weakest one (with fewer it looks weak by chance)
+EXAM_LOOKUP_FILE <- "lookup_exam.csv"
+# The textbook the sections in the lookup table refer to (shown below them)
+EXAM_BOOK <- "Eid, M., Gollwitzer, M. & Schmitt, M. (2017). Statistik und Forschungsmethoden (5. Aufl.). Beltz."
+WEAK_AREA_MIN_ITEMS <- 5L
+
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L

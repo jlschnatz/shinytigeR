@@ -1,0 +1,18 @@
+learning_area,type,text,url
+Deskriptivstatistik,lehrbuch,6.1 – 6.5,
+Deskriptivstatistik,pandar,Deskriptivstatistik für Nominal- und Ordinalskalen,https://pandar.netlify.app/lehre/statistik-i/deskriptiv-nominal-ordinal
+Deskriptivstatistik,pandar,Deskriptivstatistik für Intervallskalen,https://pandar.netlify.app/lehre/statistik-i/deskriptiv-intervall
+Wahrscheinlichkeit,lehrbuch,7.2 – 7.3,
+Wahrscheinlichkeit,pandar,Verteilungen,https://pandar.netlify.app/lehre/statistik-i/verteilungen
+Grundlagen der Inferenzstatistik,lehrbuch,"8.1 – 8.5, 8.7, 10.1",
+Grundlagen der Inferenzstatistik,pandar,Tests und Konfidenzintervalle,https://pandar.netlify.app/lehre/statistik-i/tests-konfidenzintervalle
+Gruppenvergleiche,lehrbuch,"11.1 – 11.5, 12.1",
+Gruppenvergleiche,pandar,Tests für unabhängige Stichproben,https://pandar.netlify.app/lehre/statistik-i/gruppenvergleiche-unabhaengig
+Gruppenvergleiche,pandar,Tests für abhängige Stichproben,https://pandar.netlify.app/lehre/statistik-i/gruppenvergleiche-abhaengig
+Poweranalyse,lehrbuch,"8.7, 10.1, 11.1.2",
+Poweranalyse,pandar,Simulation und Poweranalyse,https://pandar.netlify.app/lehre/statistik-i/simulation-poweranalyse
+Zusammenhangsmaße,lehrbuch,16.1 – 16.3.8,
+Zusammenhangsmaße,pandar,Korrelation,https://pandar.netlify.app/lehre/statistik-i/korrelation
+Regression,lehrbuch,"17.1 – 17.8, 19.1 – 19.8, 19.13",
+Regression,pandar,Einfache Lineare Regression,https://pandar.netlify.app/lehre/statistik-i/einfache-reg
+Regression,pandar,Multiple Regression,https://pandar.netlify.app/lehre/statistik-i/multiple-reg
