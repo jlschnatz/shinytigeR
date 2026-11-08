@@ -60,6 +60,77 @@ ext_link <- function(text, url) {
   )
 }
 
+# The card's sentence. Its wording depends on the area's level
+# (WEAK_AREA_TIERS): "Nachholbedarf" for a weak level, "Wiederholen" for a
+# middle one, "Vertiefen" when even the weakest area is good, so a strong
+# student isn't told about a backlog. With one certainty dot (the same dot
+# count as in the table) a second sentence says why it's still vague and what
+# helps. The level comes with its coloured segment from the strip in "Dein
+# Lernstand" (same classes as competency_scale_bar()), so the two can be
+# matched.
+exam_lit_lead <- function(area, cl, dots) {
+  # "(▬ Aufbau)." as one HTML string (htmltools would put spaces inside the
+  # parentheses), never broken across lines (CSS)
+  level <- HTML(paste0(
+    ' <span class="exam-lit-level">(',
+    as.character(tags$span(
+      class = "comp-seg is-filled is-current exam-lit-seg",
+      style = sprintf("--seg:%s;", COMPETENCY_SCALE$color_hex[cl$level]),
+      `aria-hidden` = "true"
+    )),
+    htmltools::htmlEscape(cl$label), ").</span>"
+  ))
+  sentence <- if (cl$level <= WEAK_AREA_TIERS[1]) {
+    tagList("Am meisten Nachholbedarf hast du gerade in dem Thema", tags$b(area), level)
+  } else if (cl$level <= WEAK_AREA_TIERS[2]) {
+    tagList("Am meisten lohnt sich Wiederholen gerade in dem Thema", tags$b(area), level)
+  } else {
+    tagList(
+      "Du bist in deinen geübten Themen schon weit. Am ehesten vertiefen kannst du noch das Thema",
+      tags$b(area), level
+    )
+  }
+  tags$p(
+    class = "exam-lit-lead mb-0",
+    sentence,
+    if (dots == 1L) {
+      " Diese Einschätzung beruht noch auf wenigen Antworten. Mit ein paar Aufgaben mehr aus diesem Thema wird sie genauer."
+    }
+  )
+}
+
+# Areas left out of the ranking for having fewer than `min_items` items, but
+# whose estimate is even lower than the recommended area's: a short note, so
+# a student with one really bad, barely practised area knows why it isn't the
+# one named. NULL if there are none.
+exam_lit_excluded_note <- function(comp, theta_shown, min_items) {
+  ex <- comp[
+    !is.na(comp$theta) & !is.na(comp$n_items) & comp$n_items > 0L &
+      comp$n_items < min_items & comp$theta < theta_shown, ,
+    drop = FALSE
+  ]
+  if (nrow(ex) == 0L) {
+    return(NULL)
+  }
+  areas <- as.character(ex$learning_area)
+  names_txt <- if (length(areas) == 1L) {
+    areas
+  } else {
+    paste(paste(areas[-length(areas)], collapse = ", "), "und", areas[length(areas)])
+  }
+  n_txt <- if (nrow(ex) > 1L) {
+    " sehen nach deinen bisherigen Aufgaben noch schwächer aus, allerdings sind das noch zu wenige"
+  } else if (ex$n_items == 1L) {
+    " sieht nach deiner bisherigen Aufgabe noch schwächer aus, allerdings ist eine Aufgabe noch zu wenig"
+  } else {
+    sprintf(" sieht nach deinen bisherigen %d Aufgaben noch schwächer aus, allerdings sind das noch zu wenige", ex$n_items)
+  }
+  tags$p(
+    class = "exam-lit-note text-muted mb-0",
+    paste0(names_txt, n_txt, ", um eine verlässliche Aussage zu treffen.")
+  )
+}
+
 # Compact card below "Dein Lernstand": the weakest area, its textbook sections
 # and pandaR articles, the book's citation below. Before any area has enough
 # items, a short note instead.
@@ -92,7 +163,9 @@ exam_literature_card <- function(comp, lookup = exam_lookup(),
   rows <- lookup[lookup$learning_area == area, , drop = FALSE]
   book <- rows[rows$type == "lehrbuch", , drop = FALSE]
   pandar <- rows[rows$type == "pandar", , drop = FALSE]
-  cl <- competency_label(comp$theta[comp$learning_area == area], min_items)
+  sel <- comp[comp$learning_area == area, , drop = FALSE]
+  cl <- competency_label(sel$theta, sel$n_items)
+  dots <- certainty_dot_count(sel$theta, sel$se, sel$n_items, cl)
 
   line <- function(label, items) {
     if (length(items) == 0L) {
@@ -121,23 +194,8 @@ exam_literature_card <- function(comp, lookup = exam_lookup(),
     class = "exam-lit-card",
     header,
     bslib::card_body(
-      tags$p(
-        class = "exam-lit-lead mb-0",
-        "Am meisten Nachholbedarf hast du gerade in dem Thema", tags$b(area),
-        # "(▬ Aufbau)." with the level's segment from the strip in "Dein
-        # Lernstand" (same classes as competency_scale_bar()), so the two can
-        # be matched. One HTML string: htmltools would put spaces inside the
-        # parentheses
-        HTML(paste0(
-          ' <span class="exam-lit-level">(',
-          as.character(tags$span(
-            class = "comp-seg is-filled is-current exam-lit-seg",
-            style = sprintf("--seg:%s;", COMPETENCY_SCALE$color_hex[cl$level]),
-            `aria-hidden` = "true"
-          )),
-          htmltools::htmlEscape(cl$label), ").</span>"
-        ))
-      ),
+      exam_lit_lead(area, cl, dots),
+      exam_lit_excluded_note(comp, sel$theta, min_items),
       line("Lehrbuch", book_items),
       line("pandaR", pandar_items),
       if (!is.null(book_items)) tags$p(class = "exam-lit-cite mb-0", EXAM_BOOK)

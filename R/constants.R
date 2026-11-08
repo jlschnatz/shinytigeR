@@ -116,6 +116,11 @@ EXAM_BOOK <- "Eid, M., Gollwitzer, M. & Schmitt, M. (2017). Statistik und Forsch
 # university login), linked next to the sections
 EXAM_BOOK_URL <- "https://ubffm.hds.hebis.de/Record/HEB366849158"
 WEAK_AREA_MIN_ITEMS <- 5L
+# Its sentence depends on the weakest area's level (index in COMPETENCY_SCALE):
+# up to the first value "Nachholbedarf", up to the second "Wiederholen",
+# above it "Vertiefen" (so a student who is good everywhere isn't told about
+# a backlog). Levels 1-2 Aufbau/Basis, 3-4 Solide/Kompetent, 5-7 the rest
+WEAK_AREA_TIERS <- c(2L, 4L)
 
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored

@@ -89,3 +89,58 @@ test_that("exam_literature_card asks for more practice until an area has enough 
   expect_match(as.character(exam_literature_card(NULL, read_exam_lookup(lookup_file()))), "mindestens", fixed = TRUE)
 })
 
+# ── The sentence: level tiers, uncertainty, left-out areas ───────────────────
+
+lead_text <- function(comp) {
+  html <- as.character(exam_literature_card(comp, read_exam_lookup(lookup_file())))
+  x <- gsub("<[^>]+>", " ", html)
+  gsub("[[:space:]]+", " ", x)
+}
+
+test_that("the sentence depends on the weakest area's level", {
+  # Regression weakest; level from theta (Aufbau < -1, Solide [-0.25, 0.5),
+  # Fortgeschritten [1, 1.5)); small SE, so the label is certain
+  at <- function(theta) {
+    data.frame(
+      learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+      theta = c(rep(2.5, 6), theta), se = 0.05, n_items = 20L
+    )
+  }
+  expect_match(lead_text(at(-1.5)), "Am meisten Nachholbedarf hast du gerade in dem Thema Regression", fixed = TRUE)
+  expect_match(lead_text(at(0.1)), "Am meisten lohnt sich Wiederholen gerade in dem Thema Regression", fixed = TRUE)
+  t3 <- lead_text(at(1.2))
+  expect_match(t3, "Du bist in deinen geübten Themen schon weit. Am ehesten vertiefen kannst du noch das Thema Regression", fixed = TRUE)
+  expect_no_match(t3, "Nachholbedarf")
+})
+
+test_that("an uncertain estimate (one dot) adds a sentence, a certain one doesn't", {
+  comp <- function(se) {
+    data.frame(
+      learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+      theta = c(rep(1, 6), 0.1), se = se, n_items = 6L
+    )
+  }
+  # theta 0.1 in Solide [-0.25, 0.5): with SE 1.5 the label is very uncertain
+  expect_equal(certainty_dot_count(0.1, 1.5, 6L, competency_label(0.1, 6L)), 1L)
+  expect_match(lead_text(comp(1.5)), "beruht noch auf wenigen Antworten", fixed = TRUE)
+  expect_no_match(lead_text(comp(0.05)), "wenigen Antworten")
+})
+
+test_that("a weaker area with too few items is named in a note", {
+  comp <- data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = c(0, 0, 0, 0, -2.5, 0, -1.5), se = 0.3,
+    n_items = c(6L, 6L, 6L, 6L, 3L, 6L, 6L)
+  )
+  txt <- lead_text(comp)
+  expect_match(txt, "Thema Regression", fixed = TRUE)
+  expect_match(txt, "Poweranalyse sieht nach deinen bisherigen 3 Aufgaben noch schwächer aus, allerdings sind das noch zu wenige, um eine verlässliche Aussage zu treffen.", fixed = TRUE)
+  # two such areas, one of them with a single item
+  comp$theta[2] <- -2; comp$n_items[2] <- 1L
+  expect_match(lead_text(comp), "Wahrscheinlichkeit und Poweranalyse sehen nach deinen bisherigen Aufgaben noch schwächer aus, allerdings sind das noch zu wenige", fixed = TRUE)
+  comp$theta[5] <- 1
+  expect_match(lead_text(comp), "Wahrscheinlichkeit sieht nach deiner bisherigen Aufgabe noch schwächer aus, allerdings ist eine Aufgabe noch zu wenig, um", fixed = TRUE)
+  # a barely practised area that looks better isn't mentioned
+  comp$theta[c(2, 5)] <- 1
+  expect_no_match(lead_text(comp), "verlässliche Aussage")
+})

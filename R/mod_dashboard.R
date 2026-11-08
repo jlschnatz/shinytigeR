@@ -96,20 +96,28 @@ evidence_label <- function(n_unique) {
   }
 }
 
+# How many certainty dots (0-3) a label gets: from the label probability, or
+# for snapshots without an SE from the item count. Shared by the table's dots
+# and the "Zum Nacharbeiten" card (R/exam_literature.R), so both agree.
+certainty_dot_count <- function(theta, se, n_items, cl) {
+  n <- if (is.na(n_items)) 0L else as.integer(n_items)
+  p <- label_certainty(theta, se, cl)
+  if (!is.na(p)) certainty_label(p)$dots else evidence_label(n)$dots
+}
+
 certainty_dots <- function(theta, se, n_items, cl) {
   n <- if (is.na(n_items)) 0L else as.integer(n_items)
   aufgaben <- sprintf("%d Aufgabe%s", n, if (n == 1L) "" else "n")
   p <- label_certainty(theta, se, cl)
+  dots <- certainty_dot_count(theta, se, n_items, cl)
   if (!is.na(p)) {
     ct <- certainty_label(p)
-    dots <- ct$dots
     desc <- sprintf(
       "%s: Mit %s Wahrscheinlichkeit liegt dein Stand im Bereich \u201e%s\u201c (%s).",
       ct$label, format_prob_de(p), cl$label, aufgaben
     )
   } else {
     ev <- evidence_label(n)
-    dots <- ev$dots
     desc <- if (n == 0L) "Noch keine Daten" else sprintf("Evidenz: %s (%s)", ev$label, aufgaben)
   }
   tags$span(
