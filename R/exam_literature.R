@@ -47,6 +47,19 @@ rank_weak_areas <- function(comp, min_items = WEAK_AREA_MIN_ITEMS) {
   as.character(comp$learning_area[ord])
 }
 
+# A link opening in a new tab, with the external-link icon. One HTML string:
+# htmltools would put a line break between text and icon, which shows as an
+# underlined space.
+ext_link <- function(text, url) {
+  tags$a(
+    class = "exam-lit-item", href = url, target = "_blank", rel = "noopener",
+    HTML(paste0(
+      htmltools::htmlEscape(text),
+      as.character(bsicons::bs_icon("box-arrow-up-right", class = "exam-lit-ext"))
+    ))
+  )
+}
+
 # Compact card below "Dein Lernstand": the weakest area, its textbook sections
 # and pandaR articles, the book's citation below. Before any area has enough
 # items, a short note instead.
@@ -92,19 +105,16 @@ exam_literature_card <- function(comp, lookup = exam_lookup(),
     )
   }
   book_items <- if (nrow(book)) {
-    tags$span(class = "exam-lit-item", "Abschnitte ", tags$b(paste(book$text, collapse = ", ")))
-  }
-  pandar_items <- lapply(seq_len(nrow(pandar)), function(i) {
-    # one HTML string: htmltools would put a line break between text and icon,
-    # which shows as an underlined space
-    link <- tags$a(
-      class = "exam-lit-item", href = pandar$url[i], target = "_blank", rel = "noopener",
-      HTML(paste0(
-        htmltools::htmlEscape(pandar$text[i]),
-        as.character(bsicons::bs_icon("box-arrow-up-right", class = "exam-lit-ext"))
-      ))
+    tagList(
+      tags$span(class = "exam-lit-item", "Abschnitte ", tags$b(paste(book$text, collapse = ", "))),
+      # the online version in the university library (university login)
+      ext_link("E-Book in der UB", EXAM_BOOK_URL)
     )
-    if (i < nrow(pandar)) tagList(link, tags$span(class = "exam-lit-sep", "·")) else link
+  }
+  # entries are separated by a gap (CSS), not a "·": on a phone a wrapped
+  # line then starts with the entry, not with a dangling separator
+  pandar_items <- lapply(seq_len(nrow(pandar)), function(i) {
+    ext_link(pandar$text[i], pandar$url[i])
   })
 
   bslib::card(

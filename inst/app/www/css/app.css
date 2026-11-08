@@ -1029,7 +1029,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   line-height: 1.45;
 }
 .exam-lit-kind { color: var(--bs-secondary-color); font-weight: var(--fw-semibold); }
-.exam-lit-sep { color: var(--bs-secondary-color); margin: 0 0.4em; }
+.exam-lit-items { display: flex; flex-wrap: wrap; column-gap: 1.1em; }
 .exam-lit-ext { margin-left: 0.25em; vertical-align: -0.05em; }
 .exam-lit-cite { font-size: var(--fs-tiny); color: var(--bs-secondary-color); }
 

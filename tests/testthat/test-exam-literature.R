@@ -64,6 +64,8 @@ test_that("exam_literature_card shows the weakest area's sections and pandaR lin
   expect_match(html, 'href="https://pandar.netlify.app/lehre/statistik-i/einfache-reg" target="_blank" rel="noopener"', fixed = TRUE)
   expect_match(html, "Multiple Regression", fixed = TRUE)
   expect_match(html, "Eid, M., Gollwitzer, M. &amp; Schmitt, M. (2017)", fixed = TRUE)
+  # the online version in the university library
+  expect_match(html, sprintf('href="%s" target="_blank" rel="noopener">E-Book in der UB', EXAM_BOOK_URL), fixed = TRUE)
   # only the weakest area
   expect_no_match(html, "Deskriptivstatistik")
 })
@@ -75,6 +77,7 @@ test_that("exam_literature_card leaves out a line the area has no entry for", {
   html <- as.character(exam_literature_card(comp, lk))
   expect_no_match(html, "Lehrbuch</span>")
   expect_no_match(html, "Eid, M.")
+  expect_no_match(html, "E-Book in der UB")
   expect_match(html, "pandaR</span>", fixed = TRUE)
 })
 
@@ -85,3 +88,4 @@ test_that("exam_literature_card asks for more practice until an area has enough 
   expect_no_match(html, "Am meisten Nachholbedarf")
   expect_match(as.character(exam_literature_card(NULL, read_exam_lookup(lookup_file()))), "mindestens", fixed = TRUE)
 })
+

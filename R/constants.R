@@ -112,6 +112,9 @@ RETRY_MIN_DAYS <- 1L
 EXAM_LOOKUP_FILE <- "lookup_exam.csv"
 # The textbook the sections in the lookup table refer to (shown below them)
 EXAM_BOOK <- "Eid, M., Gollwitzer, M. & Schmitt, M. (2017). Statistik und Forschungsmethoden (5. Aufl.). Beltz."
+# Its online version in the university library's catalogue (access with the
+# university login), linked next to the sections
+EXAM_BOOK_URL <- "https://ubffm.hds.hebis.de/Record/HEB366849158"
 WEAK_AREA_MIN_ITEMS <- 5L
 
 # Evidence strength thresholds (unique items per area) — fallback for saved
