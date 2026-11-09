@@ -19,16 +19,15 @@
 #
 #   The options render once per item, never on the check: the result is
 #   marked on them in the browser ("mc_mark_result", www/js/practice.js:
-#   colour the selected option, disable all, dim the others). Re-rendering
-#   them on the check (as before) replaced their typeset math with raw LaTeX
-#   and typeset it again, a visible jump on every check and skip.
+#   colour the selected option, disable all, dim the others), so they don't
+#   flicker on every check and skip.
 #
 #   After the check this module only colors the selected option; the feedback
 #   card is the caller's (practice_feedback_card() in mod_practice.R), so it can
 #   sit in its own place in the layout (full width below the item card).
 mod_mc_answer_ui <- function(id) {
   ns <- NS(id)
-  uiOutput(ns("answer_ui"), class = "mj-output")
+  uiOutput(ns("answer_ui"), class = "reveal-output")
 }
 
 mod_mc_answer_server <- function(id, item, checked, result) {
@@ -81,12 +80,12 @@ mod_mc_answer_server <- function(id, item, checked, result) {
           )
         }
       })
-      # math is typeset in the browser (www/js/practice.js, .mj-output); the
+      # revealed in the browser (www/js/practice.js, .reveal-output); the
       # key tells it a new item arrived, so it fades in
       div(
         id = ns("options"),
         class = "answer-options",
-        `data-mj-key` = it$id_item,
+        `data-reveal-key` = it$id_item,
         tagAppendChildren(
           div(id = ns("answer"), class = "shiny-input-radiogroup"),
           .list = radio_opts

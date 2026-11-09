@@ -42,22 +42,16 @@ app_ui <- function() {
         # installed copy via run_app()), so this path resolves in both.
         tags$link(rel = "stylesheet", href = css_href("www/css/fonts.css", "css/fonts.css")),
         tags$link(rel = "stylesheet", href = css_href("www/css/app.css", "css/app.css")),
+        # KaTeX's stylesheet and fonts (www/katex/, KaTeX 0.16.9 from npm, MIT,
+        # see its LICENSE; the version the katex package renders with). The
+        # formulas themselves are rendered on the server (render_math() in
+        # utils.R), so there's no math script in the page.
+        tags$link(rel = "stylesheet", href = css_href("www/katex/katex.min.css", "katex/katex.min.css")),
         # The logo as favicon; the PNG (180 px, rendered from the SVG) for
         # browsers without SVG favicons and for iOS home-screen icons
         tags$link(rel = "icon", type = "image/svg+xml", href = "logo/tiger_logo.svg"),
         tags$link(rel = "icon", type = "image/png", href = "logo/favicon.png"),
         tags$link(rel = "apple-touch-icon", href = "logo/favicon.png"),
-        # MathJax 3 (www/mathjax/, bundled like the fonts: no request to a
-        # CDN, Apache 2.0, see its LICENSE): the TeX-to-SVG build with every
-        # TeX extension included; its right-click menu is off, since its
-        # accessibility options would load further files from its folder.
-        # Replaced shiny::withMathJax() (MathJax 2 from mathjax.rstudio.com,
-        # several times slower at laying out formulas) in Nov 2026. Delimiters
-        # are its defaults, \( \) inline and \[ \] / $$ display, which
-        # protect_math_delimiters() (utils.R) produces. Typesetting is done by
-        # www/js/practice.js, per output.
-        tags$script(HTML("window.MathJax = {svg: {fontCache: 'global'}, options: {enableMenu: false}};")),
-        tags$script(src = css_href("www/mathjax/tex-svg-full.js", "mathjax/tex-svg-full.js"), defer = NA),
         # The page scripts (inst/app/www/js/, served like css/), cache-busted
         # like the stylesheets
         tags$script(src = css_href("www/js/practice.js", "js/practice.js")),

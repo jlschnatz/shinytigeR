@@ -24,4 +24,5 @@ dependencies = [
     "pkgload",
     "plotly",
     "highr",
+    "katex",
 ]

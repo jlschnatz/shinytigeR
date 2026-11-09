@@ -16,8 +16,10 @@ Unchanged from the old image: name `shinytiger`, port 3838, user uid 1002
 The DB folder must be writable for uid 1002 (the folder itself, not just
 the files: SQLite writes journal files next to the databases). It holds
 `db_item.sqlite`, `db_user.sqlite`, `db_credentials.sqlite`,
-`db_ability.sqlite` and `reg_code.txt` (the semester code for
-self-registration).
+`db_ability.sqlite`, `reg_code.txt` (the semester code for
+self-registration) and the subfolder `img_item/` with the item images.
+The whole folder needs to be mounted (not single files), so that
+`img_item/` is visible in the container too.
 
 Optional: the semester code can instead be set as the environment variable
 `TIGER_REG_CODE` in ShinyProxy's `container-env`; it then takes priority

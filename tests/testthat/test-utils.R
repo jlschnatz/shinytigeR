@@ -1,13 +1,13 @@
 # ── Math rendering ────────────────────────────────────────────────────────────
 
-test_that("protect_math_delimiters converts inline math to MathJax delimiters", {
+test_that("protect_math_delimiters converts inline math to \\( \\) delimiters", {
   result <- protect_math_delimiters("This is $x^2$ inline")
   expect_match(result, "\\\\(", fixed = TRUE)
   expect_match(result, "\\\\)", fixed = TRUE)
   expect_false(grepl("$", result, fixed = TRUE))
 })
 
-test_that("protect_math_delimiters converts display math to MathJax delimiters", {
+test_that("protect_math_delimiters converts display math to \\[ \\] delimiters", {
   result <- protect_math_delimiters("$$x = \\frac{a}{b}$$")
   expect_match(result, "\\\\[", fixed = TRUE)
   expect_match(result, "\\\\]", fixed = TRUE)
@@ -30,11 +30,74 @@ test_that("protect_math_delimiters escapes _ inside math", {
   expect_false(grepl("\\(x_i\\)", result, fixed = TRUE))
 })
 
+test_that("display math is escaped once, so subscripts survive the markdown pass", {
+  # Regression test: the inline pattern also matched inside $$...$$ and
+  # escaped it a second time, so x_i showed as "x\\_i" (a literal underscore)
+  html <- markdown::markdownToHTML(
+    text = protect_math_delimiters("$$\\sum x_i \\cdot y_i$$ und $a_1$"),
+    fragment.only = TRUE
+  )
+  expect_match(html, "\\sum x_i \\cdot y_i", fixed = TRUE)
+  expect_match(html, "\\(a_1\\)", fixed = TRUE)
+})
+
+test_that("a percent sign in a formula is a percent sign, not a TeX comment", {
+  # "%" starts a comment in TeX, so the rest of the formula vanished; and
+  # markdown turned a written "\\%" into a bare "%"
+  for (src in c("$%_j = h_j \\cdot 100$", "$\\%_j = h_j \\cdot 100$")) {
+    html <- markdown::markdownToHTML(text = protect_math_delimiters(src), fragment.only = TRUE)
+    expect_match(html, "\\(\\%_j = h_j", fixed = TRUE)
+    expect_match(render_md(src), "h", fixed = TRUE)
+  }
+  out <- render_md("$42.5\\,%$ der Fälle")
+  expect_match(out, "%", fixed = TRUE)
+  expect_no_match(out, "katex-error", fixed = TRUE)
+})
+
+test_that("render_md renders math with KaTeX on the server, code untouched", {
+  html <- render_md(paste(
+    "Mittelwert $\\bar{x} = \\frac{1}{n}\\sum x_i$ und $a < b$, Code `income$salary`:",
+    "", "$$s^2 = \\frac{\\sum (x_i - \\bar{x})^2}{n - 1}$$", "",
+    "```", "x <- 1 # \\(nicht\\)", "```",
+    sep = "\n"
+  ))
+  expect_equal(lengths(regmatches(html, gregexpr('class="katex"', html))), 3L)
+  expect_match(html, "katex-display", fixed = TRUE)
+  expect_no_match(html, "katex-error", fixed = TRUE)
+  # no delimiters left for a script, the TeX only in KaTeX's MathML annotation
+  expect_no_match(html, "\\(\\bar", fixed = TRUE)
+  expect_match(html, "income$salary", fixed = TRUE)
+  expect_match(html, "\\(nicht\\)", fixed = TRUE)
+  # display subscripts are subscripts (msupsub), not a literal "_"
+  expect_no_match(html, '<span class="mord"[^>]*>_</span>', perl = TRUE)
+})
+
+test_that("a formula KaTeX can't parse is shown as its TeX, not an error", {
+  html <- render_md("Kaputt: $\\frac{a}{$")
+  expect_match(html, "katex-error", fixed = TRUE)
+  expect_match(html, "Kaputt:", fixed = TRUE)
+})
+
+test_that("every formula in the sample pool renders with KaTeX", {
+  con <- DBI::dbConnect(
+    RSQLite::SQLite(),
+    testthat::test_path("..", "..", "dev", "db_item_sample.sqlite")
+  )
+  on.exit(DBI::dbDisconnect(con))
+  items <- DBI::dbGetQuery(con, "SELECT * FROM item_db")
+  cols <- grep("^(stimulus_text|answeroption_0|if_answeroption_0)", names(items), value = TRUE)
+  txt <- unlist(lapply(cols, function(c) as.character(items[[c]])))
+  txt <- txt[!is.na(txt) & grepl("$", txt, fixed = TRUE)]
+  expect_gt(length(txt), 0L)
+  bad <- txt[grepl("katex-error", vapply(txt, render_md, character(1)), fixed = TRUE)]
+  expect_length(bad, 0L)
+})
+
 test_that("protect_math_delimiters leaves inline code spans untouched", {
   # income$salary should not be treated as math
   result <- protect_math_delimiters("`income$salary`")
   expect_match(result, "income$salary", fixed = TRUE)
-  # Should not have introduced MathJax delimiters
+  # Should not have introduced math delimiters
   expect_false(grepl("\\\\(", result, fixed = TRUE))
 })
 

@@ -75,6 +75,29 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
       warn("no irt_provisional column: every difficulty counts as calibrated")
     }
 
+    # Every formula must render with KaTeX (render_math() in R/utils.R, the
+    # same pipeline as the app): one it can't parse shows as red TeX
+    if (requireNamespace("pkgload", quietly = TRUE)) {
+      suppressMessages(pkgload::load_all(quiet = TRUE))
+      txt_cols <- intersect(c("stimulus_text", sprintf("answeroption_%02d", 1:6), sprintf("if_answeroption_%02d", 1:6)), cols)
+      items <- DBI::dbGetQuery(con, paste("SELECT id_item,", paste(txt_cols, collapse = ", "), "FROM item_db"))
+      bad_ids <- integer(0)
+      n_math <- 0L
+      for (col in txt_cols) {
+        has <- !is.na(items[[col]]) & grepl("$", items[[col]], fixed = TRUE)
+        n_math <- n_math + sum(has)
+        for (i in which(has)) {
+          html <- suppressWarnings(render_md(items[[col]][i]))
+          if (grepl("katex-error", html, fixed = TRUE)) bad_ids <- c(bad_ids, items$id_item[i])
+        }
+      }
+      bad_ids <- unique(bad_ids)
+      if (length(bad_ids) == 0L) ok(sprintf("all formulas render (%d texts with math)", n_math))
+      else warn(sprintf("%d item(s) with a formula KaTeX can't render (shown as red TeX): %s", length(bad_ids), paste(head(bad_ids, 10), collapse = ", ")))
+    } else {
+      warn("pkgload not available: formulas not checked")
+    }
+
     # Every image an item refers to (stimulus and image answer options) must be
     # in the folder's img_item/, which the app serves (add_item_image_path())
     img_cols <- intersect(c("stimulus_image", sprintf("answeroption_%02d", 1:6)), cols)

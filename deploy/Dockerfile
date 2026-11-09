@@ -16,6 +16,7 @@ RUN apt-get update -qq && \
       curl \
       libcurl4-openssl-dev \
       libicu-dev \
+      libnode-dev \
       libsodium-dev \
       libssl-dev \
       libuv1-dev \
@@ -41,7 +42,7 @@ COPY shinytigeR_*.tar.gz /tmp/
 RUN R CMD INSTALL /tmp/shinytigeR_*.tar.gz && rm /tmp/shinytigeR_*.tar.gz && \
     R -q -e 'library(shinytigeR)'
 
-# The four SQLite files (and reg_code.txt) are mounted at /opt/shinyapp.
+# The DB folder (SQLite files, reg_code.txt, item images in img_item/) is mounted at /opt/shinyapp.
 ENV TIGER_DB_DIR=/opt/shinyapp
 
 # From here on verbatim from the server admin's Dockerfile, parts of which

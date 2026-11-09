@@ -54,6 +54,17 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "V8"
+version = "8.2.1"
+source = { repository = "https://packagemanager.posit.co/cran/latest" }
+force_source = false
+dependencies = [
+    { name = "Rcpp", requirement = "(>= 0.12.12)" },
+    { name = "jsonlite", requirement = "(>= 1.0)" },
+    { name = "curl", requirement = "(>= 1.0)" },
+]
+
+[[packages]]
 name = "askpass"
 version = "1.2.1"
 source = { repository = "https://packagemanager.posit.co/cran/latest" }
@@ -418,6 +429,15 @@ version = "2.0.0"
 source = { repository = "https://packagemanager.posit.co/cran/latest" }
 force_source = false
 dependencies = []
+
+[[packages]]
+name = "katex"
+version = "1.5.0"
+source = { repository = "https://packagemanager.posit.co/cran/latest" }
+force_source = false
+dependencies = [
+    "V8",
+]
 
 [[packages]]
 name = "knitr"

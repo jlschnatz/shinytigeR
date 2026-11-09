@@ -29,7 +29,7 @@ mod_practice_ui <- function(id) {
           # Stimulus — only re-renders when item changes, NOT on check
           div(
             class = "practice-stimulus-col",
-            uiOutput(ns("item_stimulus"), class = "mj-output")
+            uiOutput(ns("item_stimulus"), class = "reveal-output")
           ),
           # Answers — both answer-mode child modules are mounted statically
           # (never remounted per item); only their visibility is toggled. See
@@ -52,7 +52,7 @@ mod_practice_ui <- function(id) {
     # in fewer lines and sits in the same place for every item.
     div(
       class = "practice-feedback",
-      uiOutput(ns("feedback"), class = "mj-output")
+      uiOutput(ns("feedback"), class = "reveal-output")
     ),
     # ── Buttons: leave the queue left, the item's actions right ───────────────
     # Outside the card; from 992 px it sticks to the bottom of the screen, so
@@ -236,8 +236,8 @@ mod_practice_server <- function(
       req(isTRUE(state$checked))
       card <- practice_feedback_card(current_item(), state$result)
       req(card)
-      # math is typeset in the browser (www/js/practice.js, .mj-output)
-      tagAppendAttributes(card, `data-mj-key` = current_item()$id_item[1])
+      # revealed in the browser (www/js/practice.js, .reveal-output)
+      tagAppendAttributes(card, `data-reveal-key` = current_item()$id_item[1])
     })
 
     # ── Progress bar ──────────────────────────────────────────────────────────
@@ -275,11 +275,11 @@ mod_practice_server <- function(
       item <- current_item()
       req(nrow(item) == 1L)
       item <- as.list(item[1, ])
-      # math is typeset in the browser (www/js/practice.js, .mj-output);
-      # the key tells it a new item arrived
+      # a new item is revealed in one step in the browser
+      # (www/js/practice.js, .reveal-output); the key tells it a new item arrived
       div(
         class = "stimulus mb-2",
-        `data-mj-key` = item$id_item,
+        `data-reveal-key` = item$id_item,
         if (
           !is.na(item$stimulus_text) && nzchar(trimws(item$stimulus_text))
         ) {

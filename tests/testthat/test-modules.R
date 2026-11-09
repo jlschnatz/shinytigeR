@@ -258,17 +258,16 @@ test_that("practice: checking an answer sets state$checked and writes to DB", {
   })
 })
 
-test_that("practice: the outputs with math are typeset in the browser, keyed by item", {
-  # www/js/practice.js typesets every .mj-output after it changes (also the
-  # feedback after the check, when the stimulus doesn't re-render), and fades
-  # in a new item by its data-mj-key. Before, the server sent a page-wide
-  # "mathjax_typeset" per output.
+test_that("practice: outputs are revealed by item, with the math rendered on the server", {
+  # www/js/practice.js reveals a new item's .reveal-output outputs together,
+  # by their data-reveal-key; the formulas arrive as finished KaTeX HTML
+  # (render_math()), also in the feedback after the check.
   data_item <- make_data_item()
   data_item$if_answeroption_01 <- "Richtig, $B_1 = b_1 \\cdot \\frac{s_x}{s_y}$."
 
   ui <- as.character(mod_practice_ui("p"))
   for (out in c("p-item_stimulus", "p-feedback", "p-answer_mc-answer_ui")) {
-    expect_match(ui, sprintf('class="[^"]*mj-output[^"]*" id="%s"', out))
+    expect_match(ui, sprintf('class="[^"]*reveal-output[^"]*" id="%s"', out))
   }
 
   withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
@@ -281,19 +280,21 @@ test_that("practice: the outputs with math are typeset in the browser, keyed by 
         write_trigger = reactiveVal(0L)
       ),
       {
-        key <- sprintf('data-mj-key="%s"', data_item$id_item[1])
+        key <- sprintf('data-reveal-key="%s"', data_item$id_item[1])
         expect_match(output$item_stimulus$html, key, fixed = TRUE)
         expect_match(output$`answer_mc-answer_ui`$html, key, fixed = TRUE)
 
         options_before <- output$`answer_mc-answer_ui`$html
         session$setInputs(`answer_mc-answer` = "1", check = 1L)
         html <- output$feedback$html
-        # the options aren't re-rendered on the check (their math stays
-        # typeset); the result is marked on them in the browser
+        # the options aren't re-rendered on the check; the result is marked
+        # on them in the browser
         expect_identical(output$`answer_mc-answer_ui`$html, options_before)
         expect_match(html, "feedback-card", fixed = TRUE)
         expect_match(html, key, fixed = TRUE)
-        expect_match(html, "\\(B_1", fixed = TRUE)
+        expect_match(html, 'class="katex"', fixed = TRUE)
+        expect_no_match(html, "\\(B_1", fixed = TRUE)
+        expect_no_match(html, "katex-error", fixed = TRUE)
         # the options only show the coloring, the card is the feedback output's
         expect_false(grepl("feedback-card", output$`answer_mc-answer_ui`$html, fixed = TRUE))
       }

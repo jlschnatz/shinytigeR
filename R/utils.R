@@ -37,9 +37,14 @@ protect_math_delimiters <- function(text) {
   # backslash-escape for a literal asterisk).  With fixed = TRUE both the search
   # pattern and replacement are treated as plain strings — no regex magic.
   # Escape both * and _ — both can trigger markdown emphasis inside math
+  # Also every "%" (written "%" or "\%") becomes "\\%", which the markdown
+  # pass leaves as "\%", a percent sign in TeX: a bare "%" starts a TeX
+  # comment and hid the rest of the formula (items like "$%_j = h_j \cdot
+  # 100$" showed nothing), and markdown turned a written "\%" into a bare "%".
   escape_md_meta <- function(region) {
     region <- gsub("*", "\\*", region, fixed = TRUE)
     region <- gsub("_", "\\_", region, fixed = TRUE)
+    region <- gsub("\\\\?%", "\\\\\\\\%", region, perl = TRUE)
     region
   }
 
@@ -47,8 +52,13 @@ protect_math_delimiters <- function(text) {
     text,
     gregexpr("\\$\\$[\\s\\S]+?\\$\\$", text, perl = TRUE)
   )[[1]]
-  for (r in math_display) {
-    text <- sub(r, escape_md_meta(r), text, fixed = TRUE)
+  # Display regions are set aside while the inline ones are escaped: the
+  # inline pattern also matches inside "$$...$$" (from its second "$" to the
+  # first closing one), which escaped them twice, so x_i showed as "x\_i"
+  # (a literal underscore) in every display formula until Nov 2026.
+  display_ph <- sprintf("MATHDISPLAY%03d", seq_along(math_display))
+  for (i in seq_along(math_display)) {
+    text <- sub(math_display[i], display_ph[i], text, fixed = TRUE)
   }
 
   math_inline <- regmatches(
@@ -57,6 +67,10 @@ protect_math_delimiters <- function(text) {
   )[[1]]
   for (r in math_inline) {
     text <- sub(r, escape_md_meta(r), text, fixed = TRUE)
+  }
+
+  for (i in seq_along(math_display)) {
+    text <- sub(display_ph[i], escape_md_meta(math_display[i]), text, fixed = TRUE)
   }
 
   # Step 3 — convert $...$ / $$...$$ to MathJax \(...\) / \[...\].
@@ -88,7 +102,54 @@ render_md <- function(text) {
     text = protect_math_delimiters(text),
     fragment.only = TRUE
   )
-  format_code_blocks(html)
+  format_code_blocks(render_math(html))
+}
+
+# The math in rendered HTML (the \( \) / \[ \] delimiters that
+# protect_math_delimiters() leaves after the markdown pass) as finished
+# KaTeX HTML, rendered here on the server by the katex package (KaTeX
+# 0.16.9 in V8, about 0.5 ms per formula). The browser only needs KaTeX's
+# stylesheet and fonts (www/katex/, bundled, linked in ui.R), no script and
+# no typesetting, so an item shows at once with its formulas. Until Nov 2026
+# MathJax typeset them in the browser (several tenths of a second per item).
+# Code (<pre>, <code>) is left alone. A formula KaTeX can't parse is shown as
+# its TeX in red with the error as tooltip (throwOnError = FALSE) instead of
+# breaking the item; tests/testthat/test-utils.R renders the sample pool's
+# formulas, dev/check_deploy_dbs.R the real pool's.
+render_math <- function(html) {
+  if (!grepl("\\(", html, fixed = TRUE) && !grepl("\\[", html, fixed = TRUE)) {
+    return(html)
+  }
+  # protect code elements
+  code_re <- "(?s)<(pre|code)\\b.*?</\\1>"
+  code <- regmatches(html, gregexpr(code_re, html, perl = TRUE))[[1]]
+  code_ph <- sprintf("\001KCODE%03d\001", seq_along(code))
+  for (i in seq_along(code)) html <- sub(code[i], code_ph[i], html, fixed = TRUE)
+
+  render <- function(html, re, display) {
+    m <- gregexpr(re, html, perl = TRUE)
+    found <- regmatches(html, m)[[1]]
+    if (length(found)) {
+      regmatches(html, m) <- list(vapply(found, function(f) {
+        tex <- html_unescape(sub(re, "\\1", f, perl = TRUE))
+        katex_formula(tex, display)
+      }, character(1), USE.NAMES = FALSE))
+    }
+    html
+  }
+  html <- render(html, "(?s)\\\\\\[(.+?)\\\\\\]", TRUE)
+  html <- render(html, "(?s)\\\\\\((.+?)\\\\\\)", FALSE)
+
+  for (i in seq_along(code)) html <- sub(code_ph[i], code[i], html, fixed = TRUE)
+  html
+}
+
+# One formula as KaTeX HTML (with MathML for screen readers)
+katex_formula <- function(tex, display = FALSE) {
+  as.character(katex::katex_html(
+    tex,
+    displayMode = display, throwOnError = FALSE, preview = FALSE
+  ))
 }
 
 # Code blocks (``` fences, rendered as <pre><code>) get a copy button and,

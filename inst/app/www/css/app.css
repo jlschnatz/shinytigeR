@@ -20,25 +20,25 @@
   animation: fadeSlideIn var(--anim-dur) ease;
 }
 
-/* Practice outputs with math (.mj-output, www/js/practice.js): invisible
-   until MathJax has typeset them, so raw \( … \) and the reflow after it
-   never show; a new item then fades in briefly */
-.practice-wrap .mj-output { animation: none; }
-.practice-wrap .mj-output.mj-pending { opacity: 0; }
-.practice-wrap .mj-output.mj-enter { animation: mjFadeIn var(--anim-dur-fast) ease-out; }
-@keyframes mjFadeIn {
+/* A new practice item (.reveal-output, www/js/practice.js): invisible until
+   all its parts are inserted, their images loaded and the fonts ready, then
+   a short fade */
+.practice-wrap .reveal-output { animation: none; }
+.practice-wrap .reveal-output.reveal-pending { opacity: 0; }
+.practice-wrap .reveal-output.reveal-enter { animation: revealFadeIn var(--anim-dur-fast) ease-out; }
+@keyframes revealFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 /* the feedback card has its own fade-in */
-.practice-feedback .mj-output.mj-enter { animation: none; }
+.practice-feedback .reveal-output.reveal-enter { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .practice-wrap .mj-output.mj-enter { animation: none; }
+  .practice-wrap .reveal-output.reveal-enter { animation: none; }
 }
 
-/* Display formulas (MathJax's SVG output) scroll sideways on narrow
+/* Display formulas (KaTeX, rendered in utils.R) scroll sideways on narrow
    screens instead of overflowing the card */
-mjx-container[display="true"] {
+.katex-display {
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;

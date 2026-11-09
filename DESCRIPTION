@@ -30,4 +30,5 @@ Imports:
     plotly,
     htmltools,
     jsonlite,
-    highr
+    highr,
+    katex

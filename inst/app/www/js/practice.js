@@ -1,44 +1,24 @@
-// Practice view: MathJax typesetting, the item-ID badge's "Kopiert"
+// Practice view: revealing a new item in one step, marking the MC result,
+// the item-ID badge's "Kopiert"
 // confirmation, the code blocks' copy button, the image zoom, and
 // scrolling the feedback into view after the check.
 // Loaded in ui.R (app_ui()); plain browser JS, no build step.
 
-// MathJax 3 (www/mathjax/, loaded with defer in ui.R). Typesets `els` (an
-// array of elements, or null for the whole page) once MathJax has started;
-// before it has loaded this does nothing, its startup typesets the page.
-function mjTypeset(els) {
-  var mj = window.MathJax;
-  if (!mj || !mj.typesetPromise || !mj.startup) return Promise.resolve();
-  return mj.startup.promise
-    .then(function () { return mj.typesetPromise(els || undefined); })
-    .catch(function (err) { console.warn('MathJax:', err); });
-}
-
-// Whole-page typeset, still used by the inspect view (mod_inspect.R)
-Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
-  mjTypeset(null);
-});
-
-// Practice view (stimulus, MC options, feedback; class .mj-output): typeset
-// only the output that changed, and keep it invisible until it's ready
-// (.mj-pending), so raw \( … \) and the reflow after it never show. Before,
-// each of these outputs sent 'mathjax_typeset', which re-scanned the whole
-// page two or three times per item while the raw LaTeX was visible.
-//
-// A new item (its data-mj-key differs from the last one shown) arrives as
-// several outputs (stimulus, options). They're revealed together, once all
-// are inserted, their math typeset, their images loaded and the fonts ready
-// (Fira Mono loads the first time code shows), then fade in (.mj-enter; it
-// stays on until the next new item, since removing it would restart the
-// outputs' older slide-in animation). Meanwhile the view keeps its height,
-// so the page doesn't collapse and jump while the old item is replaced, and
-// if the card's top was scrolled out of view, the new item starts at its top.
-// 'shiny:value' fires before Shiny inserts the HTML (possibly
-// asynchronously, after its dependencies), so each output waits for its
-// insertion (MutationObserver); a timeout shows everything anyway if
-// something goes wrong.
+// A new practice item (stimulus, MC options, feedback; class .reveal-output,
+// its content carrying data-reveal-key = the item id): its outputs arrive
+// one by one, so they're kept invisible (.reveal-pending) and revealed
+// together, once all are inserted, their images loaded and the fonts ready
+// (KaTeX's and Fira Mono load the first time a formula or code shows), then
+// fade in (.reveal-enter; it stays on until the next new item, since
+// removing it would restart the outputs' older slide-in animation).
+// Meanwhile the view keeps its height, so the page doesn't collapse and jump
+// while the old item is replaced, and if the card's top was scrolled out of
+// view, the new item starts at its top. The formulas themselves are already
+// rendered on the server (render_math() in utils.R, KaTeX). 'shiny:value'
+// fires before Shiny inserts the HTML (possibly asynchronously, after its
+// dependencies), so each output waits for its insertion (MutationObserver);
+// a timeout shows everything anyway if something goes wrong.
 (function () {
-  var MATH = /\\\(|\\\[/;
   var batch = null; // the new item being prepared in the card
 
   function imagesLoaded(el) {
@@ -55,21 +35,20 @@ Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
 
   function show(els, fade) {
     els.forEach(function (el) {
-      el.classList.remove('mj-pending');
+      el.classList.remove('reveal-pending');
       if (fade) {
         void el.offsetWidth; // restart the animation
-        el.classList.add('mj-enter');
+        el.classList.add('reveal-enter');
       }
     });
   }
 
-  // Prepare one output: wait for its insertion, typeset its math, wait for
-  // its images. Calls done() once (or never, then the timeout takes over).
-  function prepare(el, hasMath, done) {
+  // Wait for an output's insertion and its images, then done() (once, or
+  // never: then the timeout takes over)
+  function prepare(el, done) {
     var obs = new MutationObserver(function () {
       obs.disconnect();
-      var typeset = hasMath ? mjTypeset([el]) : Promise.resolve();
-      typeset.then(function () { return imagesLoaded(el); }).then(done, done);
+      imagesLoaded(el).then(done, done);
     });
     obs.observe(el, { childList: true });
   }
@@ -94,34 +73,29 @@ Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
 
   $(document).on('shiny:value', function (e) {
     var el = e.target;
-    if (!el.classList || !el.classList.contains('mj-output')) return;
+    if (!el.classList || !el.classList.contains('reveal-output')) return;
     var html = e.value && typeof e.value === 'object' ? (e.value.html || '') : String(e.value || '');
-    var m = html.match(/data-mj-key="([^"]*)"/);
+    var m = html.match(/data-reveal-key="([^"]*)"/);
     var key = m ? m[1] : '';
-    var isNew = key !== el.getAttribute('data-mj-shown');
-    el.setAttribute('data-mj-shown', key);
-    var hasMath = MATH.test(html);
-    if (!isNew && !hasMath) return;
-    // forget the math being replaced (MathJax keeps a list of what it typeset)
-    if (window.MathJax && MathJax.typesetClear) MathJax.typesetClear([el]);
+    var isNew = key !== el.getAttribute('data-reveal-shown');
+    el.setAttribute('data-reveal-shown', key);
+    if (!isNew) return;
 
-    el.classList.remove('mj-enter');
-    el.classList.add('mj-pending');
+    el.classList.remove('reveal-enter');
+    el.classList.add('reveal-pending');
 
-    // Outside the card (the feedback) or a re-render of the same item: on
-    // its own, no batch
+    // Outside the card (the feedback): on its own, it has its own fade-in
     var wrap = el.closest('.practice-wrap');
-    var inCard = !!el.closest('.practice-card');
-    if (!isNew || !inCard) {
+    if (!el.closest('.practice-card')) {
       var once = false;
       var single = function () {
         if (once) return;
         once = true;
         clearTimeout(t);
-        show([el], isNew && inCard);
+        show([el], false);
       };
       var t = setTimeout(single, 1500);
-      prepare(el, hasMath, single);
+      prepare(el, single);
       return;
     }
 
@@ -136,7 +110,7 @@ Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
     b.els.push(el);
     b.open += 1;
     var counted = false;
-    prepare(el, hasMath, function () {
+    prepare(el, function () {
       if (counted) return;
       counted = true;
       b.open -= 1;
@@ -148,8 +122,8 @@ Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
 })();
 
 // MC options after the check (mod_mc_answer.R): mark the result on the
-// options already shown instead of re-rendering them, so their typeset
-// math stays as it is. m.sel is the selected option (null after a skip).
+// options already shown instead of re-rendering them, so they don't
+// flicker. m.sel is the selected option (null after a skip).
 Shiny.addCustomMessageHandler('mc_mark_result', function (m) {
   var box = document.getElementById(m.id);
   if (!box) return;
