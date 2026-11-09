@@ -7,6 +7,8 @@
   --tiger-skip:      #FFA000;
   --anim-dur:        0.35s;
   --anim-dur-fast:   0.2s;
+  --anim-dur-out:    0.22s;
+  --anim-dur-in:     0.3s;
 }
 
 /* ── Shared animation ──────────────────────────────────────────────────────── */
@@ -32,8 +34,43 @@
 }
 /* the feedback card has its own fade-in */
 .practice-feedback .reveal-output.reveal-enter { animation: none; }
+
+/* Moving to the next item (practice.js): the item's content, its feedback
+   and its buttons fade out (.is-leaving) while the next one is fetched, then
+   the new item fades in with a small upward movement (.is-entering). The
+   card and the grey answer area stay, so only the content changes, and the
+   buttons switch (check/skip <-> next) while they're invisible. */
+.practice-wrap .practice-stimulus-col,
+.practice-wrap .practice-answers-inner,
+.practice-wrap .practice-feedback,
+.practice-wrap .practice-actions {
+  transition: opacity var(--anim-dur-out) ease-in;
+}
+.practice-wrap.is-leaving .practice-stimulus-col,
+.practice-wrap.is-leaving .practice-answers-inner,
+.practice-wrap.is-leaving .practice-feedback,
+.practice-wrap.is-leaving .practice-actions {
+  opacity: 0;
+}
+.practice-wrap.is-entering .practice-stimulus-col,
+.practice-wrap.is-entering .practice-answers-inner,
+.practice-wrap.is-entering .practice-actions {
+  animation: itemIn var(--anim-dur-in) ease-out;
+}
+@keyframes itemIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .practice-wrap .reveal-output.reveal-enter { animation: none; }
+  .practice-wrap .reveal-output.reveal-enter,
+  .practice-wrap.is-entering .practice-stimulus-col,
+  .practice-wrap.is-entering .practice-answers-inner,
+  .practice-wrap.is-entering .practice-actions { animation: none; }
+  .practice-wrap .practice-stimulus-col,
+  .practice-wrap .practice-answers-inner,
+  .practice-wrap .practice-feedback,
+  .practice-wrap .practice-actions { transition: none; }
 }
 
 /* Display formulas (KaTeX, rendered in utils.R) scroll sideways on narrow

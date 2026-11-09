@@ -20,6 +20,47 @@
 // a timeout shows everything anyway if something goes wrong.
 (function () {
   var batch = null; // the new item being prepared in the card
+  // "Nächste Aufgabe" clicked: the old item fades out (.is-leaving, CSS)
+  // while the next one is fetched; the new one is revealed once the fade-out
+  // is over, as a whole (.is-entering)
+  var leaving = { wrap: null, until: 0, timer: null };
+
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // the fade-out's duration, from the CSS token (--anim-dur-out)
+  function fadeOutMs() {
+    var v = getComputedStyle(document.documentElement).getPropertyValue('--anim-dur-out').trim();
+    var ms = v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000;
+    return isNaN(ms) ? 220 : ms;
+  }
+
+  function endLeaving(wrap, enter) {
+    clearTimeout(leaving.timer);
+    if (leaving.wrap === wrap) leaving.wrap = null;
+    wrap.classList.remove('is-leaving');
+    if (enter) {
+      void wrap.offsetWidth; // restart the animation
+      wrap.classList.add('is-entering');
+    }
+    requestAnimationFrame(function () { wrap.style.minHeight = ''; });
+  }
+
+  $(document).on('click', '.practice-wrap [id$="-next_item"]', function () {
+    var wrap = this.closest('.practice-wrap');
+    if (!wrap) return;
+    // keep the height from now on, before the feedback is removed
+    wrap.style.minHeight = wrap.offsetHeight + 'px';
+    wrap.classList.remove('is-entering');
+    wrap.classList.add('is-leaving');
+    leaving.wrap = wrap;
+    leaving.until = Date.now() + (reducedMotion() ? 0 : fadeOutMs());
+    // after the last item the queue ends (back to the selector or the
+    // dashboard) and no new item comes: undo it then
+    clearTimeout(leaving.timer);
+    leaving.timer = setTimeout(function () { endLeaving(wrap, false); }, 2000);
+  });
 
   function imagesLoaded(el) {
     var imgs = Array.prototype.slice.call(el.querySelectorAll('img'));
@@ -58,16 +99,26 @@
     b.finished = true;
     clearTimeout(b.timer);
     if (batch === b) batch = null;
+    var wasLeaving = !!b.wrap && leaving.wrap === b.wrap;
+    var wait = wasLeaving ? Math.max(0, leaving.until - Date.now()) : 0;
     fontsReady().then(function () {
-      var card = b.wrap && b.wrap.querySelector('.practice-card');
-      if (card) {
-        var top = card.getBoundingClientRect().top;
-        if (top < 0) window.scrollBy(0, top - 16);
-      }
-      show(b.els, true);
-      requestAnimationFrame(function () {
-        if (b.wrap) b.wrap.style.minHeight = '';
-      });
+      setTimeout(function () {
+        // the card's top back into view while the content is invisible
+        var card = b.wrap && b.wrap.querySelector('.practice-card');
+        if (card) {
+          var top = card.getBoundingClientRect().top;
+          if (top < 0) window.scrollBy(0, top - 16);
+        }
+        if (wasLeaving) {
+          show(b.els, false);
+          endLeaving(b.wrap, true);
+        } else {
+          show(b.els, true);
+          requestAnimationFrame(function () {
+            if (b.wrap) b.wrap.style.minHeight = '';
+          });
+        }
+      }, wait);
     });
   }
 
@@ -102,7 +153,7 @@
     if (!batch || batch.key !== key || batch.finished) {
       if (batch && !batch.finished) finishBatch(batch);
       batch = { key: key, els: [], open: 0, wrap: wrap, finished: false };
-      if (wrap) wrap.style.minHeight = wrap.offsetHeight + 'px';
+      if (wrap && !wrap.style.minHeight) wrap.style.minHeight = wrap.offsetHeight + 'px';
       var b0 = batch;
       b0.timer = setTimeout(function () { finishBatch(b0); }, 1500);
     }
