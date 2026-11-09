@@ -258,11 +258,18 @@ test_that("practice: checking an answer sets state$checked and writes to DB", {
   })
 })
 
-test_that("practice: the MC feedback is typeset by MathJax after the check", {
-  # Regression test: after the check the stimulus doesn't re-render, so the
-  # feedback output has to trigger the typeset itself, or LaTeX in it stays raw.
+test_that("practice: the outputs with math are typeset in the browser, keyed by item", {
+  # www/js/practice.js typesets every .mj-output after it changes (also the
+  # feedback after the check, when the stimulus doesn't re-render), and fades
+  # in a new item by its data-mj-key. Before, the server sent a page-wide
+  # "mathjax_typeset" per output.
   data_item <- make_data_item()
   data_item$if_answeroption_01 <- "Richtig, $B_1 = b_1 \\cdot \\frac{s_x}{s_y}$."
+
+  ui <- as.character(mod_practice_ui("p"))
+  for (out in c("p-item_stimulus", "p-feedback", "p-answer_mc-answer_ui")) {
+    expect_match(ui, sprintf('class="[^"]*mj-output[^"]*" id="%s"', out))
+  }
 
   withr::with_envvar(list(TIGER_DB_DIR = tempdir()), {
     testServer(
@@ -274,25 +281,19 @@ test_that("practice: the MC feedback is typeset by MathJax after the check", {
         write_trigger = reactiveVal(0L)
       ),
       {
-        typesets <- 0L
-        # The mock session's sendCustomMessage is a no-op; count the calls
-        # (on the root mock session, which the module proxies forward to)
-        root <- session$rootScope()
-        unlockBinding("sendCustomMessage", root)
-        root$sendCustomMessage <- function(type, message) {
-          if (identical(type, "mathjax_typeset")) typesets <<- typesets + 1L
-        }
-        output$`answer_mc-answer_ui`
-        session$flushReact()
-        before <- typesets
+        key <- sprintf('data-mj-key="%s"', data_item$id_item[1])
+        expect_match(output$item_stimulus$html, key, fixed = TRUE)
+        expect_match(output$`answer_mc-answer_ui`$html, key, fixed = TRUE)
 
+        options_before <- output$`answer_mc-answer_ui`$html
         session$setInputs(`answer_mc-answer` = "1", check = 1L)
         html <- output$feedback$html
-        session$flushReact()
-
+        # the options aren't re-rendered on the check (their math stays
+        # typeset); the result is marked on them in the browser
+        expect_identical(output$`answer_mc-answer_ui`$html, options_before)
         expect_match(html, "feedback-card", fixed = TRUE)
+        expect_match(html, key, fixed = TRUE)
         expect_match(html, "\\(B_1", fixed = TRUE)
-        expect_gt(typesets, before)
         # the options only show the coloring, the card is the feedback output's
         expect_false(grepl("feedback-card", output$`answer_mc-answer_ui`$html, fixed = TRUE))
       }

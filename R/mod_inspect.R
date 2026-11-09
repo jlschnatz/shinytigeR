@@ -9,10 +9,10 @@ mod_inspect_ui <- function(id) {
     ),
     bslib::card(
       bslib::card_body(
-        shiny::withMathJax(uiOutput(ns("item_stimulus"))),
+        uiOutput(ns("item_stimulus")),
         div(
           class = "practice-answers-section",
-          shiny::withMathJax(uiOutput(ns("item_answers")))
+          uiOutput(ns("item_answers"))
         )
       )
     ),

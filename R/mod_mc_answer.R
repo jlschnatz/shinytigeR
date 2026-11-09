@@ -17,146 +17,101 @@
 #   once checked. Skipping is the caller's skip button (mod_practice.R), not an
 #   answer option, so after a skip no option is highlighted.
 #
+#   The options render once per item, never on the check: the result is
+#   marked on them in the browser ("mc_mark_result", www/js/practice.js:
+#   colour the selected option, disable all, dim the others). Re-rendering
+#   them on the check (as before) replaced their typeset math with raw LaTeX
+#   and typeset it again, a visible jump on every check and skip.
+#
 #   After the check this module only colors the selected option; the feedback
 #   card is the caller's (practice_feedback_card() in mod_practice.R), so it can
 #   sit in its own place in the layout (full width below the item card).
 mod_mc_answer_ui <- function(id) {
   ns <- NS(id)
-  uiOutput(ns("answer_ui"))
+  uiOutput(ns("answer_ui"), class = "mj-output")
 }
 
 mod_mc_answer_server <- function(id, item, checked, result) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # The options, once per item (depends on the item only, not on the check)
     output$answer_ui <- renderUI({
       it <- item()
       req(nrow(it) == 1L, identical(it$answer_mode[1], "mc"))
       it <- as.list(it[1, ])
       choices <- get_answeroptions(it)
 
-      # Re-typeset LaTeX after every render: the options re-render on check
-      # (not the stimulus), so math in them would otherwise stay raw
+      radio_opts <- lapply(seq_along(choices), function(i) {
+        id_i <- paste0(ns("answer"), "_", i)
+        if (it$type_answer == "image" && is_img_path(choices[i])) {
+          div(
+            class = "answer-img-row d-flex align-items-center mb-3",
+            tags$input(
+              type = "radio",
+              class = "form-check-input me-2",
+              name = ns("answer"),
+              id = id_i,
+              value = i,
+              style = "width:1.2em;height:1.2em;cursor:pointer;"
+            ),
+            tags$label(
+              `for` = id_i,
+              class = "label-answer",
+              answer_img(choices[i])
+            )
+          )
+        } else {
+          div(
+            class = "answer-option mb-2",
+            tags$input(
+              type = "radio",
+              class = "form-check-input",
+              name = ns("answer"),
+              id = id_i,
+              value = i,
+              style = "width:1.1em;height:1.1em;cursor:pointer;"
+            ),
+            tags$label(
+              `for` = id_i,
+              class = "ms-2 answer-label",
+              style = "cursor:pointer;",
+              shiny::HTML(render_md(choices[i]))
+            )
+          )
+        }
+      })
+      # math is typeset in the browser (www/js/practice.js, .mj-output); the
+      # key tells it a new item arrived, so it fades in
+      div(
+        id = ns("options"),
+        class = "answer-options",
+        `data-mj-key` = it$id_item,
+        tagAppendChildren(
+          div(id = ns("answer"), class = "shiny-input-radiogroup"),
+          .list = radio_opts
+        )
+      )
+    })
+
+    # After the check: mark the result on the options already shown. Sent
+    # after the flush, so it reaches the browser after any re-render.
+    observeEvent(list(checked(), result()), {
+      req(isTRUE(checked()))
+      it <- item()
+      res <- result()
+      req(nrow(it) == 1L, identical(it$answer_mode[1], "mc"), !is.null(res))
+      suffix <- if (identical(it$type_answer[1], "image")) "img" else "txt"
+      msg <- list(
+        id = ns("options"),
+        sel = if (is.na(res$answer_idx)) NULL else as.integer(res$answer_idx),
+        row_class = paste0(res$category, "_answer_", suffix),
+        radio_class = paste0("radio-result-", res$category)
+      )
       session$onFlushed(
-        function() session$sendCustomMessage("mathjax_typeset", TRUE),
+        function() session$sendCustomMessage("mc_mark_result", msg),
         once = TRUE
       )
-
-      if (!isTRUE(checked())) {
-        radio_opts <- lapply(seq_along(choices), function(i) {
-          id_i <- paste0(ns("answer"), "_", i)
-          if (it$type_answer == "image" && is_img_path(choices[i])) {
-            div(
-              class = "d-flex align-items-center mb-3",
-              tags$input(
-                type = "radio",
-                class = "form-check-input me-2",
-                name = ns("answer"),
-                id = id_i,
-                value = i,
-                style = "width:1.2em;height:1.2em;cursor:pointer;"
-              ),
-              tags$label(
-                `for` = id_i,
-                class = "label-answer",
-                answer_img(choices[i])
-              )
-            )
-          } else {
-            div(
-              class = "answer-option mb-2",
-              tags$input(
-                type = "radio",
-                class = "form-check-input",
-                name = ns("answer"),
-                id = id_i,
-                value = i,
-                style = "width:1.1em;height:1.1em;cursor:pointer;"
-              ),
-              tags$label(
-                `for` = id_i,
-                class = "ms-2 answer-label",
-                style = "cursor:pointer;",
-                shiny::HTML(render_md(choices[i]))
-              )
-            )
-          }
-        })
-        div(
-          class = "answer-options",
-          tagAppendChildren(
-            div(id = ns("answer"), class = "shiny-input-radiogroup"),
-            .list = radio_opts
-          )
-        )
-      } else {
-        res <- result()
-        req(!is.null(res))
-        sel <- res$answer_idx
-        suffix <- if (it$type_answer == "image") "img" else "txt"
-        hi_class <- paste0(res$category, "_answer_", suffix)
-
-        div(
-          class = "answer-options",
-          tagList(
-            lapply(seq_along(choices), function(i) {
-              is_sel <- !is.na(sel) && i == sel
-              id_i <- paste0(ns("answer"), "_", i)
-              radio_cls <- paste(
-                "form-check-input",
-                if (is_sel) paste0("radio-result-", res$category) else ""
-              )
-              if (it$type_answer == "image" && is_img_path(choices[i])) {
-                div(
-                  class = paste(
-                    "d-flex align-items-center mb-3",
-                    if (is_sel) hi_class else ""
-                  ),
-                  tags$input(
-                    type = "radio",
-                    class = paste(radio_cls, "me-2"),
-                    name = paste0(ns("answer"), "_done"),
-                    id = id_i,
-                    disabled = NA,
-                    checked = if (is_sel) NA else NULL,
-                    style = "width:1.2em;height:1.2em;"
-                  ),
-                  tags$label(
-                    `for` = id_i,
-                    class = "label-answer",
-                    answer_img(
-                      choices[i],
-                      style = if (!is_sel) "opacity:0.65;" else NULL
-                    )
-                  )
-                )
-              } else {
-                div(
-                  class = paste(
-                    "answer-option mb-2",
-                    if (is_sel) hi_class else ""
-                  ),
-                  tags$input(
-                    type = "radio",
-                    class = radio_cls,
-                    name = paste0(ns("answer"), "_done"),
-                    id = id_i,
-                    disabled = NA,
-                    checked = if (is_sel) NA else NULL,
-                    style = "width:1.1em;height:1.1em;"
-                  ),
-                  tags$label(
-                    `for` = id_i,
-                    class = "ms-2 answer-label",
-                    style = if (!is_sel) "opacity:0.65;" else NULL,
-                    shiny::HTML(render_md(choices[i]))
-                  )
-                )
-              }
-            })
-          )
-        )
-      }
     })
 
     list(

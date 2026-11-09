@@ -47,6 +47,17 @@ app_ui <- function() {
         tags$link(rel = "icon", type = "image/svg+xml", href = "logo/tiger_logo.svg"),
         tags$link(rel = "icon", type = "image/png", href = "logo/favicon.png"),
         tags$link(rel = "apple-touch-icon", href = "logo/favicon.png"),
+        # MathJax 3 (www/mathjax/, bundled like the fonts: no request to a
+        # CDN, Apache 2.0, see its LICENSE): the TeX-to-SVG build with every
+        # TeX extension included; its right-click menu is off, since its
+        # accessibility options would load further files from its folder.
+        # Replaced shiny::withMathJax() (MathJax 2 from mathjax.rstudio.com,
+        # several times slower at laying out formulas) in Nov 2026. Delimiters
+        # are its defaults, \( \) inline and \[ \] / $$ display, which
+        # protect_math_delimiters() (utils.R) produces. Typesetting is done by
+        # www/js/practice.js, per output.
+        tags$script(HTML("window.MathJax = {svg: {fontCache: 'global'}, options: {enableMenu: false}};")),
+        tags$script(src = css_href("www/mathjax/tex-svg-full.js", "mathjax/tex-svg-full.js"), defer = NA),
         # The page scripts (inst/app/www/js/, served like css/), cache-busted
         # like the stylesheets
         tags$script(src = css_href("www/js/practice.js", "js/practice.js")),

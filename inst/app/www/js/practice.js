@@ -1,10 +1,171 @@
-// Practice view: MathJax re-typesetting, the item-ID badge's "Kopiert"
+// Practice view: MathJax typesetting, the item-ID badge's "Kopiert"
 // confirmation, the code blocks' copy button, the image zoom, and
 // scrolling the feedback into view after the check.
 // Loaded in ui.R (app_ui()); plain browser JS, no build step.
 
+// MathJax 3 (www/mathjax/, loaded with defer in ui.R). Typesets `els` (an
+// array of elements, or null for the whole page) once MathJax has started;
+// before it has loaded this does nothing, its startup typesets the page.
+function mjTypeset(els) {
+  var mj = window.MathJax;
+  if (!mj || !mj.typesetPromise || !mj.startup) return Promise.resolve();
+  return mj.startup.promise
+    .then(function () { return mj.typesetPromise(els || undefined); })
+    .catch(function (err) { console.warn('MathJax:', err); });
+}
+
+// Whole-page typeset, still used by the inspect view (mod_inspect.R)
 Shiny.addCustomMessageHandler('mathjax_typeset', function(_) {
-  if (window.MathJax) MathJax.Hub.Queue(['Typeset', MathJax.Hub]);
+  mjTypeset(null);
+});
+
+// Practice view (stimulus, MC options, feedback; class .mj-output): typeset
+// only the output that changed, and keep it invisible until it's ready
+// (.mj-pending), so raw \( … \) and the reflow after it never show. Before,
+// each of these outputs sent 'mathjax_typeset', which re-scanned the whole
+// page two or three times per item while the raw LaTeX was visible.
+//
+// A new item (its data-mj-key differs from the last one shown) arrives as
+// several outputs (stimulus, options). They're revealed together, once all
+// are inserted, their math typeset, their images loaded and the fonts ready
+// (Fira Mono loads the first time code shows), then fade in (.mj-enter; it
+// stays on until the next new item, since removing it would restart the
+// outputs' older slide-in animation). Meanwhile the view keeps its height,
+// so the page doesn't collapse and jump while the old item is replaced, and
+// if the card's top was scrolled out of view, the new item starts at its top.
+// 'shiny:value' fires before Shiny inserts the HTML (possibly
+// asynchronously, after its dependencies), so each output waits for its
+// insertion (MutationObserver); a timeout shows everything anyway if
+// something goes wrong.
+(function () {
+  var MATH = /\\\(|\\\[/;
+  var batch = null; // the new item being prepared in the card
+
+  function imagesLoaded(el) {
+    var imgs = Array.prototype.slice.call(el.querySelectorAll('img'));
+    return Promise.all(imgs.map(function (img) {
+      if (img.complete) return null;
+      return img.decode ? img.decode().catch(function () {}) : null;
+    }));
+  }
+
+  function fontsReady() {
+    return document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  }
+
+  function show(els, fade) {
+    els.forEach(function (el) {
+      el.classList.remove('mj-pending');
+      if (fade) {
+        void el.offsetWidth; // restart the animation
+        el.classList.add('mj-enter');
+      }
+    });
+  }
+
+  // Prepare one output: wait for its insertion, typeset its math, wait for
+  // its images. Calls done() once (or never, then the timeout takes over).
+  function prepare(el, hasMath, done) {
+    var obs = new MutationObserver(function () {
+      obs.disconnect();
+      var typeset = hasMath ? mjTypeset([el]) : Promise.resolve();
+      typeset.then(function () { return imagesLoaded(el); }).then(done, done);
+    });
+    obs.observe(el, { childList: true });
+  }
+
+  function finishBatch(b) {
+    if (b.finished) return;
+    b.finished = true;
+    clearTimeout(b.timer);
+    if (batch === b) batch = null;
+    fontsReady().then(function () {
+      var card = b.wrap && b.wrap.querySelector('.practice-card');
+      if (card) {
+        var top = card.getBoundingClientRect().top;
+        if (top < 0) window.scrollBy(0, top - 16);
+      }
+      show(b.els, true);
+      requestAnimationFrame(function () {
+        if (b.wrap) b.wrap.style.minHeight = '';
+      });
+    });
+  }
+
+  $(document).on('shiny:value', function (e) {
+    var el = e.target;
+    if (!el.classList || !el.classList.contains('mj-output')) return;
+    var html = e.value && typeof e.value === 'object' ? (e.value.html || '') : String(e.value || '');
+    var m = html.match(/data-mj-key="([^"]*)"/);
+    var key = m ? m[1] : '';
+    var isNew = key !== el.getAttribute('data-mj-shown');
+    el.setAttribute('data-mj-shown', key);
+    var hasMath = MATH.test(html);
+    if (!isNew && !hasMath) return;
+    // forget the math being replaced (MathJax keeps a list of what it typeset)
+    if (window.MathJax && MathJax.typesetClear) MathJax.typesetClear([el]);
+
+    el.classList.remove('mj-enter');
+    el.classList.add('mj-pending');
+
+    // Outside the card (the feedback) or a re-render of the same item: on
+    // its own, no batch
+    var wrap = el.closest('.practice-wrap');
+    var inCard = !!el.closest('.practice-card');
+    if (!isNew || !inCard) {
+      var once = false;
+      var single = function () {
+        if (once) return;
+        once = true;
+        clearTimeout(t);
+        show([el], isNew && inCard);
+      };
+      var t = setTimeout(single, 1500);
+      prepare(el, hasMath, single);
+      return;
+    }
+
+    if (!batch || batch.key !== key || batch.finished) {
+      if (batch && !batch.finished) finishBatch(batch);
+      batch = { key: key, els: [], open: 0, wrap: wrap, finished: false };
+      if (wrap) wrap.style.minHeight = wrap.offsetHeight + 'px';
+      var b0 = batch;
+      b0.timer = setTimeout(function () { finishBatch(b0); }, 1500);
+    }
+    var b = batch;
+    b.els.push(el);
+    b.open += 1;
+    var counted = false;
+    prepare(el, hasMath, function () {
+      if (counted) return;
+      counted = true;
+      b.open -= 1;
+      // the item's outputs arrive in one message, so by now all of them
+      // have registered; a tick later in case one is still being inserted
+      if (b.open === 0) setTimeout(function () { if (b.open === 0) finishBatch(b); }, 0);
+    });
+  });
+})();
+
+// MC options after the check (mod_mc_answer.R): mark the result on the
+// options already shown instead of re-rendering them, so their typeset
+// math stays as it is. m.sel is the selected option (null after a skip).
+Shiny.addCustomMessageHandler('mc_mark_result', function (m) {
+  var box = document.getElementById(m.id);
+  if (!box) return;
+  box.classList.add('is-checked');
+  box.querySelectorAll('input[type="radio"]').forEach(function (r) {
+    var row = r.closest('.answer-option, .answer-img-row');
+    var isSel = m.sel !== null && m.sel !== undefined && String(r.value) === String(m.sel);
+    r.disabled = true;
+    r.checked = isSel;
+    if (isSel) {
+      r.classList.add(m.radio_class);
+      if (row) row.classList.add(m.row_class);
+    } else if (row) {
+      row.classList.add('is-dimmed');
+    }
+  });
 });
 
 // Click confirmation for item_id_badge() (utils.R). Bound ONCE here at
