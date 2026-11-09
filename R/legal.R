@@ -15,43 +15,62 @@ legal_sections <- function(contact = CONTACT_EMAIL) {
       body = paste(
         "Prof. Dr. Martin Schultze  ",
         "\nJohann Wolfgang Goethe-Universität Frankfurt am Main  ",
-        "\nTheodor-W.-Adorno-Platz 6, 60323 Frankfurt am Main  ",
-        "\nPostanschrift: 60629 Frankfurt am Main",
+        "\nTheodor-W.-Adorno-Platz 6 ",
+        "\n60323 Frankfurt am Main  ",
+        "\nPostanschrift: ",
+        "\nJohann Wolfgang Goethe-Universität Frankfurt am Main  ",
+        "\nTheodor-W.-Adorno-Platz 6 ",
+        "\n60629 Frankfurt am Main ",
         "\n\nTelefon: +49 69 798-35355  ",
         sprintf("\nE-Mail: %s  ", mail),
         "\nWeb: [www.uni-frankfurt.de](https://www.uni-frankfurt.de)"
       )
     ),
     list(
-      title = "Kontaktdaten der Datenschutzbeauftragten",
+      title = "Datenschutzbeauftragte",
       body = paste(
-        "Die behördlichen Datenschutzbeauftragten der Goethe-Universität  ",
+        "Johann Wolfgang Goethe-Universität Frankfurt am Main ",
+        "\nDie behördlichen Datenschutzbeauftragten ",
         "\nTheodor-W.-Adorno-Platz 1, 60323 Frankfurt am Main  ",
-        "\n[www.uni-frankfurt.de/datenschutzbeauftragte](https://www.uni-frankfurt.de/datenschutzbeauftragte)"
+        "\n\nTelefon: +49 69 798-12238 ",
+        "\nE-Mail-Adresse: [dsb@uni-frankfurt.de](mailto:dsb@uni-frankfurt.de) ",
+        "\nWeb: [www.uni-frankfurt.de/datenschutzbeauftragte](https://www.uni-frankfurt.de/datenschutzbeauftragte)"
       )
     ),
     list(
-      title = "Welche Daten tigeR speichert",
+      title = "Welche Daten tigeR verarbeitet",
       body = paste(
-        "tigeR speichert keine Namen, E-Mail-Adressen oder Matrikelnummern. Gespeichert werden nur:",
-        "\n\n- dein selbst gewählter **Benutzername** und dein Passwort (nur in unlesbarer Form, als Hash),",
-        "\n- zu jeder Antwort: welche Aufgabe, wann, welche Antwort du gewählt oder eingegeben hast, ob sie richtig war, und eine zufällige Kennung der Sitzung,",
+        "tigeR erhebt, verarbeitet und speichert keine Namen, E-Mail-Adressen oder Matrikelnummern. tigeR verwendet keine Tracking- oder Marketing-Cookies.",
+        "\nGespeichert werden aussschließlich: ",
+        "\n\n- dein selbst gewählter Benutzername und dein Passwort (nur in unlesbarer Form, als Hashwert),",
+        "\n- zu jeder von dir eingegebenen Antwort: Die bearbeitete Aufgabe, Zeitpunkt der Beantwortung, welche Antwort du gewählt oder eingegeben hast, ob sie richtig war, und eine zufällige Kennung der Sitzung,",
         "\n- deine berechneten Einschätzungen pro Themenbereich.",
-        "\n\nDiese Daten dienen dazu, dir Rückmeldungen zu deinen Antworten und deinem Lernstand zu geben.",
-        "Wähl am besten einen Benutzernamen, der dich nicht erkennbar macht, also nicht deinen Namen."
+        "\nDie Daten werden in einer Form gespeichert, die den Betreibern von tigeR keine Zuordnung der Benutzerkonten zu einer bestimmten Person ermöglicht. ",
+        "\nDie Daten werden dauerhaft gespeichert, um dir auch bei späteren Besuchen Zugriff auf deinen bisherigen Lernstand und Lernverlauf zu ermöglichen sowie die Daten für wissenschaftliche Forschungszwecke zu nutzen. Eine automatische Löschung nach einem festen Zeitraum erfolgt derzeit nicht. "
       )
     ),
     list(
-      title = "Deine Rechte",
+      title = "Rechte und Beschwerdemöglichkeiten",
       body = paste(
-        "Du hast das Recht auf Auskunft über die zu dir gespeicherten Daten, auf Berichtigung oder Löschung,",
-        "auf Einschränkung der Verarbeitung, auf Widerspruch gegen die Verarbeitung, auf Widerruf einer Einwilligung",
-        sprintf("und auf Datenübertragbarkeit. Wende dich dafür an %s.", mail),
-        "\n\nAußerdem kannst du dich bei der Aufsichtsbehörde beschweren:  ",
-        "\nDer Hessische Beauftragte für Datenschutz und Informationsfreiheit (HBDI)  ",
-        "\nPostfach 3163, 65021 Wiesbaden  ",
-        "\nTelefon: +49 611 1408-0  ",
-        "\n[datenschutz.hessen.de](https://datenschutz.hessen.de)"
+        "Du hast gegenüber der Goethe-Universität folgende Rechte hinsichtlich deiner gespeicherten personenbezogenen Daten: ",
+        "\n- Recht auf Auskunft (Art. 15 DSGVO),",
+        "\n- Recht auf Berichtigung oder Löschung (Art. 16 und 17 DSGVO),",
+        "\n- Recht auf Einschränkung der Verarbeitung (Art. 18 DSGVO),",
+        "\n- Recht auf Widerruf Ihrer Einwilligung, sofern die Verarbeitung auf einer Einwilligung beruht (Art. 7 Abs. 3 DSGVO),",
+        "\n- Recht auf Widerspruch gegen die Verarbeitung (Art. 21 DSGVO),",
+        "\n- Recht auf Datenübertragbarkeit in einem strukturierten, gängigen und maschinenlesbaren Format (Art. 20 DSGVO).",
+        "\n\nDu hast das Recht, sich bei datenschutzrechtlichen Problemen bei der zuständigen Fachaufsichtsbehörde zu beschweren. Wende dich dafür an die Kontaktadresse der Fachaufsichtsbehörde der Goethe-Universität Frankfurt am Main:",
+        "\nHessischer Beauftragter für Datenschutz und Informationsfreiheit (HBDI) ",
+        "\nPostfach 3163, 65021 Wiesbaden",
+        "\n\nE-Mail an den HBDI (Link zum Kontaktformular des Hessischen Datenschutzbeauftragten: [https://datenschutz.hessen.de/kontakt](https://datenschutz.hessen.de/kontakt)) ",
+        "\nTelefon: +49 611 1408 - 0"
+      )
+    ),
+    list(
+      title = "Änderung dieser Datenschutzerklärung",
+      body = paste(
+        "Wir behalten uns vor, diese Datenschutzerklärung anzupassen, um sie an geänderte rechtliche Anforderungen oder technische Entwicklungen anzupassen. Die jeweils aktuelle Version ist auf dieser Webseite abrufbar. ",
+        "\n\nStand: **9. November 2026**"
       )
     )
   )
@@ -63,13 +82,6 @@ legal_page <- function(sections = legal_sections()) {
     div(
       class = "page-intro",
       tags$h3(class = "page-title mb-1", "Impressum & Datenschutz"),
-      # Visible until the final text replaces legal_sections()
-      tags$p(
-        class = "text-muted mb-0",
-        "Vorläufige Fassung: übernommen von ",
-        tags$a(href = "https://pandar.netlify.app/privacy/", target = "_blank", rel = "noopener", "pandaR"),
-        ", wird noch an tigeR angepasst."
-      )
     ),
     lapply(sections, function(s) {
       bslib::card(
@@ -91,7 +103,15 @@ app_footer <- function() {
     class = "app-footer",
     div(
       class = "app-footer-inner",
-      tags$span(class = "app-footer-name", "tigeR · Goethe-Universität Frankfurt"),
+      tags$span(
+        class = "app-footer-name",
+        "tigeR · Goethe-Universität Frankfurt",
+        # only from 992 px (app.css): too long for narrower windows
+        tags$span(
+          class = "app-footer-lab",
+          "· Abteilung für Psychologische Methoden mit interdisziplinärer Ausrichtung"
+        )
+      ),
       actionLink("show_legal", "Impressum & Datenschutz")
     )
   )

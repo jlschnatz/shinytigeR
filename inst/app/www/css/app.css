@@ -1765,6 +1765,13 @@ body { padding-bottom: var(--footer-h); }
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   font-size: var(--fs-small); color: #6b7280; white-space: nowrap;
 }
+/* The name gives way, the link never shrinks: the lab only from 992 px, and
+   if the line still doesn't fit it ends in "…" */
+.app-footer-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.app-footer-inner a { flex-shrink: 0; }
+@media (max-width: 991.98px) {
+  .app-footer-lab { display: none; }
+}
 /* on phones only the link (the line wouldn't fit next to it) */
 @media (max-width: 575.98px) {
   .app-footer-inner { justify-content: center; padding: 0 1rem; }
