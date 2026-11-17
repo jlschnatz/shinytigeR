@@ -731,7 +731,7 @@ The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`,
 
 The folder itself must be writable for uid 1002, not just the files: SQLite (WAL mode) writes `-wal`/`-shm` files next to the databases.
 
-**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only; default `../db`): files present, item DB in the current format, no dev sample items (90001–90004), every item image (stimulus and answer options) present in `img_item/`, accounts count. Exits non-zero on problems.
+**Before uploading, check the folder:** `rv run dev/check_deploy_dbs.R <folder>` (read-only; default `../db`): files present, item DB in the current format, no dev sample items (90001–90004), every item image (stimulus and answer options) present in `img_item/`, accounts count, and the inputs the pool was built from (`build_info`, written by `tigertools::build_release()`). Exits non-zero on problems. `--items-only` checks just `db_item.sqlite` and `img_item/`, for a freshly built release folder without user/credentials DBs.
 
 **Old user tables** (2023/24, 372 tables) have no `skipped` column; the old app never stored skips (option 6, the skip option, was never chosen in 33,787 answers). `db_get_userdata()` adds `skipped = 0` for them. Without it, the dashboard's skip filter matched nothing and old students saw no answers at all.
 

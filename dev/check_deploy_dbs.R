@@ -1,14 +1,20 @@
 # Checks a DB folder before it's uploaded to the server. Read-only.
 #
 #   rv run dev/check_deploy_dbs.R <folder>
+#   rv run dev/check_deploy_dbs.R --items-only <folder>
 #
 # Reports what's missing or in an old format; exits with status 1 if anything
 # would break the app. An item DB in an old format (missing columns, old skip
-# options) comes from an old export: export the pool again with tigertools.
-# (The migrations that used to fix old pools in place were removed in Nov 2026,
-# see git history.)
+# options) comes from an old export: build the pool again with tigertools
+# (build_release()). (The migrations that used to fix old pools in place were
+# removed in Nov 2026, see git history.)
+#
+# --items-only checks just db_item.sqlite and img_item/, e.g. a freshly built
+# pool in a release folder that has no user or credentials databases.
 
 args <- commandArgs(trailingOnly = TRUE)
+items_only <- "--items-only" %in% args
+args <- setdiff(args, "--items-only")
 dir <- if (length(args)) args[1] else Sys.getenv("TIGER_DB_DIR", "../db")
 dir <- normalizePath(dir, mustWork = TRUE)
 cat("Checking", dir, "\n\n")
@@ -27,14 +33,17 @@ with_db <- function(file, fn) {
 }
 
 # ── Files ─────────────────────────────────────────────────────────────────────
-for (f in c("db_item.sqlite", "db_user.sqlite", "db_credentials.sqlite", "db_ability.sqlite")) {
+db_files <- if (items_only) "db_item.sqlite" else c("db_item.sqlite", "db_user.sqlite", "db_credentials.sqlite", "db_ability.sqlite")
+for (f in db_files) {
   if (file.exists(file.path(dir, f))) ok(f) else fail(paste(f, "is missing (an empty file is fine for db_user/db_ability)"))
 }
 code_file <- file.path(dir, "reg_code.txt")
-if (file.exists(code_file) && any(nzchar(trimws(readLines(code_file, warn = FALSE))))) {
-  ok("reg_code.txt (semester code)")
-} else {
-  warn("no reg_code.txt: self-registration only works if TIGER_REG_CODE is set in ShinyProxy")
+if (!items_only) {
+  if (file.exists(code_file) && any(nzchar(trimws(readLines(code_file, warn = FALSE))))) {
+    ok("reg_code.txt (semester code)")
+  } else {
+    warn("no reg_code.txt: self-registration only works if TIGER_REG_CODE is set in ShinyProxy")
+  }
 }
 
 # ── Item DB ───────────────────────────────────────────────────────────────────
@@ -43,6 +52,16 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
     cols <- DBI::dbListFields(con, "item_db")
     n <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db")$n
     cat("\n  item_db:", n, "items\n")
+
+    # Pools built with tigertools::build_release() record their inputs
+    if (DBI::dbExistsTable(con, "build_info")) {
+      info <- DBI::dbGetQuery(con, "SELECT * FROM build_info")
+      for (i in seq_len(nrow(info))) {
+        ok(sprintf("built from %s: %s (md5 %s)", info$input[i], info$file[i], substr(info$md5[i], 1, 8)))
+      }
+    } else {
+      warn("no build_info table: not built with tigertools::build_release()")
+    }
 
     if ("answer_mode" %in% cols) {
       bad <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM item_db WHERE answer_mode IS NULL OR answer_mode NOT IN ('mc', 'num')")$n
@@ -117,7 +136,7 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
 }
 
 # ── Credentials ───────────────────────────────────────────────────────────────
-if (file.exists(file.path(dir, "db_credentials.sqlite"))) {
+if (!items_only && file.exists(file.path(dir, "db_credentials.sqlite"))) {
   with_db("db_credentials.sqlite", function(con) {
     if (DBI::dbExistsTable(con, "credentials_db")) {
       cat("\n")
