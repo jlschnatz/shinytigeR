@@ -57,7 +57,8 @@ if (file.exists(file.path(dir, "db_item.sqlite"))) {
     if (DBI::dbExistsTable(con, "build_info")) {
       info <- DBI::dbGetQuery(con, "SELECT * FROM build_info")
       for (i in seq_len(nrow(info))) {
-        ok(sprintf("built from %s: %s (md5 %s)", info$input[i], info$file[i], substr(info$md5[i], 1, 8)))
+        hash <- if (is.na(info$md5[i])) "" else sprintf(" (md5 %s)", substr(info$md5[i], 1, 8))
+        ok(sprintf("built from %s: %s%s", info$input[i], info$file[i], hash))
       }
     } else {
       warn("no build_info table: not built with tigertools::build_release()")

@@ -48,8 +48,9 @@ estimate_theta <- function(responses, b) {
 
 # Which items only have a preliminary difficulty: the item DB's optional
 # `irt_provisional` column (1 = preliminary, e.g. estimated before there were
-# enough answers; 0/NULL = calibrated from data). Recalibration in tigertools
-# sets it back to 0. Pools without the column count as calibrated throughout.
+# enough answers; 0/NULL = calibrated from data). Set when the pool is built
+# (tigertools::build_release() in item_database/): 0 once the IRT calibration
+# covers the item. Pools without the column count as calibrated throughout.
 item_provisional <- function(items) {
   if (!"irt_provisional" %in% names(items)) {
     return(rep(FALSE, nrow(items)))

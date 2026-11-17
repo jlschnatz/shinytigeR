@@ -56,7 +56,7 @@ The four sample items (all `type_item = "content"`; see "Numeric item rules" und
 
 Useful manual cases: exact match (`5` on 90001), comma decimal (`0,25` on 90002), exact-only near-miss (`5.01` on 90001 → unmatched), matched distractor (`4.5` on 90001 → incorrect + its feedback), in-range value (`6,66` on 90004 → correct), second correct option (`5` on 90004 → correct, different feedback), ranged distractor (`2.59` on 90004 → incorrect), unmatched (`7`), and the skip button. They're only in the sample pool, not in the real one: to try them, seed a separate folder with `TIGER_DB_DIR=<new folder> rv run dev/seed_db.R` and run the app on it with `TIGER_DB_DIR=<new folder> rv run dev/run.R`.
 
-**Item DB format:** the pool comes from `tigertools` in the current format. The scripts that migrated older pools in place (`migrate_answer_mode.R`, `migrate_numeric_bounds.R`, `migrate_drop_mc_skip.R`) and the one that added the numeric samples to a full pool (`add_numeric_samples.R`) were removed in Nov 2026 (see git history); `dev/check_deploy_dbs.R` still detects an old format.
+**Item DB format:** the pool is built outside this repo, in `item_database/` (next to `app/`): `make` there runs `tigertools::build_release()` on the item files (`items/*.md`), the calibrated difficulties (`difficulty/calibrated.csv`, from the Stan calibration in `item_database/calibration/`) and the provisional ones (`difficulty/provisional.csv`), writes `release/db_item.sqlite` + `img_item/`, runs `dev/check_deploy_dbs.R --items-only` on it, and `make install` copies it into `../db`. A calibrated difficulty wins (`irt_provisional = 0`); the pool records its inputs and the tigertools commit in a `build_info` table. The scripts that migrated older pools in place (`migrate_answer_mode.R`, `migrate_numeric_bounds.R`, `migrate_drop_mc_skip.R`) and the one that added the numeric samples to a full pool (`add_numeric_samples.R`) were removed in Nov 2026 (see git history); `dev/check_deploy_dbs.R` still detects an old format.
 
 ### Dependency management (rv)
 
@@ -547,7 +547,7 @@ Table: `item_db`
 | `answer_mode` | text | `"mc"` or `"num"` — controls whether `mod_practice.R`/`mod_inspect.R` dispatch to the MC or numeric rendering path. **Not** the same as `type_item` (`"content"`/`"coding"`), which is an orthogonal axis — the two are easy to confuse by name |
 | `irt_discr` | real | IRT discrimination parameter *a* — unused since the switch to 1PL |
 | `irt_diff` | real | IRT difficulty parameter *b*. Items without one are practised normally but don't count towards the estimate |
-| `irt_provisional` | integer | Optional. `1` = `irt_diff` is only preliminary (a new item without enough answers yet; to be recalibrated in `tigertools`, which then sets it to `0`); `0`/NULL = calibrated from data. The app only counts these items, for students: „Dein Lernstand im Detail“ says „12 Aufgaben, davon 4 mit vorläufiger Schwierigkeit“, the FAQ explains it. A pool without the column works unchanged (everything counts as calibrated); `dev/check_deploy_dbs.R` reports the number |
+| `irt_provisional` | integer | Optional. `1` = `irt_diff` is only preliminary (a new item without enough answers yet; set at build time, see "Item DB format" under Commands: `0` once the calibration covers the item); `0`/NULL = calibrated from data. The app only counts these items, for students: „Dein Lernstand im Detail“ says „12 Aufgaben, davon 4 mit vorläufiger Schwierigkeit“, the FAQ explains it. A pool without the column works unchanged (everything counts as calibrated); `dev/check_deploy_dbs.R` reports the number |
 
 #### Numeric item rules (`answer_mode = "num"`)
 
@@ -724,7 +724,7 @@ Two things the first local image test (`linux/amd64`, real server data mounted) 
 ### ShinyProxy
 
 The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`, port 3838, DB folder mounted at `/opt/shinyapp`); we don't have its `application.yml`. The DB folder (`shinyapps/shinytigeR-DB/` on the server, uploaded by SFTP) holds:
-- `db_item.sqlite` (from `tigertools`, current format, see below), `db_user.sqlite`, `db_credentials.sqlite`
+- `db_item.sqlite` (built with `make` in `item_database/`, see "Item DB format" under Commands), `db_user.sqlite`, `db_credentials.sqlite`
 - `db_ability.sqlite`: must exist (even as an empty file) in case single files are bind-mounted
 - `img_item/`: the item images (every image `db_item.sqlite` refers to). This relies on the whole folder being mounted, not single files; very likely already the case (the old app's SQLite writes needed a writable folder), still to confirm with the admin
 - `reg_code.txt`: the semester code (first non-empty line). `read_secret()` (`R/utils.R`) prefers the env var **`TIGER_REG_CODE`** if ShinyProxy's `container-env` sets it, else reads this file on every registration attempt, so it can be changed by SFTP without the admin or a rebuild. Never under `www/` (served to browsers), never in the image. The planned LLM API key should use the same helper.
@@ -735,7 +735,7 @@ The folder itself must be writable for uid 1002, not just the files: SQLite (WAL
 
 **Old user tables** (2023/24, 372 tables) have no `skipped` column; the old app never stored skips (option 6, the skip option, was never chosen in 33,787 answers). `db_get_userdata()` adds `skipped = 0` for them. Without it, the dashboard's skip filter matched nothing and old students saw no answers at all.
 
-> **Item DB format:** the pool that goes live comes from `tigertools` in the current format (`answer_mode`, the `lower_`/`upper_answeroption_0X` range columns, text `answer_correct`, no stored skip option). An old-format pool doesn't crash the app but breaks it quietly: without `answer_mode` no item can be answered (the answer area renders blank, "Antwort prüfen" never enables), without the range columns numeric options fall back to exact match, and an old skip option shows up as an ordinary (wrong) answer. `dev/check_deploy_dbs.R` checks all three. `db_user.sqlite` needs nothing: legacy skip rows already have `skipped = TRUE`.
+> **Item DB format:** the pool that goes live is built with `tigertools::build_release()` (via `make` in `item_database/`) in the current format (`answer_mode`, the `lower_`/`upper_answeroption_0X` range columns, text `answer_correct`, no stored skip option). An old-format pool doesn't crash the app but breaks it quietly: without `answer_mode` no item can be answered (the answer area renders blank, "Antwort prüfen" never enables), without the range columns numeric options fall back to exact match, and an old skip option shows up as an ordinary (wrong) answer. `dev/check_deploy_dbs.R` checks all three. `db_user.sqlite` needs nothing: legacy skip rows already have `skipped = TRUE`.
 
 The `CMD` starts the app as:
 ```

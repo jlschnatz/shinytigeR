@@ -15,4 +15,5 @@ Scripts for working on the app locally. Run them from the project root with
 The sample pool (`db_item_sample.sqlite`, 18 items incl. 4 numeric ones, with
 its images in `img_item_sample/`) is what `seed_db.R` copies over. It's a
 fixed fixture (the repo is public, the real pool is exam content): if the item
-format changes, edit it directly. The real pool comes from `tigertools`.
+format changes, edit it directly. The real pool is built with `make` in
+`item_database/` (next to `app/`, see its README).

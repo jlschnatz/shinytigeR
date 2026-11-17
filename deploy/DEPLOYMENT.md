@@ -115,13 +115,11 @@ any `-wal`/`-shm` files, if present) and keep it untouched.
 
 Then, in a separate local folder:
 
-- **`db_item.sqlite`**: the item pool that goes live, as exported by
-  `tigertools` (already in the current format; the check below says so if
-  it's an old one).
+- **`db_item.sqlite`** and **`img_item/`**: the item pool that goes live and
+  its images, built with `make` in `item_database/` (`release/`, see that
+  folder's README; `make` already runs the items-only check below).
 - **`db_ability.sqlite`**: an empty file (`touch db_ability.sqlite`).
 - **`reg_code.txt`**: the semester code on the first line.
-- **`img_item/`**: the item images, i.e. the local `app/db/img_item/` (every
-  image `db_item.sqlite` refers to; the check below verifies that).
 - `db_user.sqlite` and `db_credentials.sqlite` stay **the server's** (don't
   upload local copies over them). They need no migration: old user tables are
   read as they are, missing columns are added on the next write.
@@ -218,6 +216,6 @@ docker exec <name> sh -c 'id; echo $TZ $HOME; ls -la /opt/shinyapp'
 | `object 'app_server' not found` at startup | `inst/app/app.R` must call `shinytigeR::app_ui()` / `shinytigeR::app_server` (the `CMD` doesn't attach the package) |
 | `rv sync` fails on `cran.r-project.org/__linux__/...` | the CRAN entry in `rproject.toml` needs `force_source = true` (rv looks for Linux binaries in every repository; only PPM has them) |
 | `Could not find an R version matching 4.6` | corrupted base image (see disk-full note above); remove it and rebuild |
-| Practice view shows no answer options, "Antwort prüfen" never enables | `db_item.sqlite` in an old format (`answer_mode` missing): export the pool again with `tigertools`, check with `check_deploy_dbs.R` |
+| Practice view shows no answer options, "Antwort prüfen" never enables | `db_item.sqlite` in an old format (`answer_mode` missing): build the pool again with `make` in `item_database/`, check with `check_deploy_dbs.R` |
 | Registration says "derzeit nicht verfügbar" | no semester code: `reg_code.txt` missing/empty and `TIGER_REG_CODE` unset |
 | Old student sees an empty dashboard | shouldn't happen any more (`db_get_userdata()` handles old tables without `skipped`); check that the build includes that fix |
