@@ -1,9 +1,10 @@
 # ── The lookup table (inst/extdata/lookup_exam.csv) ───────────────────────────
 
 lookup_file <- function() {
-  # tests run against the source tree (load_all); the same file is installed
-  # with the package
-  testthat::test_path("..", "..", "inst", "extdata", EXAM_LOOKUP_FILE)
+  # the source tree under load_all(), the installed copy under R CMD check
+  p <- testthat::test_path("..", "..", "inst", "extdata", EXAM_LOOKUP_FILE)
+  if (!file.exists(p)) p <- exam_lookup_path()
+  p
 }
 
 test_that("the exam lookup table has known areas and types and complete rows", {

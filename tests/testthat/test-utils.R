@@ -79,10 +79,10 @@ test_that("a formula KaTeX can't parse is shown as its TeX, not an error", {
 })
 
 test_that("every formula in the sample pool renders with KaTeX", {
-  con <- DBI::dbConnect(
-    RSQLite::SQLite(),
-    testthat::test_path("..", "..", "dev", "db_item_sample.sqlite")
-  )
+  # dev/ isn't part of the built package (.Rbuildignore), so not under R CMD check
+  pool <- testthat::test_path("..", "..", "dev", "db_item_sample.sqlite")
+  skip_if_not(file.exists(pool), "sample pool not available (dev/ not in the built package)")
+  con <- DBI::dbConnect(RSQLite::SQLite(), pool)
   on.exit(DBI::dbDisconnect(con))
   items <- DBI::dbGetQuery(con, "SELECT * FROM item_db")
   cols <- grep("^(stimulus_text|answeroption_0|if_answeroption_0)", names(items), value = TRUE)
