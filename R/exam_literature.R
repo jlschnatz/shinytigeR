@@ -144,7 +144,7 @@ exam_literature_card <- function(comp, lookup = exam_lookup(),
       bsicons::bs_icon("book"),
       tags$b("Zum Nacharbeiten")
     ),
-    tags$span(class = "exam-lit-tag", "Prüfungsrelevant")
+    tags$span(class = "exam-lit-tag", "Prüfungsgrundlage")
   )
   if (is.na(area)) {
     return(bslib::card(

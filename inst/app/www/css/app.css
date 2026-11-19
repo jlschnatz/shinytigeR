@@ -1074,8 +1074,8 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .exam-lit-tag {
   font-size: var(--fs-tiny);
   font-weight: var(--fw-semibold);
-  color: #7c4a1e;
-  background: #f7efe6;
+  color: var(--tiger-primary);
+  background: #e8f0f7;
   border-radius: 999px;
   padding: 0.2em 0.75em;
   white-space: nowrap;
