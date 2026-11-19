@@ -723,7 +723,9 @@ Two things the first local image test (`linux/amd64`, real server data mounted) 
 
 ### ShinyProxy
 
-The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`, port 3838, DB folder mounted at `/opt/shinyapp`); we don't have its `application.yml`. The DB folder (`shinyapps/shinytigeR-DB/` on the server, uploaded by SFTP) holds:
+The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`, port 3838, DB folder mounted at `/opt/shinyapp`); we don't have its `application.yml`.
+
+**Hand out `https://tiger.uni-frankfurt.de/app_direct/shinytigeR/`, not `/app/shinytigeR`.** The latter is ShinyProxy's (2.x) wrapper page with the app in an iframe, and its template has no viewport meta tag: phones lay it out ~980 px wide, so none of the app's narrow-screen CSS ever applies (the app's own viewport tag is ignored inside an iframe). Not a CSS bug, don't chase it in `app.css`. Details and the admin question: `deploy/DEPLOYMENT.md`, "Which URL to hand out". The DB folder (`shinyapps/shinytigeR-DB/` on the server, uploaded by SFTP) holds:
 - `db_item.sqlite` (built with `make` in `item_database/`, see "Item DB format" under Commands), `db_user.sqlite`, `db_credentials.sqlite`
 - `db_ability.sqlite`: must exist (even as an empty file) in case single files are bind-mounted
 - `img_item/`: the item images (every image `db_item.sqlite` refers to). This relies on the whole folder being mounted, not single files; very likely already the case (the old app's SQLite writes needed a writable folder), still to confirm with the admin

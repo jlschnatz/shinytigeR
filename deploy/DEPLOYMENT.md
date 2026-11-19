@@ -166,6 +166,35 @@ For later app updates only steps 1, 3 (build folder) and 4 are needed; the DB
 folder stays as it is. New or changed items: upload `db_item.sqlite` and
 their images in `img_item/`, no build needed.
 
+## Which URL to hand out
+
+**<https://tiger.uni-frankfurt.de/app_direct/shinytigeR/>** (with the
+trailing slash, otherwise the app's relative CSS/JS/image paths can break).
+
+ShinyProxy serves every app under two routes:
+
+- `/app/shinytigeR` is ShinyProxy's own wrapper page (navbar, loading screen,
+  heartbeats, reconnect dialog) with the app in an iframe. The server runs an
+  older ShinyProxy 2.x whose template has **no viewport meta tag**, so phones
+  lay that page out ~980 px wide, the iframe gets the same width, and none of
+  the app's narrow-screen media/container queries ever match: on a phone it
+  looks like the laptop layout, scaled down. The app's own viewport tag
+  (added by bslib) doesn't help, browsers ignore it inside an iframe.
+  Checked Nov 2026.
+- `/app_direct/shinytigeR/` sends the browser straight to the container, so
+  the app is the top-level page and its viewport tag works. Confirmed on a
+  phone: the layout adapts.
+
+Nothing in tigeR needs the wrapper (login, logout, registration are in the
+app). Differences on the direct route: no loading screen (a cold start is a
+few seconds of blank page), Shiny's grey "disconnected" screen instead of
+ShinyProxy's reconnect dialog (a reload fixes both), and the wrapper's
+heartbeats are missing, so check once that an idle session (10–15 min)
+isn't cut off; if it is, the admin can raise `heartbeat-timeout`.
+
+The proper fix is on the admin's side (question 6 below); until then use
+the direct link everywhere (Moodle, slides, emails).
+
 ## Testing locally
 
 Needs Docker Desktop and about 4 GB of free disk. **Don't let the disk run
@@ -208,6 +237,12 @@ docker exec <name> sh -c 'id; echo $TZ $HOME; ls -la /opt/shinyapp'
 5. For the planned AI feedback: can the **running** container reach the
    internet (the LiteLLM/LLM endpoint)? And where should the API key go
    (`container-env`, or a file in the DB folder via `read_secret()`)?
+6. Can the ShinyProxy template get a viewport tag in its `<head>`
+   (`app.html`, or the template under `proxy.template-path`)?
+   `<meta name="viewport" content="width=device-width, initial-scale=1">`.
+   Without it the app doesn't adapt on phones under `/app/shinytigeR`
+   (see "Which URL to hand out"). Updating to ShinyProxy 3.x would also fix
+   it; alternatively redirect `/app/shinytigeR` to the `app_direct` URL.
 
 ## Troubleshooting
 
@@ -219,3 +254,4 @@ docker exec <name> sh -c 'id; echo $TZ $HOME; ls -la /opt/shinyapp'
 | Practice view shows no answer options, "Antwort prüfen" never enables | `db_item.sqlite` in an old format (`answer_mode` missing): build the pool again with `make` in `item_database/`, check with `check_deploy_dbs.R` |
 | Registration says "derzeit nicht verfügbar" | no semester code: `reg_code.txt` missing/empty and `TIGER_REG_CODE` unset |
 | Old student sees an empty dashboard | shouldn't happen any more (`db_get_userdata()` handles old tables without `skipped`); check that the build includes that fix |
+| Phone shows the laptop layout, scaled down | opened via `/app/shinytigeR`: ShinyProxy's wrapper page has no viewport tag. Use `/app_direct/shinytigeR/` (see "Which URL to hand out"), admin question 6 |
