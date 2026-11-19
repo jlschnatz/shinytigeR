@@ -170,11 +170,16 @@ db_get_credentials <- function(path = DB_CREDS()) {
   })
 }
 
+# Usernames are unique regardless of case: each user's answers live in a table
+# named after the username (db_user.sqlite, db_ability.sqlite), and SQLite
+# table names ignore case, so "Anna" and "anna" would share one table and see
+# each other's answers. NOCASE folds ASCII only, like SQLite's table names, and
+# REG_USERNAME_PATTERN allows only ASCII. Login itself stays case-sensitive.
 db_username_exists <- function(username, path = DB_CREDS()) {
   db_with(path, function(con) {
     res <- DBI::dbGetQuery(
       con,
-      "SELECT COUNT(*) AS n FROM credentials_db WHERE user_name = ?",
+      "SELECT COUNT(*) AS n FROM credentials_db WHERE user_name = ? COLLATE NOCASE",
       params = list(username)
     )
     res$n > 0L
@@ -186,7 +191,7 @@ db_register_user <- function(username, password_plain, path = DB_CREDS()) {
     DBI::dbExecute(con, "BEGIN IMMEDIATE")
     exists <- DBI::dbGetQuery(
       con,
-      "SELECT COUNT(*) AS n FROM credentials_db WHERE user_name = ?",
+      "SELECT COUNT(*) AS n FROM credentials_db WHERE user_name = ? COLLATE NOCASE",
       params = list(username)
     )$n > 0L
     if (exists) {

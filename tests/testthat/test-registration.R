@@ -28,10 +28,12 @@ test_that("db_username_exists returns FALSE for a user that does not exist", {
   expect_false(db_username_exists("new_user", path))
 })
 
-test_that("db_username_exists is case-sensitive", {
+test_that("db_username_exists ignores case", {
+  # per-user tables are named by username and SQLite table names ignore case,
+  # so "Existing_User" would share existing_user's answer data
   path <- make_creds_db()
-  expect_false(db_username_exists("Existing_User", path))
-  expect_false(db_username_exists("EXISTING_USER", path))
+  expect_true(db_username_exists("Existing_User", path))
+  expect_true(db_username_exists("EXISTING_USER", path))
 })
 
 # ── db_register_user — happy path ─────────────────────────────────────────────
@@ -82,6 +84,17 @@ test_that("db_register_user errors with 'username_taken' for an existing usernam
     regexp = "username_taken",
     fixed = TRUE
   )
+})
+
+test_that("db_register_user rejects a username that differs only in case", {
+  path <- make_creds_db()
+  expect_error(
+    db_register_user("Existing_User", "newpassword1", path),
+    regexp = "username_taken",
+    fixed = TRUE
+  )
+  n <- db_with(path, function(con) DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM credentials_db")$n)
+  expect_equal(n, 1L)
 })
 
 test_that("db_register_user does not overwrite the password of an existing user", {
