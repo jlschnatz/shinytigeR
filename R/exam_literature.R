@@ -65,10 +65,13 @@ ext_link <- function(text, url) {
 # middle one, "Vertiefen" when even the weakest area is good, so a strong
 # student isn't told about a backlog. With one certainty dot (the same dot
 # count as in the table) a second sentence says why it's still vague and what
-# helps. The level comes with its coloured segment from the strip in "Dein
+# helps. While not every area is in the ranking yet (`partial`), the sentence
+# says it only compares the areas worked on, so the named area doesn't read as
+# the weakest of all. The top tier says "in deinen geübten Themen" already.
+# The level comes with its coloured segment from the strip in "Dein
 # Lernstand" (same classes as competency_scale_bar()), so the two can be
 # matched.
-exam_lit_lead <- function(area, cl, dots) {
+exam_lit_lead <- function(area, cl, dots, partial = FALSE) {
   # "(▬ Aufbau)." as one HTML string (htmltools would put spaces inside the
   # parentheses), never broken across lines (CSS)
   level <- HTML(paste0(
@@ -81,9 +84,23 @@ exam_lit_lead <- function(area, cl, dots) {
     htmltools::htmlEscape(cl$label), ").</span>"
   ))
   sentence <- if (cl$level <= WEAK_AREA_TIERS[1]) {
-    tagList("Am meisten Nachholbedarf hast du gerade in dem Thema", tags$b(area), level)
+    tagList(
+      if (partial) {
+        "Von den Themen, die du bearbeitet hast, hast du am meisten Nachholbedarf gerade in dem Thema"
+      } else {
+        "Am meisten Nachholbedarf hast du gerade in dem Thema"
+      },
+      tags$b(area), level
+    )
   } else if (cl$level <= WEAK_AREA_TIERS[2]) {
-    tagList("Am meisten lohnt sich Wiederholen gerade in dem Thema", tags$b(area), level)
+    tagList(
+      if (partial) {
+        "Von den Themen, die du bearbeitet hast, lohnt sich Wiederholen am meisten gerade in dem Thema"
+      } else {
+        "Am meisten lohnt sich Wiederholen gerade in dem Thema"
+      },
+      tags$b(area), level
+    )
   } else {
     tagList(
       "Du bist in deinen geübten Themen schon weit. Am ehesten vertiefen kannst du noch das Thema",
@@ -140,7 +157,8 @@ exam_lit_excluded_note <- function(comp, theta_shown, min_items) {
 # items, a short note instead.
 exam_literature_card <- function(comp, lookup = exam_lookup(),
                                  min_items = WEAK_AREA_MIN_ITEMS) {
-  area <- rank_weak_areas(comp, min_items)[1]
+  ranked <- rank_weak_areas(comp, min_items)
+  area <- ranked[1]
   header <- bslib::card_header(
     class = "d-flex justify-content-between align-items-center gap-2",
     div(
@@ -198,7 +216,7 @@ exam_literature_card <- function(comp, lookup = exam_lookup(),
     class = "exam-lit-card",
     header,
     bslib::card_body(
-      exam_lit_lead(area, cl, dots),
+      exam_lit_lead(area, cl, dots, partial = length(ranked) < length(LEARNING_AREA_LEVELS)),
       exam_lit_excluded_note(comp, sel$theta, min_items),
       line("Lehrbuch", book_items),
       line("pandaR", pandar_items),

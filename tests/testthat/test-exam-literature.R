@@ -114,6 +114,20 @@ test_that("the sentence depends on the weakest area's level", {
   expect_no_match(t3, "Nachholbedarf")
 })
 
+test_that("with areas not yet in the ranking, the sentence says it compares the practised ones", {
+  comp <- data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = c(rep(2.5, 6), -1.5), se = 0.05, n_items = 20L
+  )
+  expect_no_match(lead_text(comp), "Von den Themen", fixed = TRUE)
+  # one area too few items, one never practised
+  comp$n_items[1] <- 3L
+  comp <- comp[-2, ]
+  expect_match(lead_text(comp), "Von den Themen, die du bearbeitet hast, hast du am meisten Nachholbedarf gerade in dem Thema Regression", fixed = TRUE)
+  comp$theta[comp$learning_area == "Regression"] <- 0.1
+  expect_match(lead_text(comp), "Von den Themen, die du bearbeitet hast, lohnt sich Wiederholen am meisten gerade in dem Thema Regression", fixed = TRUE)
+})
+
 test_that("an uncertain estimate (one dot) adds a sentence, a certain one doesn't", {
   comp <- function(se) {
     data.frame(
