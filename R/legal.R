@@ -50,6 +50,23 @@ legal_sections <- function(contact = CONTACT_EMAIL) {
       )
     ),
     list(
+      title = "Technische Daten beim Websitebesuch",
+      body = paste(
+        "Die Website wird auf einem Server der Goethe-Universität Frankfurt betrieben. Beim Zugriff auf die Website werden automatisch folgende technische Zugriffsdaten durch deinen Internet-Browser verarbeitet:",
+        "- IP-Adresse (anonymisiert)",
+        "- Datum und Uhrzeit des Zugriffs",
+        "- Typ und Version des Browsers",
+        "- Betriebssystem des Endgeräts",
+        "- URL der aufgerufenen Seite",
+        "- Referrer (Herkunftsseite)",
+        "- ggf. Fehlermeldungen",
+        "\nDiese Daten (sog. Server-Logfiles) werden ausschließlich zur Sicherstellung des technischen Betriebs, der Sicherheit und zur Fehleranalyse verwendet.",
+        "\nDiese so erhobenen Daten werden vorübergehend gespeichert, die Speicherung erfolg jedoch getrennt von den under Absatz 2 (\"Welche Daten tigeR verarbeitet\") aufgezählten Daten. Diese Speicherung erfolgt auf der Rechtsgrundlage von Art. 6 Abs. 1 lit. f) DSGVO. Unser berechtigtes Interesse liegt in der Verbesserung, Stabilität, Funktionalität und Sicherheit des Internetauftritts.",
+        "\nDie Server-Logfiles werden nach spätestens 7 Tagen automatisch gelöscht, bei Sicherheitsvorfällen bis zu 90 Tagen gespeichert (§ 14 HITSiG).",
+        sep = " \n"
+      )
+    ),
+    list(
       title = "Rechte und Beschwerdemöglichkeiten",
       body = paste(
         "Du hast gegenüber der Goethe-Universität folgende Rechte hinsichtlich deiner gespeicherten personenbezogenen Daten: ",
@@ -70,7 +87,7 @@ legal_sections <- function(contact = CONTACT_EMAIL) {
       title = "Änderung dieser Datenschutzerklärung",
       body = paste(
         "Wir behalten uns vor, diese Datenschutzerklärung anzupassen, um sie an geänderte rechtliche Anforderungen oder technische Entwicklungen anzupassen. Die jeweils aktuelle Version ist auf dieser Webseite abrufbar. ",
-        "\n\nStand: **9. November 2026**"
+        "\n\nStand: **19. November 2026**"
       )
     )
   )
@@ -87,7 +104,10 @@ legal_page <- function(sections = legal_sections()) {
       bslib::card(
         class = "legal-card",
         bslib::card_header(tags$b(s$title)),
-        bslib::card_body(div(class = "legal-text", shiny::HTML(faq_answer_html(s$body))))
+        bslib::card_body(div(
+          class = "legal-text",
+          shiny::HTML(faq_answer_html(s$body))
+        ))
       )
     })
   )
