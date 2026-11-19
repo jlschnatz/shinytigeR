@@ -13,6 +13,7 @@ A Shiny web application for Goethe University psychology students to practice st
 
 Authors:
 \itemize{
+  \item Jan Luca Schnatz \email{janlucaschnatz@gmail.com}
   \item Julia Beitner \email{Julia.Beitner@zi-mannheim.de}
 }
 
