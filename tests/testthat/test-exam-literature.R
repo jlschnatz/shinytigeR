@@ -134,12 +134,12 @@ test_that("a weaker area with too few items is named in a note", {
   )
   txt <- lead_text(comp)
   expect_match(txt, "Thema Regression", fixed = TRUE)
-  expect_match(txt, "Poweranalyse sieht nach deinen bisherigen 3 Aufgaben noch schwächer aus, allerdings sind das noch zu wenige, um eine verlässliche Aussage zu treffen.", fixed = TRUE)
+  expect_match(txt, "In Poweranalyse stehst du noch am Anfang: Deine bisherigen 3 Aufgaben dort deuten auf Nachholbedarf hin, sind aber noch zu wenige, um es sicher zu sagen. Ein paar Aufgaben mehr helfen.", fixed = TRUE)
   # two such areas, one of them with a single item
   comp$theta[2] <- -2; comp$n_items[2] <- 1L
-  expect_match(lead_text(comp), "Wahrscheinlichkeit und Poweranalyse sehen nach deinen bisherigen Aufgaben noch schwächer aus, allerdings sind das noch zu wenige", fixed = TRUE)
+  expect_match(lead_text(comp), "In Wahrscheinlichkeit und Poweranalyse stehst du noch am Anfang: Deine bisherigen Aufgaben dort deuten auf Nachholbedarf hin, sind aber noch zu wenige", fixed = TRUE)
   comp$theta[5] <- 1
-  expect_match(lead_text(comp), "Wahrscheinlichkeit sieht nach deiner bisherigen Aufgabe noch schwächer aus, allerdings ist eine Aufgabe noch zu wenig, um", fixed = TRUE)
+  expect_match(lead_text(comp), "In Wahrscheinlichkeit stehst du noch am Anfang: Deine bisherige Aufgabe dort deutet auf Nachholbedarf hin, ist aber noch zu wenig, um", fixed = TRUE)
   # a barely practised area that looks better isn't mentioned
   comp$theta[c(2, 5)] <- 1
   expect_no_match(lead_text(comp), "verlässliche Aussage")

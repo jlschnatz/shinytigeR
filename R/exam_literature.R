@@ -118,17 +118,21 @@ exam_lit_excluded_note <- function(comp, theta_shown, min_items) {
   } else {
     paste(paste(areas[-length(areas)], collapse = ", "), "und", areas[length(areas)])
   }
-  n_txt <- if (nrow(ex) > 1L) {
-    " sehen nach deinen bisherigen Aufgaben noch schwächer aus, allerdings sind das noch zu wenige"
+  txt <- if (nrow(ex) > 1L) {
+    "Deine bisherigen Aufgaben dort deuten auf Nachholbedarf hin, sind aber noch zu wenige"
   } else if (ex$n_items == 1L) {
-    " sieht nach deiner bisherigen Aufgabe noch schwächer aus, allerdings ist eine Aufgabe noch zu wenig"
+    "Deine bisherige Aufgabe dort deutet auf Nachholbedarf hin, ist aber noch zu wenig"
   } else {
-    sprintf(" sieht nach deinen bisherigen %d Aufgaben noch schwächer aus, allerdings sind das noch zu wenige", ex$n_items)
+    sprintf(
+      "Deine bisherigen %d Aufgaben dort deuten auf Nachholbedarf hin, sind aber noch zu wenige",
+      ex$n_items
+    )
   }
-  tags$p(
-    class = "exam-lit-note text-muted mb-0",
-    paste0(names_txt, n_txt, ", um eine verlässliche Aussage zu treffen.")
+  txt <- paste0(
+    "In ", names_txt, " stehst du noch am Anfang: ", txt,
+    ", um es sicher zu sagen. Ein paar Aufgaben mehr helfen."
   )
+  tags$p(class = "exam-lit-note text-muted mb-0", txt)
 }
 
 # Compact card below "Dein Lernstand": the weakest area, its textbook sections
