@@ -1,0 +1,510 @@
+# AI feedback (R/ai_feedback.R). The model is never called: ai_query_model()
+# is mocked, returning promises like the real one.
+
+# ── Fixtures ──────────────────────────────────────────────────────────────────
+
+# A snapshot shaped like latest_ability() (all 7 areas, the dashboard's input)
+make_comp <- function(theta, se = rep(0.4, 7), n_items = rep(10L, 7), computed_at = 1000L) {
+  data.frame(
+    learning_area = factor(LEARNING_AREA_LEVELS, levels = LEARNING_AREA_LEVELS),
+    theta = theta, se = se, n_items = as.integer(n_items),
+    n_provisional = 0L, computed_at = computed_at,
+    stringsAsFactors = FALSE
+  )
+}
+
+# Made-up sources: for every area one per learning function, covering all
+# levels, plus one only for levels 6-7
+make_lookup <- function() {
+  fns <- c("Einstieg", "Vertiefung", "Anwendung", "Nachschlagen")
+  rows <- list()
+  for (k in seq_along(AI_LOOKUP_COLUMNS)) {
+    for (j in seq_along(fns)) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        id = sprintf("s%d%d", k, j), display_name = sprintf("Quelle %d.%d", k, j),
+        link = sprintf("https://example.org/%d/%d", k, j), resource_type = "Video",
+        competence_min = 1, competence_max = if (j == 4L) 2 else 7,
+        learning_function = fns[j], difficulty = "Intuitiv", effort = "Kurz",
+        stringsAsFactors = FALSE
+      )
+    }
+    rows[[length(rows) + 1L]] <- data.frame(
+      id = sprintf("s%d9", k), display_name = sprintf("Profi %d", k),
+      link = sprintf("https://example.org/%d/9", k), resource_type = "Lehrbuch",
+      competence_min = 6, competence_max = 7, learning_function = "Anwendung",
+      difficulty = "Formal", effort = "Lang", stringsAsFactors = FALSE
+    )
+  }
+  df <- do.call(rbind, rows)
+  area <- as.integer(substr(df$id, 2, 2))
+  for (k in seq_along(AI_LOOKUP_COLUMNS)) df[[AI_LOOKUP_COLUMNS[[k]]]] <- area == k
+  df
+}
+
+# A DB folder with config, source list and key; returns its path
+local_ai_dir <- function(cfg = list(enabled = TRUE, models = c("m1", "m2")),
+                         lookup = make_lookup(), env = parent.frame()) {
+  dir <- withr::local_tempdir(.local_envir = env)
+  withr::local_envvar(TIGER_DB_DIR = dir, TIGER_LLM_KEY = "test-key", .local_envir = env)
+  if (!is.null(cfg)) jsonlite::write_json(cfg, file.path(dir, AI_CONFIG_FILE), auto_unbox = TRUE)
+  if (!is.null(lookup)) utils::write.csv(lookup, file.path(dir, AI_LOOKUP_FILE), row.names = FALSE)
+  dir
+}
+
+# Runs the event loop until the promise settles; its value, or its error
+wait_for <- function(p, timeout = 5) {
+  state <- new.env()
+  promises::then(p,
+    onFulfilled = function(v) state$value <- list(v),
+    onRejected = function(e) state$error <- e
+  )
+  end <- Sys.time() + timeout
+  while (is.null(state$value) && is.null(state$error) && Sys.time() < end) later::run_now(0.01)
+  if (!is.null(state$error)) stop(state$error)
+  if (is.null(state$value)) stop("promise did not settle")
+  state$value[[1]]
+}
+
+http_error <- function(status) {
+  structure(
+    class = c(paste0("httr2_http_", status), "httr2_http", "httr2_error", "error", "condition"),
+    list(message = sprintf("HTTP %d.", status), call = NULL)
+  )
+}
+
+# An answer as ellmer returns it: enum fields as factors
+fake_answer <- function(req, summary = "Du bist auf einem guten Weg.", text = "Schau dir das an.") {
+  focus <- req$focus$learning_area
+  ids <- vapply(focus, function(a) req$resources$id[req$resources$topic == a][1], character(1))
+  list(
+    summary = summary,
+    recommendations = data.frame(
+      topic = factor(focus), resource_id = factor(unname(ids)),
+      text = rep(text, length(focus)), stringsAsFactors = FALSE
+    )
+  )
+}
+
+fake_meta <- list(
+  input_tokens = 2300, output_tokens = 410, cached_tokens = 0,
+  reasoning_tokens = NA, finish_reason = "stop", response_model = "m", response_id = "x1"
+)
+
+# Mocks the model: `behaviour` is a named list, model -> function(req) that
+# returns the answer data or calls stop() with a condition
+mock_models <- function(behaviour, env = parent.frame()) {
+  calls <- new.env()
+  calls$log <- character(0)
+  testthat::local_mocked_bindings(
+    ai_query_model = function(model, req) {
+      calls$log <- c(calls$log, model)
+      res <- tryCatch(behaviour[[model]](req), error = function(e) e)
+      if (inherits(res, "error")) promises::promise_reject(res)
+      else promises::promise_resolve(list(data = res, meta = fake_meta))
+    },
+    ai_delay = function(seconds) promises::promise_resolve(TRUE),
+    .env = env
+  )
+  calls
+}
+
+comp_mixed <- function(computed_at = 1000L) {
+  make_comp(theta = c(1.2, 1.8, -0.6, 1.7, -1.8, 0.1, 1.9), computed_at = computed_at)
+}
+
+# ── Config and source list ────────────────────────────────────────────────────
+
+test_that("a missing, broken or empty config leaves the feature off", {
+  dir <- withr::local_tempdir()
+  expect_false(ai_config(dir)$enabled)
+
+  writeLines("{ not json", file.path(dir, AI_CONFIG_FILE))
+  expect_warning(cfg <- ai_config(dir), "can't be read")
+  expect_false(cfg$enabled)
+
+  jsonlite::write_json(list(enabled = TRUE, models = list()), file.path(dir, AI_CONFIG_FILE), auto_unbox = TRUE)
+  expect_false(ai_config(dir)$enabled)
+})
+
+test_that("the config is merged onto the defaults, model settings included", {
+  dir <- withr::local_tempdir()
+  writeLines('{
+    "enabled": true, "models": ["a/x", "b/y"], "cooldown_hours": 2,
+    "model_labels": {"a/x": "Modell X"},
+    "model_args": {"b/y": {"chat_template_kwargs": {"enable_thinking": false}}, "a/x": {}}
+  }', file.path(dir, AI_CONFIG_FILE))
+  cfg <- ai_config(dir)
+  expect_true(cfg$enabled)
+  expect_equal(cfg$models, c("a/x", "b/y"))
+  expect_equal(cfg$cooldown_hours, 2)
+  expect_equal(cfg$daily_limit, AI_CONFIG_DEFAULTS$daily_limit)
+  expect_equal(ai_model_label("a/x", cfg), "Modell X")
+  expect_equal(ai_model_label("b/y", cfg), "b/y")
+  expect_false(cfg$model_args[["b/y"]]$chat_template_kwargs$enable_thinking)
+  expect_length(cfg$model_args[["a/x"]], 0L) # "{}": send nothing extra
+})
+
+test_that("the source list reads Excel's logical columns in any spelling", {
+  dir <- withr::local_tempdir()
+  lk <- make_lookup()
+  lk$descriptive <- ifelse(lk$descriptive, "WAHR", "FALSCH")
+  lk$probability <- as.integer(lk$probability)
+  path <- file.path(dir, AI_LOOKUP_FILE)
+  utils::write.csv(lk, path, row.names = FALSE)
+  df <- read_ai_lookup(path)
+  expect_type(df$descriptive, "logical")
+  expect_equal(df$descriptive, make_lookup()$descriptive)
+  expect_equal(df$probability, make_lookup()$probability)
+  expect_null(read_ai_lookup(file.path(dir, "nope.csv")))
+})
+
+test_that("ai_lookup_problems() accepts a clean list and names the problems", {
+  lk <- make_lookup()
+  expect_length(ai_lookup_problems(lk), 0L)
+  expect_match(ai_lookup_problems(NULL), "missing")
+
+  bad <- lk
+  bad$id[2] <- bad$id[1]
+  bad$link[3] <- "example.org"
+  bad$competence_max[4] <- 9
+  bad$regression <- FALSE
+  p <- ai_lookup_problems(bad)
+  expect_true(any(grepl("duplicate ids: s11", p)))
+  expect_true(any(grepl("invalid link: s13", p)))
+  expect_true(any(grepl("level range.*s14", p)))
+  expect_true(any(grepl("no source for Regression", p)))
+  expect_true(any(grepl("no learning area", p)))
+  expect_match(ai_lookup_problems(lk[, -1]), "missing columns: id")
+})
+
+# ── Learning status, focus topics, sources ────────────────────────────────────
+
+test_that("the learning status uses the dashboard's levels and certainty dots", {
+  comp <- make_comp(
+    theta = c(0.4, -1.2, NA, 2.5, 0, 0, 0),
+    se = c(0.2, 0.9, NA, 0.3, NA, 0.4, 0.4),
+    n_items = c(20, 4, 0, 12, 2, 10, 10)
+  )
+  st <- ai_learning_status(comp)
+  expect_equal(st$learning_area, LEARNING_AREA_LEVELS[-3]) # no estimate: dropped
+  # 0.4 is "Solide" on COMPETENCY_SCALE (the prototype's thresholds said "Kompetent")
+  expect_equal(st$competence[1], "Solide")
+  expect_equal(st$competence[2], "Aufbau")
+  expect_equal(st$competence[3], "Souverän")
+  for (i in seq_len(nrow(st))) {
+    k <- match(st$learning_area[i], LEARNING_AREA_LEVELS)
+    cl <- competency_label(comp$theta[k], comp$n_items[k])
+    expect_equal(st$dots[i], certainty_dot_count(comp$theta[k], comp$se[k], comp$n_items[k], cl))
+  }
+  expect_equal(st$evidence, AI_EVIDENCE_WORDS[st$dots])
+  expect_equal(nrow(ai_learning_status(NULL)), 0L)
+})
+
+test_that("focus topics are the first three of rank_weak_areas()", {
+  # Poweranalyse is the lowest but has too few items: in the status, not in focus
+  comp <- make_comp(
+    theta = c(1.2, 1.8, -0.6, 1.7, -2.5, 0.1, -0.2),
+    n_items = c(10, 10, 10, 10, 3, 10, 10)
+  )
+  st <- ai_learning_status(comp)
+  focus <- ai_focus_topics(st, comp)
+  expect_equal(focus$learning_area, head(rank_weak_areas(comp), 3))
+  expect_equal(focus$learning_area, c("Grundlagen der Inferenzstatistik", "Regression", "Zusammenhangsmaße"))
+  expect_true("Poweranalyse" %in% st$learning_area)
+
+  few <- make_comp(theta = rep(0, 7), n_items = rep(3, 7))
+  expect_equal(nrow(ai_focus_topics(ai_learning_status(few), few)), 0L)
+})
+
+test_that("sources fit the area and level, keep every learning function, and are capped", {
+  set.seed(1)
+  comp <- comp_mixed()
+  st <- ai_learning_status(comp)
+  focus <- ai_focus_topics(st, comp)
+  res <- ai_select_resources(focus, make_lookup())
+  for (a in focus$learning_area) {
+    ids <- res$id[res$topic == a]
+    lk <- make_lookup()
+    lk <- lk[lk$id %in% ids, ]
+    expect_true(all(lk[[AI_LOOKUP_COLUMNS[[a]]]]))
+    lvl <- focus$level[focus$learning_area == a]
+    expect_true(all(lk$competence_min <= lvl & lk$competence_max >= lvl))
+  }
+  # Poweranalyse is "Aufbau" (level 1): all four learning functions, no level 6-7 source
+  pw <- res[res$topic == "Poweranalyse", ]
+  expect_setequal(pw$learning_function, c("Einstieg", "Vertiefung", "Anwendung", "Nachschlagen"))
+  expect_false("s59" %in% pw$id)
+
+  capped <- ai_select_resources(focus, make_lookup(), n_max = 2)
+  expect_true(all(table(capped$topic) <= 2))
+  expect_null(ai_select_resources(focus, make_lookup()[0, ]))
+  expect_null(ai_select_resources(focus, NULL))
+})
+
+# ── Prompt and schema ─────────────────────────────────────────────────────────
+
+test_that("the user prompt has levels and words only, no estimates", {
+  set.seed(1)
+  comp <- comp_mixed()
+  st <- ai_learning_status(comp)
+  focus <- ai_focus_topics(st, comp)
+  res <- ai_select_resources(focus, make_lookup())
+  p <- ai_user_prompt(st, focus, res)
+  expect_match(p, "^LERNSTAND\nDeskriptivstatistik: Fortgeschritten \\| Evidenz: ")
+  expect_match(p, "FOKUSTHEMEN\nGrundlagen der Inferenzstatistik, Poweranalyse, Zusammenhangsmaße\n", fixed = TRUE)
+  expect_match(p, "s51 | Quelle 5.1 | Video | Poweranalyse | Einstieg | Intuitiv | Kurz", fixed = TRUE)
+  expect_false(grepl("-0.6|1.8|0.4", p))
+})
+
+test_that("the system prompt gets the evidence words and a version", {
+  sp <- ai_system_prompt()
+  expect_false(grepl("[[EVIDENCE_", sp$text, fixed = TRUE))
+  expect_match(sp$text, paste(AI_EVIDENCE_WORDS, collapse = ", "), fixed = TRUE)
+  expect_match(sp$version, "^[0-9a-f]{8}$")
+})
+
+# ── Validation and format ─────────────────────────────────────────────────────
+
+test_that("validation keeps only preselected pairs, each source and topic once", {
+  resources <- data.frame(
+    id = c("a", "b", "c"), topic = c("Regression", "Regression", "Poweranalyse"),
+    stringsAsFactors = FALSE
+  )
+  focus <- data.frame(learning_area = c("Regression", "Poweranalyse"))
+  resp <- list(
+    summary = "  Gut.  ",
+    recommendations = data.frame(
+      topic = factor(c("Regression", "Regression", "Poweranalyse", "Poweranalyse")),
+      resource_id = factor(c("a", "b", "a", "c")),
+      text = c("eins", "zwei", "drei", "vier")
+    )
+  )
+  v <- ai_validate_response(resp, focus, resources)
+  expect_equal(v$summary, "Gut.")
+  expect_equal(v$recommendations$resource_id, c("a", "c"))
+  expect_type(v$recommendations$topic, "character")
+
+  resp$recommendations$resource_id <- factor(c("c", "c", "a", "b"))
+  expect_error(ai_validate_response(resp, focus, resources), "None of the recommendations")
+  expect_error(ai_validate_response(list(summary = ""), focus, resources), "no summary")
+})
+
+test_that("the format check counts internal terms at word starts and length", {
+  ok <- list(summary = "Du kommst gut voran.", recommendations = data.frame(text = "Probier das aus."))
+  expect_true(ai_check_format(ok)$passes)
+
+  bad <- ok
+  bad$summary <- "Dein Lernstand ist gut, die Evidenz hoch, dein Lernstands-Bild klar."
+  expect_equal(ai_check_format(bad)$forbidden_words, 3L)
+  # inside a compound it isn't the internal term
+  bad$summary <- "Dein Gesamtlernstand ist gut."
+  expect_true(ai_check_format(bad)$passes)
+
+  long <- ok
+  long$summary <- paste(rep("Wort", AI_MAX_WORDS_SUMMARY * AI_FORMAT_TOLERANCE + 1), collapse = " ")
+  expect_true(ai_check_format(long)$too_long)
+  expect_false(ai_check_format(long)$passes)
+})
+
+test_that("errors are classified so only connection problems block a model", {
+  expect_equal(ai_error_kind(http_error(429)), "rate_limit")
+  expect_equal(ai_error_kind(http_error(404)), "unavailable")
+  expect_equal(ai_error_kind(http_error(503)), "unavailable")
+  timeout <- structure(class = c("httr2_failure", "error", "condition"),
+    list(message = "Failed to perform HTTP request. Timeout was reached", call = NULL))
+  expect_equal(ai_error_kind(timeout), "timeout")
+  refused <- structure(class = c("httr2_failure", "error", "condition"),
+    list(message = "Failed to connect", call = NULL))
+  expect_equal(ai_error_kind(refused), "connection")
+  expect_equal(ai_error_kind(simpleError("Response contains no summary.")), "invalid")
+  expect_false("invalid" %in% AI_BLOCKING_ERRORS)
+  expect_false("rate_limit" %in% AI_BLOCKING_ERRORS)
+})
+
+# ── Status (may the student ask?) ─────────────────────────────────────────────
+
+test_that("the feature is off without config or key", {
+  local_ai_dir(cfg = NULL)
+  expect_equal(ai_feedback_status("u", comp_mixed())$state, "off")
+
+  local_ai_dir()
+  withr::local_envvar(TIGER_LLM_KEY = "")
+  expect_equal(ai_feedback_status("u", comp_mixed())$state, "off")
+})
+
+test_that("no feedback before an area has enough items", {
+  local_ai_dir()
+  few <- make_comp(theta = rep(0, 7), n_items = rep(3, 7))
+  st <- ai_feedback_status("u", few)
+  expect_equal(st$state, "no_data")
+  expect_match(st$notice, as.character(WEAK_AREA_MIN_ITEMS))
+})
+
+test_that("new feedback needs a newer snapshot and the cooldown to have passed", {
+  local_ai_dir()
+  now <- as.POSIXct("2026-11-20 12:00:00")
+  expect_equal(ai_feedback_status("u", comp_mixed(1000L), now = now)$state, "ready")
+
+  ai_db(function(con) {
+    DBI::dbExecute(con, "INSERT INTO feedback (id_user, created_at, ability_computed_at) VALUES (?, ?, ?)",
+      params = list("u", as.integer(now) - 3600L, 1000L))
+  })
+  # same snapshot as the last feedback
+  expect_equal(ai_feedback_status("u", comp_mixed(1000L), now = now)$state, "no_new_data")
+  # newer snapshot, but only 1 of 4 hours passed
+  st <- ai_feedback_status("u", comp_mixed(2000L), now = now)
+  expect_equal(st$state, "cooldown")
+  expect_equal(st$minutes, 180L)
+  expect_match(st$notice, "3 h 0 min")
+  # 4 hours later
+  expect_equal(ai_feedback_status("u", comp_mixed(2000L), now = now + 3 * 3600)$state, "ready")
+  # other users aren't affected
+  expect_equal(ai_feedback_status("v", comp_mixed(1000L), now = now)$state, "ready")
+})
+
+test_that("the daily limit counts today's API calls of all users", {
+  local_ai_dir(cfg = list(enabled = TRUE, models = "m1", daily_limit = 2))
+  ai_log_call("a", "m1", "ok", 1)
+  expect_equal(ai_feedback_status("u", comp_mixed())$state, "ready")
+  ai_log_call("b", "m1", "timeout", 30)
+  expect_equal(ai_feedback_status("u", comp_mixed())$state, "daily_limit")
+})
+
+# ── The whole run ─────────────────────────────────────────────────────────────
+
+test_that("a good answer from the first model is saved with its call's metadata", {
+  local_ai_dir(cfg = list(enabled = TRUE, models = c("m1", "m2"), model_labels = list(m1 = "Modell 1")))
+  calls <- mock_models(list(m1 = function(req) fake_answer(req)))
+  req <- ai_feedback_prepare("u", comp_mixed())
+  expect_true(req$ok)
+  out <- wait_for(ai_feedback_run(req, "tok"))
+
+  expect_true(out$ok)
+  expect_null(out$notice)
+  expect_equal(calls$log, "m1")
+  fb <- ai_latest_feedback("u")
+  expect_equal(fb$id_feedback, out$id_feedback)
+  expect_equal(fb$model, "m1")
+  expect_equal(fb$used_fallback, 0L)
+  expect_equal(fb$ability_computed_at, 1000L)
+  expect_equal(nrow(fb$recommendations), 3L)
+  expect_true(all(grepl("^Quelle", fb$recommendations$title)))
+  expect_true(all(grepl("^https://example.org/", fb$recommendations$link)))
+
+  call <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT * FROM api_call"))
+  expect_equal(nrow(call), 1L)
+  expect_equal(call$outcome, "ok")
+  expect_equal(call$id_feedback, out$id_feedback)
+  expect_equal(call$input_tokens, 2300L)
+  expect_equal(call$output_tokens, 410L)
+  expect_equal(call$finish_reason, "stop")
+  saved <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT * FROM feedback"))
+  expect_equal(saved$prompt_version, ai_system_prompt()$version)
+  expect_equal(saved$user_prompt, req$user_prompt)
+  expect_false(grepl("test-key|^u$", saved$user_prompt))
+})
+
+test_that("a timeout falls back to the next model, says so, and blocks the model", {
+  local_ai_dir(cfg = list(
+    enabled = TRUE, models = c("m1", "m2"),
+    model_labels = list(m1 = "Modell 1", m2 = "Modell 2")
+  ))
+  timeout <- structure(class = c("httr2_failure", "error", "condition"),
+    list(message = "Timeout was reached", call = NULL))
+  calls <- mock_models(list(m1 = function(req) stop(timeout), m2 = function(req) fake_answer(req)))
+  out <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_true(out$ok)
+  expect_match(out$notice, "Modell 1.*Modell 2")
+  expect_equal(ai_latest_feedback("u")$used_fallback, 1L)
+  expect_equal(ai_blocked_models(), "m1")
+
+  # the next request (another user) skips m1 straight away
+  calls$log <- character(0)
+  out2 <- wait_for(ai_feedback_run(ai_feedback_prepare("v", comp_mixed()), "tok"))
+  expect_true(out2$ok)
+  expect_equal(calls$log, "m2")
+})
+
+test_that("an unusable answer tries the next model but doesn't block the first", {
+  local_ai_dir()
+  mock_models(list(
+    m1 = function(req) list(summary = "x", recommendations = data.frame(
+      topic = factor("Regression"), resource_id = factor("s11"), text = "y"
+    )),
+    m2 = function(req) fake_answer(req)
+  ))
+  out <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_true(out$ok)
+  expect_equal(ai_latest_feedback("u")$model, "m2")
+  expect_length(ai_blocked_models(), 0L)
+  outcomes <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT model, outcome FROM api_call ORDER BY id_call"))
+  expect_equal(outcomes$outcome, c("invalid", "ok"))
+})
+
+test_that("an answer breaking the format rules is only used if nothing better comes", {
+  local_ai_dir()
+  mock_models(list(
+    m1 = function(req) fake_answer(req, summary = "Dein Lernstand ist gut."),
+    m2 = function(req) fake_answer(req)
+  ))
+  wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_equal(ai_latest_feedback("u")$model, "m2")
+
+  local_ai_dir(cfg = list(enabled = TRUE, models = "m1"))
+  mock_models(list(m1 = function(req) fake_answer(req, summary = "Dein Lernstand ist gut.")))
+  out <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_true(out$ok)
+  saved <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT model, format_ok FROM feedback"))
+  expect_equal(saved$format_ok, 0L)
+})
+
+test_that("too many requests waits and asks the same model again, then gives up", {
+  local_ai_dir()
+  n <- 0L
+  mock_models(list(
+    m1 = function(req) {
+      n <<- n + 1L
+      if (n < 3L) stop(http_error(429)) else fake_answer(req)
+    },
+    m2 = function(req) stop("m2 must not be asked")
+  ))
+  out <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_true(out$ok)
+  expect_equal(n, 3L)
+  expect_equal(ai_latest_feedback("u")$model, "m1")
+
+  local_ai_dir()
+  calls <- mock_models(list(m1 = function(req) stop(http_error(429)), m2 = function(req) fake_answer(req)))
+  out <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_false(out$ok)
+  expect_match(out$notice, "viele Personen")
+  expect_equal(calls$log, rep("m1", AI_RATE_LIMIT_TRIES)) # another model wouldn't help
+  expect_length(ai_blocked_models(), 0L)
+})
+
+test_that("nothing usable from any model: no feedback, a notice", {
+  local_ai_dir()
+  mock_models(list(m1 = function(req) stop(http_error(503)), m2 = function(req) stop(http_error(404))))
+  out <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  expect_false(out$ok)
+  expect_match(out$notice, "nicht verfügbar")
+  expect_null(ai_latest_feedback("u"))
+})
+
+test_that("prepare stops early without a source list or fitting sources", {
+  local_ai_dir(lookup = NULL)
+  expect_false(ai_feedback_prepare("u", comp_mixed())$ok)
+  local_ai_dir(lookup = make_lookup()[0, ])
+  out <- ai_feedback_prepare("u", comp_mixed())
+  expect_false(out$ok)
+  expect_match(out$notice, "keine passenden Materialien")
+})
+
+test_that("a source removed from the list since shows without title and link", {
+  local_ai_dir()
+  mock_models(list(m1 = function(req) fake_answer(req)))
+  wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))
+  fb <- ai_latest_feedback("u", lookup = make_lookup()[0, ])
+  expect_true(all(is.na(fb$recommendations$title)))
+  expect_equal(nrow(fb$recommendations), 3L)
+})

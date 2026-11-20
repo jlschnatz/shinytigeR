@@ -1,7 +1,7 @@
 #' @keywords internal
 "_PACKAGE"
 
-utils::globalVariables(c("date", "theta", "area_short"))
+utils::globalVariables(c("date", "theta", "area_short", "await"))
 
 ## usethis namespace: start
 #' @import shiny

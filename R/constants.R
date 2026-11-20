@@ -122,6 +122,76 @@ WEAK_AREA_MIN_ITEMS <- 5L
 # a backlog). Levels 1-2 Aufbau/Basis, 3-4 Solide/Kompetent, 5-7 the rest
 WEAK_AREA_TIERS <- c(2L, 4L)
 
+# ── AI feedback ("Persönliches Feedback", R/ai_feedback.R) ───────────────────
+# Settings that change at runtime live in the DB folder, so they can be
+# changed by SFTP without a rebuild: the config (AI_CONFIG_FILE, read on every
+# request; missing or broken = feature off), the source list (AI_LOOKUP_FILE,
+# not in the package because the repo is public) and the API key
+# (TIGER_LLM_KEY, else AI_KEY_FILE, via read_secret()).
+DB_FEEDBACK <- function() file.path(.db_dir(), "db_feedback.sqlite")
+AI_CONFIG_FILE <- "ai_config.json"
+AI_LOOKUP_FILE <- "ai_lookup.csv"
+AI_KEY_ENV <- "TIGER_LLM_KEY"
+AI_KEY_FILE <- "llm_key.txt"
+# The system prompt (German), shipped with the package
+AI_SYSTEM_PROMPT_FILE <- "ai_system_prompt.txt"
+
+# Defaults for the optional keys of AI_CONFIG_FILE
+AI_CONFIG_DEFAULTS <- list(
+  enabled = FALSE,
+  base_url = "https://litellm.s.studiumdigitale.uni-frankfurt.de/v1/",
+  models = character(0),
+  model_labels = list(),
+  model_args = list(),
+  cooldown_hours = 4,
+  daily_limit = 1000L, # API calls per day, all users together
+  timeout_seconds = 30, # per call
+  max_tokens = 3000L, # incl. a reasoning model's thinking
+  reasoning_effort = "low" # sent to every model without an entry in model_args
+)
+
+# Recommendations are given for the first AI_FOCUS_TOPICS areas of
+# rank_weak_areas() (the "Zum Nacharbeiten" ranking), choosing from at most
+# AI_MAX_RESOURCES_PER_TOPIC sources per area
+AI_FOCUS_TOPICS <- 3L
+AI_MAX_RESOURCES_PER_TOPIC <- 10L
+
+# The certainty dots (1-3, certainty_dot_count()) as words for the model.
+# They replace [[EVIDENCE_1]] ... [[EVIDENCE_3]] in the system prompt.
+AI_EVIDENCE_WORDS <- c("niedrig", "mittel", "hoch")
+
+# Column of AI_LOOKUP_FILE that marks a source as fitting a learning area
+AI_LOOKUP_COLUMNS <- c(
+  "Deskriptivstatistik" = "descriptive",
+  "Wahrscheinlichkeit" = "probability",
+  "Grundlagen der Inferenzstatistik" = "inference",
+  "Gruppenvergleiche" = "group_comparisons",
+  "Poweranalyse" = "power_analysis",
+  "Zusammenhangsmaße" = "association",
+  "Regression" = "regression"
+)
+
+# Format rules from the system prompt, checked after the answer arrives. An
+# answer that breaks them is only used if no other model gives a clean one.
+# AI_FORBIDDEN_WORDS are word stems: they match at the start of a word.
+AI_MAX_WORDS_SUMMARY <- 120L
+AI_MAX_WORDS_RECOMMENDATION <- 40L
+AI_FORMAT_TOLERANCE <- 1.25
+AI_FORBIDDEN_WORDS <- c(
+  "Evidenz", "Kompetenzstufe", "Lernstand", "Fokusthem",
+  "Schwerpunkt", "Ressource", "Lernfunktion"
+)
+
+# Error handling. "Too many requests" (HTTP 429) is about the key, not the
+# model: wait and ask the same model again, at most AI_RATE_LIMIT_TRIES times.
+# A model that failed with one of AI_BLOCKING_ERRORS in the last
+# AI_BLOCK_MINUTES is skipped (for everyone); a bad answer ("invalid")
+# doesn't block it.
+AI_RATE_LIMIT_TRIES <- 3L
+AI_RATE_LIMIT_WAIT_S <- 5
+AI_BLOCK_MINUTES <- 10
+AI_BLOCKING_ERRORS <- c("timeout", "connection", "unavailable")
+
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L
