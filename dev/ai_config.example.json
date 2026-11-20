@@ -9,6 +9,6 @@
   "model_args": {
     "gwdg/qwen3.8-27b": {"chat_template_kwargs": {"enable_thinking": false}}
   },
-  "cooldown_hours": 4,
+  "cooldown_minutes": 240,
   "daily_limit": 1000
 }

@@ -143,7 +143,7 @@ AI_CONFIG_DEFAULTS <- list(
   models = character(0),
   model_labels = list(),
   model_args = list(),
-  cooldown_hours = 4,
+  cooldown_minutes = 240,
   daily_limit = 1000L, # API calls per day, all users together
   timeout_seconds = 30, # per call
   max_tokens = 3000L, # incl. a reasoning model's thinking

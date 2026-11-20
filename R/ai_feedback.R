@@ -449,7 +449,7 @@ ai_log_link_click <- function(user_id, id_feedback, position) {
 # list(state, notice, minutes): state is "ready", or why not:
 #   off          disabled in the config, or no API key
 #   no_data      no area with enough items for a focus topic yet
-#   cooldown     cooldown_hours since the last feedback haven't passed. The
+#   cooldown     cooldown_minutes since the last feedback haven't passed. The
 #                only limit per student: after it, a new feedback is possible
 #                on the same estimate too (e.g. if the last one didn't help;
 #                the sources are drawn anew each time)
@@ -477,12 +477,15 @@ ai_feedback_status <- function(user_id, comp, cfg = ai_config(), now = Sys.time(
     )
   })
   if (nrow(last) == 1L) {
-    seconds_left <- last$created_at + cfg$cooldown_hours * 3600 - as.integer(now)
+    seconds_left <- last$created_at + cfg$cooldown_minutes * 60 - as.integer(now)
     if (seconds_left > 0) {
       minutes <- as.integer(ceiling(seconds_left / 60))
-      return(out("cooldown", sprintf(
-        "Ein neues Feedback ist in %d h %d min möglich.", minutes %/% 60L, minutes %% 60L
-      ), minutes))
+      wait <- if (minutes < 60L) {
+        sprintf("%d min", minutes)
+      } else {
+        sprintf("%d h %d min", minutes %/% 60L, minutes %% 60L)
+      }
+      return(out("cooldown", sprintf("Ein neues Feedback ist in %s möglich.", wait), minutes))
     }
   }
   if (ai_calls_today(now) >= cfg$daily_limit) {

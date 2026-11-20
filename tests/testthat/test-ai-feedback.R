@@ -18,14 +18,14 @@ test_that("a missing, broken or empty config leaves the feature off", {
 test_that("the config is merged onto the defaults, model settings included", {
   dir <- withr::local_tempdir()
   writeLines('{
-    "enabled": true, "models": ["a/x", "b/y"], "cooldown_hours": 2,
+    "enabled": true, "models": ["a/x", "b/y"], "cooldown_minutes": 90,
     "model_labels": {"a/x": "Modell X"},
     "model_args": {"b/y": {"chat_template_kwargs": {"enable_thinking": false}}, "a/x": {}}
   }', file.path(dir, AI_CONFIG_FILE))
   cfg <- ai_config(dir)
   expect_true(cfg$enabled)
   expect_equal(cfg$models, c("a/x", "b/y"))
-  expect_equal(cfg$cooldown_hours, 2)
+  expect_equal(cfg$cooldown_minutes, 90)
   expect_equal(cfg$daily_limit, AI_CONFIG_DEFAULTS$daily_limit)
   expect_equal(ai_model_label("a/x", cfg), "Modell X")
   expect_equal(ai_model_label("b/y", cfg), "b/y")
@@ -251,6 +251,28 @@ test_that("new feedback needs only the cooldown to have passed, also on the same
   expect_equal(ai_feedback_status("u", comp_mixed(2000L), now = now + 3 * 3600)$state, "ready")
   # other users aren't affected
   expect_equal(ai_feedback_status("v", comp_mixed(1000L), now = now)$state, "ready")
+})
+
+test_that("the cooldown is set in minutes; short ones read without hours, 0 turns it off", {
+  now <- as.POSIXct("2026-11-20 12:00:00")
+  last_feedback <- function() {
+    ai_db(function(con) {
+      DBI::dbExecute(con, "INSERT INTO feedback (id_user, created_at) VALUES (?, ?)",
+        params = list("u", as.integer(now) - 60L))
+    })
+  }
+  local_ai_dir(cfg = list(enabled = TRUE, models = "m1", cooldown_minutes = 10))
+  last_feedback()
+  st <- ai_feedback_status("u", comp_mixed(), now = now)
+  expect_equal(st$state, "cooldown")
+  expect_equal(st$notice, "Ein neues Feedback ist in 9 min möglich.")
+  expect_equal(ai_feedback_status("u", comp_mixed(), now = now + 9 * 60)$state, "ready")
+
+  local_ai_dir(cfg = list(enabled = TRUE, models = "m1", cooldown_minutes = 0))
+  last_feedback()
+  expect_equal(ai_feedback_status("u", comp_mixed(), now = now)$state, "ready")
+
+  expect_equal(AI_CONFIG_DEFAULTS$cooldown_minutes, 240)
 })
 
 test_that("the daily limit counts today's API calls of all users", {
