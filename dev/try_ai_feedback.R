@@ -6,7 +6,7 @@
 #
 # user     a user with a saved ability estimate in db_ability.sqlite
 #          (default: tiger_demo, see dev/add_showcase_user.R)
-# --force  ignore cooldown, "no newer estimate" and the daily limit
+# --force  ignore the cooldown and the daily limit
 #
 # Uses the DB folder (TIGER_DB_DIR, default ../db) like the app: needs
 # ai_config.json (copy dev/ai_config.example.json), ai_lookup.csv

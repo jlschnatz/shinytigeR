@@ -281,21 +281,6 @@ test_that("format_prob_de rounds to 5 % steps and clamps the extremes", {
   expect_equal(format_prob_de(0.99), "über 95 %")
 })
 
-# ── ai_feedback_card ──────────────────────────────────────────────────────────
-
-test_that("ai_feedback_card shows the placeholder when there is no feedback", {
-  html <- as.character(ai_feedback_card(NULL))
-  expect_match(html, "Bald verfügbar", fixed = TRUE)
-  expect_match(html, "ai-feedback-skeleton", fixed = TRUE)
-})
-
-test_that("ai_feedback_card renders Markdown feedback instead of the placeholder", {
-  html <- as.character(ai_feedback_card("Du bist **stark** in Regression."))
-  expect_match(html, "<strong>stark</strong>", fixed = TRUE)
-  expect_no_match(html, "ai-feedback-skeleton", fixed = TRUE)
-  expect_no_match(html, "Bald verfügbar", fixed = TRUE)
-})
-
 # ── answer tree ───────────────────────────────────────────────────────────────
 
 tree_ud <- function(id_item, bool_correct, skipped = rep(FALSE, length(id_item))) {

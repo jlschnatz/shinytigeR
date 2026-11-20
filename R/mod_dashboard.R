@@ -144,47 +144,6 @@ format_date_de <- function(date) {
   )
 }
 
-# Right-hand card next to "Dein Lernstand". `feedback` is the generated text
-# (Markdown, rendered via render_md()); NULL shows the placeholder. This is
-# the hook for the personalized LLM feedback planned in the "kiwi" project —
-# the card chrome stays, only the source of `feedback` needs wiring up.
-ai_feedback_card <- function(feedback = NULL) {
-  bslib::card(
-    height = "100%",
-    class = "ai-feedback-card",
-    bslib::card_header(
-      class = "d-flex justify-content-between align-items-center",
-      div(
-        class = "d-flex align-items-center gap-2",
-        bsicons::bs_icon("stars"),
-        tags$b("Persönliches Feedback")
-      ),
-      if (is.null(feedback)) tags$span(class = "ai-feedback-badge", "Bald verfügbar")
-    ),
-    bslib::card_body(
-      if (is.null(feedback)) {
-        tagList(
-          tags$p(
-            class = "text-muted mb-4",
-            "Hier bekommst du bald eine KI-gestützte Rückmeldung zu deinem ",
-            "Lernstand: was dir schon gut gelingt, wo es noch hakt und welche ",
-            "Aufgaben dich als Nächstes weiterbringen."
-          ),
-          div(
-            class = "ai-feedback-skeleton",
-            `aria-hidden` = "true",
-            lapply(c(92, 78, 85, 60), function(w) {
-              div(class = "ai-skel-line", style = sprintf("width:%d%%;", w))
-            })
-          )
-        )
-      } else {
-        div(class = "ai-feedback-text", HTML(render_md(feedback)))
-      }
-    )
-  )
-}
-
 # Reshapes the raw db_ability.sqlite history (one row per learning area per
 # computed_at batch) into a plot-ready long data.frame: drops batches with no
 # usable theta for that area and adds POSIXct `time` and Date `date` columns.
@@ -704,10 +663,11 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
             exam_literature_card(comp)
           ),
 
-          # AI feedback (placeholder until the "kiwi" LLM feedback lands)
+          # AI feedback (R/ai_feedback_card.R): its own output, so it isn't
+          # rebuilt with dash_content after every answer
           div(
             class = "col-lg-5",
-            ai_feedback_card(feedback = NULL)
+            uiOutput(session$ns("ai_feedback"), class = "h-100")
           )
         ),
 
@@ -739,5 +699,77 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     # dash_content re-renders after every answer (building the 7 specs takes
     # ~0.1 s)
     trajectory_ui <- reactive(trajectory_section(trajectory_hist(), session$ns))
+
+    # ── AI feedback (R/ai_feedback.R, R/ai_feedback_card.R) ──────────────────
+    # Created in an ExtendedTask: ai_feedback_run() is async (a promise), so
+    # the session stays usable while the model writes. Whether a new one is
+    # possible (cooldown, daily limit, ...) is ai_feedback_status().
+    ai_user <- reactive(credentials()$info$user_name)
+    ai_version <- reactiveVal(0L) # bumped when a feedback was created
+    ai_flash <- reactiveVal(NULL) # message from the last click
+    ai_task <- ExtendedTask$new(function(req, token) ai_feedback_run(req, token))
+
+    ai_status <- reactive({
+      ai_version()
+      st <- ai_feedback_status(ai_user(), competency())
+      if (st$state == "cooldown") invalidateLater(60 * 1000)
+      st
+    })
+    ai_latest <- reactive({
+      ai_version()
+      ai_latest_feedback(ai_user())
+    })
+
+    observeEvent(input$ai_create, {
+      if (ai_task$status() == "running") {
+        return()
+      }
+      req_ai <- ai_feedback_prepare(ai_user(), competency())
+      if (!req_ai$ok) {
+        ai_flash(list(type = "warning", text = req_ai$notice))
+        return()
+      }
+      ai_flash(NULL)
+      ai_task$invoke(req_ai, session$token)
+    })
+
+    observeEvent(ai_task$status(), {
+      status <- ai_task$status()
+      if (status == "success") {
+        res <- ai_task$result()
+        ai_flash(if (!isTRUE(res$ok)) list(type = "warning", text = res$notice))
+        ai_version(ai_version() + 1L)
+      } else if (status == "error") {
+        msg <- tryCatch({
+          ai_task$result()
+          ""
+        }, error = function(e) conditionMessage(e))
+        message("AI feedback failed: ", msg)
+        ai_flash(list(
+          type = "warning",
+          text = "Beim Erstellen ist ein Fehler aufgetreten. Bitte versuch es später noch einmal."
+        ))
+        ai_version(ai_version() + 1L)
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$ai_link, {
+      ai_log_link_click(ai_user(), input$ai_link$id, input$ai_link$pos)
+    })
+
+    output$ai_feedback <- renderUI({
+      st <- ai_status()
+      ai_feedback_card(
+        list(
+          state = st$state,
+          notice = st$notice,
+          running = ai_task$status() == "running",
+          feedback = if (st$state != "off") ai_latest(),
+          cfg = ai_config(),
+          flash = ai_flash()
+        ),
+        ns = session$ns
+      )
+    })
   })
 }

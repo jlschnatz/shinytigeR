@@ -418,14 +418,41 @@ ai_latest_feedback <- function(user_id, lookup = read_ai_lookup()) {
   })
 }
 
+# A click on a recommended source. The ids come from the browser, so it's
+# only written if that feedback is the student's and has that position.
+# TRUE if written.
+ai_log_link_click <- function(user_id, id_feedback, position) {
+  id <- suppressWarnings(as.integer(id_feedback))
+  pos <- suppressWarnings(as.integer(position))
+  if (length(id) != 1L || length(pos) != 1L || is.na(id) || is.na(pos)) {
+    return(FALSE)
+  }
+  ai_db(function(con) {
+    found <- DBI::dbGetQuery(con, "
+      SELECT 1 FROM recommendation r JOIN feedback f ON f.id_feedback = r.id_feedback
+      WHERE f.id_feedback = ? AND f.id_user = ? AND r.position = ?",
+      params = list(id, user_id, pos)
+    )
+    if (nrow(found) == 0L) {
+      return(FALSE)
+    }
+    DBI::dbExecute(con, "
+      INSERT INTO link_click (id_feedback, position, id_user, created_at) VALUES (?, ?, ?, ?)",
+      params = list(id, pos, user_id, as.integer(Sys.time()))
+    )
+    TRUE
+  })
+}
+
 # ── 5. May the student ask for feedback now? ──────────────────────────────────
 
 # list(state, notice, minutes): state is "ready", or why not:
 #   off          disabled in the config, or no API key
 #   no_data      no area with enough items for a focus topic yet
-#   no_new_data  the ability estimate hasn't changed since the last feedback
-#                (it would get the same input again)
-#   cooldown     cooldown_hours since the last feedback haven't passed
+#   cooldown     cooldown_hours since the last feedback haven't passed. The
+#                only limit per student: after it, a new feedback is possible
+#                on the same estimate too (e.g. if the last one didn't help;
+#                the sources are drawn anew each time)
 #   daily_limit  the config's daily_limit of API calls is reached
 # notice is the German text for the student (NULL when ready).
 ai_feedback_status <- function(user_id, comp, cfg = ai_config(), now = Sys.time()) {
@@ -444,19 +471,12 @@ ai_feedback_status <- function(user_id, comp, cfg = ai_config(), now = Sys.time(
   }
   last <- ai_db(function(con) {
     DBI::dbGetQuery(con, "
-      SELECT created_at, ability_computed_at FROM feedback WHERE id_user = ?
+      SELECT created_at FROM feedback WHERE id_user = ?
       ORDER BY created_at DESC LIMIT 1",
       params = list(user_id)
     )
   })
   if (nrow(last) == 1L) {
-    snapshot <- max(comp$computed_at, na.rm = TRUE)
-    if (!is.na(last$ability_computed_at) && last$ability_computed_at >= snapshot) {
-      return(out("no_new_data", paste(
-        "Ein neues Feedback gibt es, sobald sich dein Lernstand verändert hat:",
-        "Bearbeite weitere Aufgaben und aktualisiere ihn dann im Fortschritt."
-      )))
-    }
     seconds_left <- last$created_at + cfg$cooldown_hours * 3600 - as.integer(now)
     if (seconds_left > 0) {
       minutes <- as.integer(ceiling(seconds_left / 60))

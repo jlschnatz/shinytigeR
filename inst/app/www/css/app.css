@@ -1037,7 +1037,7 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   .comp-footer { flex-direction: column; align-items: stretch !important; }
 }
 
-/* ── Dashboard — AI feedback card (placeholder) ────────────────────────────── */
+/* ── Dashboard — AI feedback card (R/ai_feedback_card.R) ───────────────────── */
 .ai-feedback-badge {
   font-size: var(--fs-tiny);
   font-weight: var(--fw-semibold);
@@ -1062,7 +1062,76 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 @media (prefers-reduced-motion: reduce) {
   .ai-skel-line { animation: none; }
 }
-.ai-feedback-text p:last-child { margin-bottom: 0; }
+.ai-fb-note { font-size: var(--fs-secondary); }
+.ai-fb-summary { font-size: var(--fs-text); line-height: 1.55; }
+/* the recommendations: numbered, each topic / linked title / tip */
+.ai-fb-recs {
+  list-style: none;
+  counter-reset: ai-rec;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-inner);
+}
+.ai-fb-rec {
+  counter-increment: ai-rec;
+  position: relative;
+  padding: 0.6rem 0.75rem 0.6rem 2.6rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fafbfc;
+}
+.ai-fb-rec::before {
+  content: counter(ai-rec);
+  position: absolute;
+  left: 0.75rem;
+  top: 0.6rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--tiger-primary);
+  color: #fff;
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-fb-topic {
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-semibold);
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ai-fb-title { font-size: var(--fs-label); font-weight: var(--fw-semibold); }
+.ai-fb-ext { margin-left: 0.3em; vertical-align: -0.05em; }
+.ai-fb-gone { font-size: var(--fs-secondary); color: var(--bs-secondary-color); font-style: italic; }
+.ai-fb-text { font-size: var(--fs-secondary); margin: 0.25rem 0 0; line-height: 1.5; }
+/* message from the last click (e.g. the API was unavailable) */
+.ai-fb-flash {
+  margin-top: var(--gap-inner);
+  font-size: var(--fs-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border-left: 3px solid var(--tiger-skip);
+  background: #fff8e6;
+}
+.ai-fb-flash.is-info { border-left-color: var(--tiger-primary); background: #e8f0f7; }
+/* footer: who wrote it, then the button or why there's none yet */
+.ai-fb-footer { display: flex; flex-direction: column; gap: 0.5rem; }
+.ai-fb-meta, .ai-fb-wait {
+  font-size: var(--fs-small);
+  color: var(--bs-secondary-color);
+  margin: 0;
+}
+.ai-fb-btn { align-self: flex-end; display: inline-flex; align-items: center; gap: 0.4rem; }
+/* while a new one is written, the old feedback stays, dimmed */
+.ai-feedback-card.is-running .ai-fb { opacity: 0.55; transition: opacity var(--anim-dur); }
+@media (max-width: 575.98px) {
+  .ai-fb-btn { align-self: stretch; justify-content: center; }
+}
 
 /* ── Dashboard — top row: left column and "Zum Nacharbeiten" ──────────────── */
 /* Left: "Dein Lernstand" with the compact literature card below it; right:
