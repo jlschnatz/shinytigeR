@@ -127,6 +127,7 @@ app_v3/
 │   ├── mod_dashboard.R    # module: progress dashboard
 │   ├── mod_faq.R          # module: FAQ tab (static UI: contact line, questions from faq.R)
 │   ├── faq.R              # FAQ entries as data: faq_entries(), FAQ_TOPICS, faq_section()
+│   ├── ai_feedback.R      # AI feedback ("Persönliches Feedback"): config, prompt, async model calls, db_feedback.sqlite — backend only, card not wired yet
 │   ├── exam_literature.R  # dashboard: "Zum Nacharbeiten" (exam literature for the weakest area), rank_weak_areas()
 │   ├── legal.R            # Impressum & Datenschutz page (legal_sections(), legal_page()) + the footer (app_footer())
 │   └── dashboard_details.R  # dashboard's bottom sections: "Lernstand im Detail" + "Lernverhalten" (pure helpers, no module)
@@ -134,11 +135,15 @@ app_v3/
 ├── dev/                     # README.md: which script is needed when
 │   ├── run.R                    # local dev entrypoint — rv run dev/run.R
 │   ├── seed_db.R                 # creates db_credentials.sqlite + empty db_user.sqlite; copies db_item_sample.sqlite in if db_item.sqlite is missing
+│   ├── export_ai_lookup.R        # AI feedback's source list: Excel -> ai_lookup.csv in the DB folder (needs readxl, plain Rscript)
+│   ├── try_ai_feedback.R         # generates AI feedback for a local user and prints it with the API calls' metadata
+│   ├── ai_config.example.json    # template for ai_config.json in the DB folder
 │   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (current format? sample items? images? files present?)
 │   ├── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
 │   └── img_item_sample/          # the sample items' images; seed_db.R copies them to <DB folder>/img_item
 │
 ├── inst/extdata/
+│   ├── ai_system_prompt.txt  # AI feedback's system prompt (German); its MD5 prefix is stored as prompt_version
 │   └── lookup_exam.csv    # exam literature per learning area (textbook sections, pandaR links), see R/exam_literature.R
 │
 ├── inst/app/
@@ -181,6 +186,10 @@ app/
     ├── db_ability.sqlite      # persisted per-user ability (theta) snapshots
     ├── db_credentials.sqlite  # hashed passwords
     ├── reg_code.txt           # semester code (optional locally)
+    ├── db_feedback.sqlite     # AI feedback: feedbacks, every API call, ratings (created on first use)
+    ├── ai_config.json         # AI feedback: on/off, models, cooldown, daily limit (optional; missing = off)
+    ├── ai_lookup.csv          # AI feedback: source list (dev/export_ai_lookup.R; not in the repo, it's public)
+    ├── llm_key.txt            # AI feedback: API key, only if TIGER_LLM_KEY isn't set (local; server: env var preferred)
     └── img_item/              # item images; paths baked into db_item.sqlite, don't rename without migrating
 ```
 
@@ -283,6 +292,7 @@ Single source of truth for:
 | `CONTACT_EMAIL` | `character` | Shown in error messages (e.g. registration unavailable) and on the home panel |
 | `REG_USERNAME_PATTERN` / `REG_PW_MIN_LENGTH` / `REG_MAX_ATTEMPTS` / `REG_ATTEMPT_DELAY_S` | validation constants | Used by `mod_register.R` — see that section below |
 | `REG_CODE_FILE` | `character` | `"reg_code.txt"`: semester-code file in the DB folder, used when `TIGER_REG_CODE` isn't set (`read_secret()`) |
+| `AI_*`, `DB_FEEDBACK()` | various | AI feedback, see `R/ai_feedback.R` below: file names in the DB folder (`AI_CONFIG_FILE`, `AI_LOOKUP_FILE`, `AI_KEY_FILE`, env var `AI_KEY_ENV` = `TIGER_LLM_KEY`), `AI_CONFIG_DEFAULTS`, focus topics/sources per topic, `AI_EVIDENCE_WORDS`, `AI_LOOKUP_COLUMNS` (area → source-list column), format rules, rate-limit/blocking rules |
 
 > **Important:** `ITEM_TYPE_LABELS` values (`"content"`, `"coding"`) must exactly match the `type_item` column in `db_item.sqlite`. If item types change in the DB, update this constant.
 
@@ -375,6 +385,20 @@ The FAQ tab. The questions are **data** in `R/faq.R`: `faq_entries()` returns a 
 ### `R/legal.R` (Impressum & Datenschutz, footer)
 
 One public page, `legal_panel` in `ui.R` (not a tab: its nav link is hidden in `app.css` like `home_panel`'s), works before login like the FAQ. It's reached from the **footer on every page** (`app_footer()`, passed as `page_navbar(footer = ...)`): "tigeR · Goethe-Universität Frankfurt" and the link „Impressum & Datenschutz“, an `actionLink("show_legal")` whose observer in `server.R` sits **before** the auth gate. The footer is **fixed to the window's bottom**, so the link is always in view (in the page flow it only showed after scrolling to the end). Its height is the token `--footer-h`, and everything else at the bottom sits above it: the body's bottom padding, the practice view's sticky button bar and options column, the feedback's `scroll-margin` (and the scroll check in `practice.js`), Shiny's notification panel. Keep them in sync when adding something sticky at the bottom. For the padding to work, `app.css` overrides bslib's fill page (`body.bslib-page-fill { height: auto; min-height: 100vh }`): with it the body was exactly the window's height and long tabs overflowed it. Below 576 px the footer shows only the link. The sections are data (`legal_sections()`, Markdown, rendered like FAQ answers, links in a new tab), one card each. **Final text** since Nov 2026 (it replaced a provisional one taken from pandaR). Keep what tigeR stores in sync with the FAQ answer; no claims about the server or cookies, no anonymity promise. The footer names the lab too; it shows only from 992 px (`.app-footer-lab`), and the name ends in "…" rather than pushing the link away. Tests: `tests/testthat/test-legal.R`.
+
+### `R/ai_feedback.R` (AI feedback, backend)
+
+> **Status:** backend done and tested (`tests/testthat/test-ai-feedback.R`, model mocked), **not wired into the dashboard yet** (`ai_feedback_card()` still shows the placeholder). Try it without the app: `rv run dev/try_ai_feedback.R [user] [--force]`. Ported from the kiwi prototype (`kiwi/ai_feedback/`, its `TECHNICAL_DOCUMENTATION.md` explains the prompt design and the model comparison).
+
+A short personal summary plus up to three recommended sources, written by a language model via the university's LiteLLM API (OpenAI-compatible, `ellmer::chat_openai_compatible()`). **Only levels go to the model, as words**: no θ, no SE, no user id. The model picks sources by id from a preselected list (`ai_schema()` restricts `topic`/`resource_id` to enums), so titles and links always come from the source list and can't be invented.
+
+- **Same levels as the dashboard:** `ai_learning_status(comp)` takes the dashboard's `competency()` snapshot (`latest_ability()`) and uses `competency_label()` and `certainty_dot_count()`; the dots go to the model as `AI_EVIDENCE_WORDS` (niedrig/mittel/hoch), and the system prompt explains them as "how sure the level is" (could be a level higher or lower: few answers *or* close to a boundary), not as "few answers". The prototype had its own thresholds; don't reintroduce them.
+- **Focus topics** = the first `AI_FOCUS_TOPICS` (3) of `rank_weak_areas()`, the "Zum Nacharbeiten" ranking, so both cards talk about the same areas. Areas with < `WEAK_AREA_MIN_ITEMS` stay in LERNSTAND but can't be focus topics. **Which one to start with is the model's call** (decided: it may differ from "Zum Nacharbeiten"). `ai_select_resources()` filters the source list by area and level (`competence_min`/`max` are `COMPETENCY_SCALE` indices), shuffles, keeps one per learning function first, caps at `AI_MAX_RESOURCES_PER_TOPIC`.
+- **Runtime settings are in the DB folder**, read on every request (SFTP, no build): `ai_config.json` (`ai_config()`: `enabled`, `models` in fallback order, `model_labels` shown to students, `model_args` per model, e.g. `{"chat_template_kwargs": {"enable_thinking": false}}`, `{}` = send nothing extra; `cooldown_hours`, `daily_limit`, `timeout_seconds`, `max_tokens`, `reasoning_effort`, `base_url`). **Missing/unreadable/no models = off** (the kill switch is `"enabled": false`). `ai_lookup.csv` (`read_ai_lookup()`, checked by `ai_lookup_problems()`; Excel's logical columns are read in any spelling). The key: `read_secret("TIGER_LLM_KEY", "llm_key.txt")`; on the server preferably as ShinyProxy `container-env` (not on the data volume).
+- **When a student may ask** (`ai_feedback_status()`): feature on and key present → an area qualifies (`no_data`) → the latest estimate is newer than the one the last feedback used (`no_new_data`: the same input would just get reworded) → `cooldown_hours` (4) since the last feedback (`cooldown`) → today's API calls of all users < `daily_limit`. Each state has a German `notice`.
+- **Async, no extra R process:** `ai_query_model()` uses `chat_structured_async()` (a promise, httr2 underneath), so the session stays usable; the card will run it in an `ExtendedTask`. The prototype's two mirai daemons would have meant two extra R processes per ShinyProxy container. `ai_feedback_run()` and `ai_try_model()` are `coro::async()` functions (readable loops with `await()`); **coro can't compile `x <- if (...)` in an async body**, that's why `ai_feedback_finish()` is a plain function. `await` is in `globalVariables()`.
+- **Fallback chain:** models in config order, skipping those blocked (any user) after an `AI_BLOCKING_ERRORS` outcome (`timeout`, `connection`, `unavailable` = HTTP 4xx/5xx, e.g. a removed model) in the last `AI_BLOCK_MINUTES`; all blocked = try all. A bad answer (`invalid`) doesn't block. HTTP 429 (`rate_limit`) is the key's limit: wait `AI_RATE_LIMIT_WAIT_S` and ask the same model again (`AI_RATE_LIMIT_TRIES`), then give up without trying others. An answer breaking the format rules (`ai_check_format()`: length × `AI_FORMAT_TOLERANCE`, `AI_FORBIDDEN_WORDS` matched at word starts) is kept only if no other model gives a clean one (saved with `format_ok = 0`). Students see which model wrote it, and a notice when it wasn't the first (decided: they should know).
+- **ellmer is pinned to 0.4.1 and httr2 to 1.2.2** (URL entries in `rproject.toml`, from the CRAN archive): ellmer ≥ 0.5.0 / httr2 ≥ 1.2.3 need rlang ≥ 1.3.0, and `rv add ellmer` wanted to replace ~30 locked packages. (rlang still moved 1.2.0 → 1.3.0 in that sync, nothing else did.) Settings read by ellmer: `options(ellmer_timeout_s, ellmer_max_tries = 1)`, set per call.
 
 ### `R/mod_register.R`
 
@@ -502,7 +526,7 @@ Snapshots saved before `se` was stored fall back to item-count dots (`evidence_l
 
 **"Zum Nacharbeiten" card** (below "Dein Lernstand", `exam_literature_card()` in `R/exam_literature.R`): the deterministic part of the kiwi feedback, not AI-generated. For the **weakest area** (`rank_weak_areas()`: lowest saved θ among the areas whose estimate rests on ≥ `WEAK_AREA_MIN_ITEMS` = 5 items, ties in `LEARNING_AREA_LEVELS` order; with fewer items an area looks weak by chance) one sentence (`exam_lit_lead()`), the level with its coloured segment from the strip in „Dein Lernstand“ (same `.comp-seg` classes, kept on one line). **Its wording depends on the area's level** (`WEAK_AREA_TIERS`): levels 1–2 „Am meisten Nachholbedarf hast du gerade in dem Thema …“, 3–4 „Am meisten lohnt sich Wiederholen …“, 5–7 „Du bist in deinen geübten Themen schon weit. Am ehesten vertiefen kannst du noch …“, so a strong student isn't told about a backlog. **While not every area is in the ranking yet** (never practised or too few items), levels 1–4 start with „Von den Themen, die du bearbeitet hast, …“, so the named area doesn't read as the weakest of all (5–7 already say „in deinen geübten Themen“). **With one certainty dot** (`certainty_dot_count()`, the same count as the table's dots) a second sentence follows: „Diese Einschätzung beruht noch auf wenigen Antworten. Mit ein paar Aufgaben mehr aus diesem Thema wird sie genauer.“ Certainty changes only the wording, not the ranking (an uncertainty-weighted ranking would sometimes name a different area than the one that looks worst in the table). **Areas left out for too few items but looking even weaker** are named in a grey note below (`exam_lit_excluded_note()`: „In Poweranalyse stehst du noch am Anfang: Deine bisherigen 3 Aufgaben dort deuten auf Nachholbedarf hin, sind aber noch zu wenige, um es sicher zu sagen. Ein paar Aufgaben mehr helfen.“), so a student with one bad, barely practised area knows why it isn't the one named, then one line each for the exam-relevant textbook sections („Abschnitte 17.1 – 17.8, 19.13“, followed by a link to the e-book in the university library, `EXAM_BOOK_URL`, university login) and the pandaR articles (links in a new tab), the book's citation (`EXAM_BOOK`) below. An empty line is left out; before any area qualifies, a note asks for more practice. Only the weakest area on purpose (one clear recommendation); the AI feedback is meant to take the first three of the same ranking, so both talk about the same areas. The data is **`inst/extdata/lookup_exam.csv`** (`EXAM_LOOKUP_FILE`), maintained by hand: **one row per entry**, in display order, columns `learning_area` (full name), `type` (`lehrbuch`: the sections of Eid et al. as text, e.g. „17.1 – 17.8, 19.13“; `pandar`: an article), `text` (the sections or the article title) and `url` (pandaR only). One row per entry rather than several links in one cell (tried first): nothing to parse, and each entry can get its own columns later. A CSV in the package, not a database: only read, changes a few times a semester, versioned and tested with the code (`test-exam-literature.R`: known areas and types, complete rows, pandaR URLs, every area has sections and an article). Read once per process (`exam_lookup()`). The AI feedback (part 2) gets its own, larger lookup table. **Layout of the top row:** left column (`.dash-left`) „Dein Lernstand“ with this card below it, right the AI card as tall as both.
 
-**"Persönliches Feedback" card** (top right, next to "Dein Lernstand") is rendered by `ai_feedback_card(feedback)`. It's currently a placeholder (`feedback = NULL`: explanatory text, a "Bald verfügbar" badge and shimmering skeleton lines, which stop animating under `prefers-reduced-motion`). Passing a Markdown string renders it via `render_md()` instead. Personalized LLM feedback is planned for the "kiwi" project, and this function is where it plugs in.
+**"Persönliches Feedback" card** (top right, next to "Dein Lernstand") is rendered by `ai_feedback_card(feedback)`. It's currently a placeholder (`feedback = NULL`: explanatory text, a "Bald verfügbar" badge and shimmering skeleton lines, which stop animating under `prefers-reduced-motion`). Passing a Markdown string renders it via `render_md()` instead. Personalized LLM feedback is planned for the "kiwi" project, and this function is where it plugs in; the backend is `R/ai_feedback.R` (see above), the card isn't wired to it yet. When it is: AI-generated label (legally required), model name, the status notice, rating buttons via `Shiny.setInputValue` (not `actionButton`s in `renderUI`), its own output (not inside `dash_content`, which re-renders after every answer).
 
 There is no rule-based "Empfohlene nächste Schritte" card any more (`recommend_next()` was removed): the AI feedback card plus the "Lernverhalten" section below are meant to replace it. There are no summary tiles in the top row either (removed on purpose; effort numbers live in "Lernverhalten").
 
@@ -524,7 +548,7 @@ There is no rule-based "Empfohlene nächste Schritte" card any more (`recommend_
 
 ## Databases
 
-Four SQLite files, location controlled by the `TIGER_DB_DIR` environment variable:
+Five SQLite files, location controlled by the `TIGER_DB_DIR` environment variable:
 
 ### `db_item.sqlite` — item pool (read-only at runtime)
 
@@ -605,6 +629,22 @@ One table per user, named by `id_user`. Each row is one learning area's estimate
 | `se` | real | Standard error of `theta` (`sem_1pl()`), or `NA`. Added later: tables created before it get the column on their next write, and their older rows keep `NULL` |
 | `n_items` | integer | Number of items (latest-attempt-deduped) feeding that area's estimate |
 | `n_provisional` | integer | How many of those had only a preliminary difficulty (`irt_provisional`). Added later like `se`: older rows read as NA and the sentence then just leaves it out |
+
+### `db_feedback.sqlite` — AI feedback (read-write at runtime)
+
+Shared tables with an `id_user` column (not one table per user), created on first use (`AI_DB_SCHEMA`, `ai_db()`):
+
+| Table | One row per | Columns (besides `id_feedback`/`id_user`) |
+|---|---|---|
+| `feedback` | generated feedback | `id_session`, `created_at`, `ability_computed_at` (the snapshot it's based on, for `no_new_data`), `model`, `used_fallback`, `format_ok`, `prompt_version` (MD5 prefix of the prompt file), `summary`, `user_prompt` (what was sent: levels, focus topics, sources; no user id), `duration_seconds` (click to answer, all models) |
+| `recommendation` | recommendation of a feedback | `position`, `topic`, `resource_id`, `text`. Title and link are looked up in the **current** source list when shown (NA if removed since) |
+| `api_call` | call to the API, successful or not | `created_at`, `model`, `outcome` (`ok`, `format`, `invalid`, `rate_limit`, `timeout`, `connection`, `unavailable`), `message`, `duration_seconds`, `input_tokens`, `output_tokens`, `cached_tokens`, `reasoning_tokens` (if reported), `finish_reason` (`length` = hit `max_tokens`), `response_model`, `response_id`; `id_feedback` set on the call whose answer was used. Also the source for blocking and the daily limit (replaces the prototype's `error_log`) |
+| `rating` | feedback and student (primary key, updated, not appended) | `helpful` (1/0), `comment`, `created_at`, `updated_at` |
+| `rating_reason` | reason ticked with a rating | `reason_code` (stable codes, not the German labels) |
+| `recommendation_report` | problem reported for one recommendation | `position`, `created_at`, `reason_code`, `comment` |
+| `link_click` | click on a recommended source | `position`, `created_at` |
+
+The last four tables exist but nothing writes them yet (the rating UI comes with the card). Comments are stored, which the privacy page and FAQ will need to say, together with the data going to the university's LiteLLM API.
 
 ### `db_credentials.sqlite` — authentication
 
@@ -729,7 +769,8 @@ The admin's ShinyProxy config is unchanged from the old app (image `shinytiger`,
 - `db_item.sqlite` (built with `make` in `item_database/`, see "Item DB format" under Commands), `db_user.sqlite`, `db_credentials.sqlite`
 - `db_ability.sqlite`: must exist (even as an empty file) in case single files are bind-mounted
 - `img_item/`: the item images (every image `db_item.sqlite` refers to). This relies on the whole folder being mounted, not single files; very likely already the case (the old app's SQLite writes needed a writable folder), still to confirm with the admin
-- `reg_code.txt`: the semester code (first non-empty line). `read_secret()` (`R/utils.R`) prefers the env var **`TIGER_REG_CODE`** if ShinyProxy's `container-env` sets it, else reads this file on every registration attempt, so it can be changed by SFTP without the admin or a rebuild. Never under `www/` (served to browsers), never in the image. The planned LLM API key should use the same helper.
+- `reg_code.txt`: the semester code (first non-empty line). `read_secret()` (`R/utils.R`) prefers the env var **`TIGER_REG_CODE`** if ShinyProxy's `container-env` sets it, else reads this file on every registration attempt, so it can be changed by SFTP without the admin or a rebuild. Never under `www/` (served to browsers), never in the image. The LLM API key uses the same helper (`TIGER_LLM_KEY`, else `llm_key.txt`); preferred on the server as `container-env`, so it isn't on the data volume or in its backups.
+- `ai_config.json`, `ai_lookup.csv` (AI feedback, optional: without the config the feature is off; `db_feedback.sqlite` is created by the app). See `deploy/DEPLOYMENT.md`, step 2
 
 The folder itself must be writable for uid 1002, not just the files: SQLite (WAL mode) writes `-wal`/`-shm` files next to the databases.
 
@@ -753,6 +794,8 @@ R -q -e "options(shiny.port = 3838, shiny.host = '0.0.0.0'); shinytigeR::run_app
 3. Add `@importFrom pkg fn` to `R/shinytigeR-package.R` (or use `pkg::fn()` in code)
 4. Run `devtools::document()` to update `NAMESPACE`
 5. Run `rv run deploy/build.R` — the sysreqs API will automatically detect any new system dependencies
+
+Run `rv add <pkg> --dry-run` (or `rv plan` after editing `rproject.toml`) first and look at what else changes. A package needing a newer version of something already locked can shift many packages; pin an older version with a URL entry instead (`{ name = "pkg", url = "https://cran.r-project.org/src/contrib/Archive/..." }`, as for ellmer/httr2). rv refuses to sync while an R session has the library's compiled packages loaded ("we want to remove is in use"): that lists the loaded packages, not version changes; close the session.
 
 ## Adding a new item type or learning area
 

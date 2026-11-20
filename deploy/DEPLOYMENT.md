@@ -26,6 +26,9 @@ shinyapps/
 └── shinytigeR-DB/          DB folder, mounted into the container at /opt/shinyapp:
     ├── db_item.sqlite, db_user.sqlite, db_credentials.sqlite, db_ability.sqlite
     ├── reg_code.txt
+    ├── ai_config.json      AI feedback: on/off, models, cooldown (read on every request)
+    ├── ai_lookup.csv       AI feedback: the source list (dev/export_ai_lookup.R)
+    ├── db_feedback.sqlite  AI feedback: created by the app on first use
     └── img_item/           the item images (since Nov 2026, before: in the package)
 ```
 
@@ -120,6 +123,17 @@ Then, in a separate local folder:
   folder's README; `make` already runs the items-only check below).
 - **`db_ability.sqlite`**: an empty file (`touch db_ability.sqlite`).
 - **`reg_code.txt`**: the semester code on the first line.
+- **AI feedback** (optional; without `ai_config.json` the feature is simply off):
+  - `ai_config.json`: from `dev/ai_config.example.json`. `"enabled": false`
+    switches it off at once, without a build. Missing or unreadable file = off.
+  - `ai_lookup.csv`: `Rscript dev/export_ai_lookup.R <lookup.xlsx> <folder>`
+    (exports the Excel list and refuses if it has problems). The list isn't in
+    the repo because the repo is public.
+  - The API key: preferably `TIGER_LLM_KEY` as `container-env`, set by the
+    admin (question 5). Only if that's not possible: `llm_key.txt` (first
+    line) in the DB folder, readable only by uid 1002, and left out of every
+    download/backup of the folder.
+  - `db_feedback.sqlite` is created by the app; don't upload one.
 - `db_user.sqlite` and `db_credentials.sqlite` stay **the server's** (don't
   upload local copies over them). They need no migration: old user tables are
   read as they are, missing columns are added on the next write.
@@ -230,13 +244,19 @@ docker exec <name> sh -c 'id; echo $TZ $HOME; ls -la /opt/shinyapp'
 
 1. Which parts of the old Dockerfile are required? Is the `CMD` one of them
    (ours keeps port and host, drops the debugging/cache options)?
-2. Can the build reach `github.com` (new: the `rv` download)?
+2. Can the build reach `github.com` (new: the `rv` download) and
+   `cran.r-project.org` (ellmer 0.4.1 and httr2 1.2.2 come from the CRAN
+   archive, pinned in `rproject.toml` so rlang and ~30 other packages stay at
+   their locked versions)?
 3. Can uid 1002 write the DB folder itself (SQLite's `-wal`/`-shm` files)?
 4. Optional: can `TIGER_REG_CODE` be set as `container-env` in ShinyProxy?
    (Otherwise `reg_code.txt` is used.)
-5. For the planned AI feedback: can the **running** container reach the
-   internet (the LiteLLM/LLM endpoint)? And where should the API key go
-   (`container-env`, or a file in the DB folder via `read_secret()`)?
+5. For the AI feedback: can the **running** container reach
+   `litellm.s.studiumdigitale.uni-frankfurt.de` (HTTPS)? And can the API key
+   be set as `container-env` `TIGER_LLM_KEY` in ShinyProxy? That's preferred
+   over `llm_key.txt` in the DB folder: the key then isn't on the data volume
+   or in its backups. (Changing the key then needs the admin; the app reads it
+   on every request, so new containers pick it up without a rebuild.)
 6. Can the ShinyProxy template get a viewport tag in its `<head>`
    (`app.html`, or the template under `proxy.template-path`)?
    `<meta name="viewport" content="width=device-width, initial-scale=1">`.
@@ -252,6 +272,8 @@ docker exec <name> sh -c 'id; echo $TZ $HOME; ls -la /opt/shinyapp'
 | `rv sync` fails on `cran.r-project.org/__linux__/...` | the CRAN entry in `rproject.toml` needs `force_source = true` (rv looks for Linux binaries in every repository; only PPM has them) |
 | `Could not find an R version matching 4.6` | corrupted base image (see disk-full note above); remove it and rebuild |
 | Practice view shows no answer options, "Antwort prüfen" never enables | `db_item.sqlite` in an old format (`answer_mode` missing): build the pool again with `make` in `item_database/`, check with `check_deploy_dbs.R` |
+| "Persönliches Feedback" says "zurzeit nicht verfügbar" | `ai_config.json` missing, unreadable or `"enabled": false`, or no key (`TIGER_LLM_KEY` unset and no `llm_key.txt`) |
+| "Persönliches Feedback" says "gerade nicht verfügbar" | every model failed: look at the `api_call` table in `db_feedback.sqlite` (`outcome`, `message`). All `connection`: the container can't reach the API (question 5); `unavailable` with 401: wrong key; 404: the model was removed from the API, change `models` in `ai_config.json` |
 | Registration says "derzeit nicht verfügbar" | no semester code: `reg_code.txt` missing/empty and `TIGER_REG_CODE` unset |
 | Old student sees an empty dashboard | shouldn't happen any more (`db_get_userdata()` handles old tables without `skipped`); check that the build includes that fix |
 | Phone shows the laptop layout, scaled down | opened via `/app/shinytigeR`: ShinyProxy's wrapper page has no viewport tag. Use `/app_direct/shinytigeR/` (see "Which URL to hand out"), admin question 6 |
