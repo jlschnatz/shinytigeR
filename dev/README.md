@@ -7,7 +7,7 @@ Scripts for working on the app locally. Run them from the project root with
 | Script | When |
 |---|---|
 | `run.R` | Every time: starts the app at <http://localhost:7331> |
-| `check_deploy_dbs.R [--items-only] [folder]` | Before every upload to the server: checks the DB folder (files, item DB format, no sample items, all images present). Read-only. `--items-only` checks just the item pool (`db_item.sqlite`, `img_item/`), e.g. a release folder from `tigertools::build_release()` |
+| `check_deploy_dbs.R [--items-only] [folder]` | Before every upload to the server: checks the DB folder (files, item DB format, no sample items, all images present, the AI feedback's config and source list). Read-only. `--items-only` checks just the item pool (`db_item.sqlite`, `img_item/`), e.g. a release folder from `tigertools::build_release()` |
 | `seed_db.R` | Once, on a fresh clone without the real databases: creates the DB folder with a test account and the sample pool. Never overwrites an existing pool |
 | `add_mock_user.R` | To try the dashboard with data: adds a fake user who has answered every item. Local only |
 | `add_showcase_user.R [username]` | Before a demo: adds a showcase account (default `tiger_demo`) with 5 weeks of simulated practice that shows every dashboard feature. Dates are relative to the run day, so run it shortly before the demo. Password in `SHOWCASE_ACCOUNT.txt` in the DB folder |

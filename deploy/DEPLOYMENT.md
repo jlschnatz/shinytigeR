@@ -145,7 +145,11 @@ rv run dev/check_deploy_dbs.R <folder>
 ```
 
 It must end with "Ready to upload". It also lists items without `irt_diff`
-(they don't count towards the ability estimate).
+(they don't count towards the ability estimate). For the AI feedback it checks
+`ai_config.json` (readable, models listed, no unknown keys such as the old
+`cooldown_hours`, and no cooldown of 0, the local testing value) and
+`ai_lookup.csv`, and says where the key comes from. Without `ai_config.json`
+it only notes that the feature is off.
 
 ### 3. Upload (SFTP)
 

@@ -11,6 +11,8 @@
 #
 # --items-only checks just db_item.sqlite and img_item/, e.g. a freshly built
 # pool in a release folder that has no user or credentials databases.
+# Otherwise the AI feedback's ai_config.json and ai_lookup.csv are checked too
+# (if there's a config; without one the feature is just off).
 
 args <- commandArgs(trailingOnly = TRUE)
 items_only <- "--items-only" %in% args
@@ -146,6 +148,63 @@ if (!items_only && file.exists(file.path(dir, "db_credentials.sqlite"))) {
       fail("db_credentials.sqlite has no credentials_db table")
     }
   })
+}
+
+# ── AI feedback (optional) ────────────────────────────────────────────────────
+# Without ai_config.json the feature is off, which is fine. With one, it must
+# be usable as it is: readable, models listed, a real cooldown (0 is for local
+# testing), and a valid source list (ai_lookup.csv).
+if (!items_only) {
+  cat("\n")
+  cfg_file <- file.path(dir, "ai_config.json")
+  if (!file.exists(cfg_file)) {
+    warn("no ai_config.json: AI feedback is off")
+  } else {
+    if (!exists("ai_config", mode = "function")) suppressMessages(pkgload::load_all(quiet = TRUE))
+    raw <- tryCatch(jsonlite::fromJSON(cfg_file, simplifyVector = TRUE), error = function(e) e)
+    if (inherits(raw, "error") || !is.list(raw)) {
+      fail("ai_config.json can't be read (invalid JSON): AI feedback would be off")
+    } else {
+      unknown <- setdiff(names(raw), names(AI_CONFIG_DEFAULTS))
+      if (length(unknown) > 0L) {
+        fail(sprintf("ai_config.json: unknown key(s) %s (ignored by the app; misspelt or renamed?)", paste(unknown, collapse = ", ")))
+      }
+      cfg <- ai_config(dir)
+      if (!isTRUE(raw$enabled)) {
+        warn("ai_config.json: \"enabled\" is false, AI feedback is off")
+      } else if (length(cfg$models) == 0L) {
+        fail("ai_config.json: enabled, but no models listed (AI feedback would be off)")
+      } else {
+        ok(sprintf("AI feedback on, models in this order: %s", paste(cfg$models, collapse = ", ")))
+        no_label <- setdiff(cfg$models, names(cfg$model_labels))
+        if (length(no_label) > 0L) {
+          warn(sprintf("no model_labels entry for %s: students see the API id", paste(no_label, collapse = ", ")))
+        }
+        if (cfg$cooldown_minutes <= 0) {
+          fail("cooldown_minutes is 0: that's the local testing value (default 240)")
+        } else if (cfg$cooldown_minutes < 60) {
+          warn(sprintf("cooldown_minutes is only %s (default 240)", cfg$cooldown_minutes))
+        } else {
+          ok(sprintf("cooldown %s min, daily limit %s API calls", cfg$cooldown_minutes, cfg$daily_limit))
+        }
+        lookup_problems <- ai_lookup_problems(read_ai_lookup(file.path(dir, AI_LOOKUP_FILE)))
+        if (length(lookup_problems) == 0L) {
+          ok(sprintf("%s: %d sources", AI_LOOKUP_FILE, nrow(read_ai_lookup(file.path(dir, AI_LOOKUP_FILE)))))
+        } else {
+          for (p in lookup_problems) fail(sprintf("%s: %s (dev/export_ai_lookup.R)", AI_LOOKUP_FILE, p))
+        }
+        key_file <- file.path(dir, AI_KEY_FILE)
+        if (file.exists(key_file) && any(nzchar(trimws(readLines(key_file, warn = FALSE))))) {
+          warn(sprintf("API key in %s: fine, but TIGER_LLM_KEY as ShinyProxy container-env is preferred (keeps it off the data volume)", AI_KEY_FILE))
+        } else {
+          warn(sprintf("no %s: TIGER_LLM_KEY must be set in ShinyProxy (container-env), else the feature is off", AI_KEY_FILE))
+        }
+      }
+    }
+  }
+  if (file.exists(file.path(dir, "db_feedback.sqlite"))) {
+    warn("db_feedback.sqlite in this folder: don't upload it over the server's (the app creates it)")
+  }
 }
 
 cat("\n", if (problems == 0L) "Ready to upload." else sprintf("%d problem(s).", problems), "\n")
