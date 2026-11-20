@@ -104,5 +104,98 @@ local({
     invisible()
   }
 
+  # ── Help ─────────────────────────────────────────────────────────────────
+  # webR hands help pages to a pager the console doesn't have, so ?mean
+  # showed nothing. Printing a help object (what ? and help() return) now
+  # writes the page as text, each line marked \003: scratchpad.js shows those
+  # lines in the panel's help area, not in the output.
+  print_help <- function(x, ...) {
+    paths <- as.character(x)
+    topic <- attr(x, "topic")
+    if (!length(paths)) {
+      cat("Keine Hilfe zu „", topic, "“ gefunden.\n", sep = "", file = stderr())
+      return(invisible(x))
+    }
+    rd <- utils:::.getHelpFile(paths[1])
+    txt <- utils::capture.output(
+      tools::Rd2txt(rd, options = list(underline_titles = FALSE))
+    )
+    pkg <- basename(dirname(dirname(paths[1])))
+    cat(paste0("\003", c(paste0(topic, " {", pkg, "}"), txt)), sep = "\n")
+    if (length(paths) > 1L) {
+      others <- basename(dirname(dirname(paths[-1])))
+      cat("Hinweis: „", topic, "“ gibt es auch in ",
+        paste(others, collapse = ", "), "; help(", topic,
+        ", package = \"…\") zeigt sie.\n",
+        sep = "", file = stderr()
+      )
+    }
+    invisible(x)
+  }
+  registerS3method("print", "help_files_with_topic", print_help,
+    envir = asNamespace("utils")
+  )
+  # F1 in the editor: the help for the word at the cursor, without echo
+  shims$.tiger_help <- function(topic) {
+    h <- tryCatch(do.call(utils::help, list(topic)), error = function(e) NULL)
+    if (is.null(h)) {
+      cat("Keine Hilfe zu „", topic, "“ gefunden.\n", sep = "", file = stderr())
+    } else {
+      print_help(h)
+    }
+    invisible()
+  }
+
+  # ── Completion and signature hint (scratchpad.js, Ace) ─────────────────────
+  # R's own completion engine (the plain R console's Tab): function and
+  # object names, argument names inside f(...), columns after $. One
+  # "kind<TAB>completion" string each, kind = arg/fun/obj/other.
+  shims$.tiger_complete <- function(line) {
+    utils::rc.settings(ipck = TRUE)
+    utils:::.assignLinebuffer(line)
+    utils:::.assignEnd(nchar(line))
+    utils:::.guessTokenFromLine()
+    utils:::.completeToken()
+    comps <- utils::head(utils:::.retrieveCompletions(), 200L)
+    kind <- vapply(comps, function(x) {
+      if (endsWith(x, "=")) {
+        "arg"
+      } else if (grepl("[$@]", x)) {
+        "obj"
+      } else if (exists(x, envir = globalenv(), mode = "function")) {
+        "fun"
+      } else if (exists(x, envir = globalenv())) {
+        "obj"
+      } else {
+        "other"
+      }
+    }, "")
+    paste(kind, comps, sep = "\t")
+  }
+
+  # The call signature, e.g. "mean(x, ...)". For S3 generics the default
+  # method's ("t.test(x, ...)" alone says little)
+  shims$.tiger_signature <- function(name) {
+    f <- if (grepl("::", name, fixed = TRUE)) {
+      tryCatch(eval(str2lang(name)), error = function(e) NULL)
+    } else {
+      get0(name, envir = globalenv(), mode = "function")
+    }
+    if (!is.function(f)) {
+      return("")
+    }
+    if (!is.primitive(f) && any(grepl("UseMethod", deparse(body(f)), fixed = TRUE))) {
+      d <- utils::getS3method(sub(".*::", "", name), "default", optional = TRUE)
+      if (!is.null(d)) f <- d
+    }
+    a <- args(f)
+    if (is.null(a)) {
+      return("")
+    }
+    s <- deparse(a, width.cutoff = 500L)
+    s <- paste(trimws(s[-length(s)]), collapse = " ")
+    trimws(sub("^function ", name, s))
+  }
+
   attach(shims, name = "tigeR:konsole", warn.conflicts = FALSE)
 })

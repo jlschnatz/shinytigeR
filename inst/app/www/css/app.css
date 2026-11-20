@@ -1911,3 +1911,30 @@ body { padding-bottom: var(--footer-h); }
   font-family: inherit; font-size: inherit;
   transform: none; margin: 0 4px; color: #6b7280; opacity: 1;
 }
+/* Help pages (?mean, F1): a scrolling area above the output, at most
+   about half the panel */
+.scratchpad-help {
+  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: 45%;
+  border: 1px solid #e5e7eb; border-radius: 0.375rem; background: #fff;
+}
+.scratchpad-help[hidden] { display: none; }
+.scratchpad-help-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.375rem 0.75rem; border-bottom: 1px solid #e5e7eb; background: #f8f9fa;
+}
+.scratchpad-help-title { margin-right: auto; font-size: var(--fs-small); font-weight: var(--fw-semibold); }
+.scratchpad-help-close { font-size: var(--fs-tiny); }
+.scratchpad-help-body {
+  flex: 1 1 auto; min-height: 0; margin: 0; overflow: auto;
+  padding: 0.5rem 0.75rem; white-space: pre-wrap;
+  font-family: var(--bs-font-monospace); font-size: var(--fs-small); line-height: 1.4;
+}
+/* The signature of the call the cursor is in */
+.scratchpad-signature {
+  min-height: 1.2em; font-family: var(--bs-font-monospace); font-size: var(--fs-small);
+  color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Ace's completion popup is attached to <body>: above the panel (the
+   offcanvas sits at z-index 1045), in the code font */
+.ace_editor.ace_autocomplete { z-index: 1060 !important; font-family: var(--bs-font-monospace); }
+.ace_tooltip { z-index: 1061 !important; }

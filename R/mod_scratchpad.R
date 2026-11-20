@@ -134,6 +134,22 @@ mod_scratchpad_ui <- function(id) {
         class = "scratchpad-note",
         "R läuft hier direkt in deinem Browser. Nichts davon wird gespeichert oder bewertet; deine Antwort gibst du wie immer in der Aufgabe ein."
       ),
+      # Help pages (?mean, help(), F1 in the editor), shown by scratchpad.js
+      div(
+        class = "scratchpad-help",
+        hidden = NA,
+        role = "region",
+        `aria-label` = "Hilfe",
+        div(
+          class = "scratchpad-help-head",
+          tags$span(class = "scratchpad-help-title"),
+          tags$button(
+            type = "button", class = "btn-close scratchpad-help-close",
+            `aria-label` = "Hilfe schlie\u00dfen"
+          )
+        ),
+        tags$pre(class = "scratchpad-help-body", tabindex = "0")
+      ),
       div(
         class = "scratchpad-output",
         `aria-live` = "polite",
@@ -150,12 +166,15 @@ mod_scratchpad_ui <- function(id) {
         autocapitalize = "off",
         placeholder = "R-Code eingeben, z. B. mean(c(2, 4, 6, 8))"
       ),
+      # The signature of the call the cursor is in, e.g. mean(x, trim = 0, ...)
+      div(class = "scratchpad-signature", `aria-live` = "polite"),
       div(
         class = "scratchpad-actions",
         tags$span(
           class = "scratchpad-hint",
-          tags$kbd("Strg"), "/", tags$kbd("⌘"), " + ", tags$kbd("Enter"),
-          ": Zeile oder Auswahl"
+          tags$kbd("Strg"), "/", tags$kbd("⌘"), "+", tags$kbd("Enter"), " ausf\u00fchren \u00b7 ",
+          tags$kbd("Tab"), " Vorschl\u00e4ge \u00b7 ",
+          tags$kbd("F1"), " Hilfe"
         ),
         tags$button(
           type = "button", class = "btn btn-outline-secondary btn-sm scratchpad-clear",
