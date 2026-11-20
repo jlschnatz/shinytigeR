@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "models": ["gwdg/gemma-4-31b-it", "hessian_ai/kolibri-1", "gwdg/deepseek-v4-flash"],
+  "model_labels": {
+    "gwdg/gemma-4-31b-it": "Gemma 4 (31B)",
+    "hessian_ai/kolibri-1": "Kolibri 1",
+    "gwdg/deepseek-v4-flash": "DeepSeek V4 Flash"
+  },
+  "model_args": {
+    "gwdg/qwen3.8-27b": {"chat_template_kwargs": {"enable_thinking": false}}
+  },
+  "cooldown_hours": 4,
+  "daily_limit": 1000
+}
