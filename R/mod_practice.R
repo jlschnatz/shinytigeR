@@ -59,11 +59,26 @@ mod_practice_ui <- function(id) {
     # the buttons are reachable however long the stimulus or the options are.
     div(
       class = "practice-actions-bar",
-      actionButton(
-        ns("back"),
-        div(bsicons::bs_icon("arrow-left"), tags$span(id = ns("back_label"), "Neue Auswahl")),
-        class = "btn btn-outline-secondary"
+      div(
+        class = "practice-actions-left",
+        actionButton(
+          ns("back"),
+          div(bsicons::bs_icon("arrow-left"), tags$span(id = ns("back_label"), "Neue Auswahl")),
+          class = "btn btn-outline-secondary"
+        ),
+        # The optional R console (R/mod_scratchpad.R), only on coding items.
+        # A plain button, opened client-side (www/js/scratchpad.js)
+        shinyjs::hidden(
+          tags$button(
+            id = ns("scratch_open"),
+            type = "button",
+            class = "btn btn-outline-secondary scratchpad-open-btn",
+            `data-panel` = ns("scratchpad-panel"),
+            bsicons::bs_icon("terminal"), "R-Konsole"
+          )
+        )
       ),
+      mod_scratchpad_ui(ns("scratchpad")),
       div(
         class = "practice-actions",
         # Skipping is an app action for every item, not an answer option
@@ -295,6 +310,14 @@ mod_practice_server <- function(
           )
         }
       )
+    })
+
+    # ── R console: the button only on coding items ───────────────────────────
+    mod_scratchpad_server("scratchpad", data_item = data_item)
+    observe({
+      item <- current_item()
+      req(nrow(item) == 1L)
+      shinyjs::toggle("scratch_open", condition = identical(item$type_item[1], "coding"))
     })
 
     # ── Toggle which answer-mode child is visible — no remounting ────────────

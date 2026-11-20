@@ -56,7 +56,8 @@ app_ui <- function() {
         # like the stylesheets
         tags$script(src = css_href("www/js/practice.js", "js/practice.js")),
         tags$script(src = css_href("www/js/dashboard.js", "js/dashboard.js")),
-        tags$script(src = css_href("www/js/tooltips.js", "js/tooltips.js"))
+        tags$script(src = css_href("www/js/tooltips.js", "js/tooltips.js")),
+        tags$script(src = css_href("www/js/scratchpad.js", "js/scratchpad.js"))
       )
     ),
 
