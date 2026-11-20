@@ -74,3 +74,21 @@ test_that("provisional_item_count reads the pool's irt_provisional column", {
   expect_null(provisional_item_count(missing))
   expect_false(file.exists(missing))
 })
+
+test_that("the FAQ explains the AI feedback and what the AI gets", {
+  entries <- faq_entries()
+  q <- vapply(entries, `[[`, character(1), "q")
+  a <- vapply(entries, `[[`, character(1), "a")
+  what <- a[q == "Was ist das „Persönliche Feedback“?"]
+  expect_length(what, 1L)
+  expect_match(what, "KI-generiert", fixed = TRUE)
+  expect_match(what, "Problem melden", fixed = TRUE)
+  expect_match(what, "keine Note", fixed = TRUE)
+  gets <- a[q == "Was bekommt die KI beim Persönlichen Feedback von mir?"]
+  expect_length(gets, 1L)
+  expect_match(gets, "Benutzername", fixed = TRUE)
+  expect_match(gets, "Kommentare", fixed = TRUE)
+  stored <- a[q == "Welche Daten speichert tigeR?"]
+  expect_match(stored, "Persönliche Feedback", fixed = TRUE)
+  expect_match(stored, "Kommentar", fixed = TRUE)
+})

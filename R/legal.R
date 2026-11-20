@@ -44,9 +44,26 @@ legal_sections <- function(contact = CONTACT_EMAIL) {
         "\nGespeichert werden aussschließlich: ",
         "\n\n- dein selbst gewählter Benutzername und dein Passwort (nur in unlesbarer Form, als Hashwert),",
         "\n- zu jeder von dir eingegebenen Antwort: Die bearbeitete Aufgabe, Zeitpunkt der Beantwortung, welche Antwort du gewählt oder eingegeben hast, ob sie richtig war, und eine zufällige Kennung der Sitzung,",
-        "\n- deine berechneten Einschätzungen pro Themenbereich.",
+        "\n- deine berechneten Einschätzungen pro Themenbereich,",
+        "\n- wenn du das Persönliche Feedback nutzt, die im folgenden Abschnitt („Persönliches Feedback (KI)“) genannten Daten.",
         "\nDie Daten werden in einer Form gespeichert, die den Betreibern von tigeR keine Zuordnung der Benutzerkonten zu einer bestimmten Person ermöglicht. ",
         "\nDie Daten werden dauerhaft gespeichert, um dir auch bei späteren Besuchen Zugriff auf deinen bisherigen Lernstand und Lernverlauf zu ermöglichen sowie die Daten für wissenschaftliche Forschungszwecke zu nutzen. Eine automatische Löschung nach einem festen Zeitraum erfolgt derzeit nicht. "
+      )
+    ),
+    # The AI feedback (R/ai_feedback.R). Keep in sync with the FAQ answers
+    # "Was bekommt die KI ..." and "Welche Daten speichert tigeR?" (R/faq.R).
+    list(
+      title = "Persönliches Feedback (KI)",
+      body = paste(
+        "Im Bereich „Fortschritt“ kannst du ein Persönliches Feedback anfordern. Es wird von einem KI-Sprachmodell erstellt und ist als „KI-generiert“ gekennzeichnet, zusammen mit dem verwendeten Modell. Es wird nur erstellt, wenn du es selbst anforderst.",
+        "\n\n**An die KI übermittelt werden** ausschließlich deine Einstufung pro Themenbereich (Kompetenzstufe und wie sicher sie ist) und eine Liste von Lernmaterialien, aus der die KI auswählt. Dein Benutzername, deine Antworten auf Aufgaben und deine Kommentare werden nicht übermittelt. Die Übermittlung erfolgt über die KI-Schnittstelle der Goethe-Universität Frankfurt.",
+        "\n\n**Von tigeR gespeichert werden** dazu:",
+        "\n\n- das erstellte Feedback, die dafür übermittelten Angaben, das verwendete Modell und der Zeitpunkt,",
+        "\n- technische Angaben zur Anfrage (z. B. Dauer und Umfang der Anfrage, ob sie erfolgreich war),",
+        "\n- deine Bewertung des Feedbacks, die von dir gewählten Gründe und dein Kommentar,",
+        "\n- deine Meldungen zu einzelnen empfohlenen Materialien mit deinem Kommentar,",
+        "\n- welche empfohlenen Materialien du geöffnet hast.",
+        "\n\nDiese Daten werden wie die übrigen Daten unter deinem Benutzernamen gespeichert, um dir dein Feedback anzuzeigen, das Feedback und die Materialliste zu verbessern und für wissenschaftliche Forschungszwecke. Kommentare werden so gespeichert, wie du sie eingibst."
       )
     ),
     list(
@@ -87,7 +104,7 @@ legal_sections <- function(contact = CONTACT_EMAIL) {
       title = "Änderung dieser Datenschutzerklärung",
       body = paste(
         "Wir behalten uns vor, diese Datenschutzerklärung anzupassen, um sie an geänderte rechtliche Anforderungen oder technische Entwicklungen anzupassen. Die jeweils aktuelle Version ist auf dieser Webseite abrufbar. ",
-        "\n\nStand: **19. November 2026**"
+        "\n\nStand: **20. November 2026**"
       )
     )
   )

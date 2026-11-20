@@ -389,7 +389,7 @@ One public page, `legal_panel` in `ui.R` (not a tab: its nav link is hidden in `
 
 ### `R/ai_feedback.R` / `R/ai_feedback_card.R` (AI feedback)
 
-> **Status:** backend and dashboard card done and tested (`test-ai-feedback.R`, `test-ai-feedback-card.R`, model mocked; fixtures in `helper-ai.R`). Still open: FAQ/privacy text. Try the backend without the app: `rv run dev/try_ai_feedback.R [user] [--force]`. Ported from the kiwi prototype (`kiwi/ai_feedback/`, its `TECHNICAL_DOCUMENTATION.md` explains the prompt design and the model comparison).
+> **Status:** backend and dashboard card done and tested (`test-ai-feedback.R`, `test-ai-feedback-card.R`, model mocked; fixtures in `helper-ai.R`). FAQ ("Was ist das „Persönliche Feedback“?", how it differs from "Zum Nacharbeiten", "Was bekommt die KI …?", and the stored data) and the privacy page (section "Persönliches Feedback (KI)") describe it; `test-faq.R`/`test-legal.R` check both say the same. Change them when what is sent or stored changes. Try the backend without the app: `rv run dev/try_ai_feedback.R [user] [--force]`. Ported from the kiwi prototype (`kiwi/ai_feedback/`, its `TECHNICAL_DOCUMENTATION.md` explains the prompt design and the model comparison).
 
 A short personal summary plus up to three recommended sources, written by a language model via the university's LiteLLM API (OpenAI-compatible, `ellmer::chat_openai_compatible()`). **Only levels go to the model, as words**: no θ, no SE, no user id. The model picks sources by id from a preselected list (`ai_schema()` restricts `topic`/`resource_id` to enums), so titles and links always come from the source list and can't be invented.
 
@@ -652,7 +652,7 @@ Shared tables with an `id_user` column (not one table per user), created on firs
 | `recommendation_report` | problem reported for one recommendation | `position`, `created_at`, `reason_code`, `comment` |
 | `link_click` | click on a recommended source | `position`, `created_at` |
 
-All four are written by the card (rating, "Problem melden", link clicks). Comments are stored, which the privacy page and FAQ will need to say, together with the data going to the university's LiteLLM API.
+All four are written by the card (rating, "Problem melden", link clicks). The privacy page and the FAQ list all of this (and what goes to the API); keep them in sync with these tables.
 
 ### `db_credentials.sqlite` — authentication
 

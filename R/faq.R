@@ -151,6 +151,37 @@ faq_entries <- function(contact = CONTACT_EMAIL, provisional = NULL) {
         "Mit etwas Abstand bleibt die Lösung besser hängen, als wenn du dieselbe Aufgabe gleich noch einmal machst."
       )
     ),
+    # The AI feedback (R/ai_feedback.R, R/ai_feedback_card.R). Keep the data
+    # answers in sync with the privacy page (R/legal.R).
+    list(
+      topic = "Fortschritt",
+      q = "Was ist das „Persönliche Feedback“?",
+      a = paste(
+        "Unter **Fortschritt** kannst du dir eine kurze Rückmeldung zu deinem Lernstand schreiben lassen:",
+        "was schon gut läuft, wo du ansetzen kannst, und zu bis zu drei deiner schwächeren Themenbereiche je ein passendes Lernmaterial.",
+        "Geschrieben wird sie von einer **KI** (einem Sprachmodell). Deshalb ist sie als „KI-generiert“ gekennzeichnet,",
+        "und darunter steht, welches Modell sie erstellt hat.",
+        "\n\nDie Materialien wählt die KI nur aus einer von uns zusammengestellten Liste, Titel und Links kommen aus dieser Liste.",
+        "Trotzdem kann sie sich irren, etwa ein Material ungenau beschreiben.",
+        "Das Feedback ist keine Bewertung und fließt in keine Note ein.",
+        "\n\nEin neues Feedback kannst du nach einer Wartezeit erstellen, wann genau, steht unter dem Feedback.",
+        "Am meisten bringt es, wenn du vorher weitergeübt und deinen Lernstand aktualisiert hast.",
+        "\n\nUnter dem Feedback kannst du angeben, ob es dir geholfen hat, und warum (nicht),",
+        "und über **Problem melden** ein einzelnes Material melden, etwa wenn ein Link nicht funktioniert.",
+        "Das hilft uns, das Feedback und die Materialliste zu verbessern."
+      )
+    ),
+    list(
+      topic = "Fortschritt",
+      q = "Warum empfiehlt das Persönliche Feedback etwas anderes als „Zum Nacharbeiten“?",
+      a = paste(
+        "**Zum Nacharbeiten** nennt für deinen schwächsten Themenbereich die prüfungsrelevanten Abschnitte im Lehrbuch und die passenden pandaR-Artikel.",
+        "Das **Persönliche Feedback** ergänzt das um andere Zugänge, etwa Videos, interaktive Visualisierungen oder Übungen,",
+        "und berücksichtigt bis zu drei schwächere Bereiche.",
+        "Wo du anfangen solltest, kann es dabei anders gewichten,",
+        "zum Beispiel ein früheres Thema vorziehen, auf dem spätere aufbauen."
+      )
+    ),
     # ── Konto und Daten ───────────────────────────────────────────────────────
     list(
       topic = "Konto und Daten",
@@ -174,8 +205,22 @@ faq_entries <- function(contact = CONTACT_EMAIL, provisional = NULL) {
         "tigeR speichert keine Namen, E-Mail-Adressen oder Matrikelnummern. Gespeichert werden nur:",
         "\n\n- dein selbst gewählter **Benutzername** und dein Passwort (nur in unlesbarer Form, auch wir können es nicht lesen),",
         "\n- zu jeder Antwort: welche Aufgabe, wann, welche Antwort du gewählt oder eingegeben hast, ob sie richtig war, und eine zufällige Kennung der Sitzung,",
-        "\n- deine berechneten Einschätzungen pro Themenbereich.",
+        "\n- deine berechneten Einschätzungen pro Themenbereich,",
+        "\n- wenn du das **Persönliche Feedback** nutzt: das erstellte Feedback und was dafür an die KI geschickt wurde,",
+        "deine Bewertung des Feedbacks mit den gewählten Gründen und deinem Kommentar, deine Meldungen zu einzelnen Materialien",
+        "und welche empfohlenen Materialien du geöffnet hast.",
         "\n\nWähl deshalb am besten einen Benutzernamen, der dich nicht erkennbar macht, also nicht deinen Namen."
+      )
+    ),
+    list(
+      topic = "Konto und Daten",
+      q = "Was bekommt die KI beim Persönlichen Feedback von mir?",
+      a = paste(
+        "Nur deine Einstufung pro Themenbereich, also die Stufe (zum Beispiel „Solide“) und wie sicher sie ist,",
+        "dazu die Liste der Materialien, aus denen sie auswählen darf.",
+        "**Nicht** übermittelt werden dein Benutzername, deine einzelnen Antworten und deine Kommentare.",
+        "Die Anfrage läuft über die KI-Schnittstelle der Goethe-Universität,",
+        "und es wird nur etwas geschickt, wenn du selbst auf **Feedback erstellen** klickst."
       )
     ),
     # ── Hilfe ─────────────────────────────────────────────────────────────────

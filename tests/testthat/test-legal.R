@@ -23,3 +23,16 @@ test_that("the footer links to the legal page on every page", {
   expect_match(ui, 'data-value="legal_panel"', fixed = TRUE)
   expect_match(ui, 'class="app-footer"', fixed = TRUE)
 })
+
+test_that("the privacy page covers the AI feedback like the FAQ", {
+  s <- legal_sections()
+  titles <- vapply(s, `[[`, character(1), "title")
+  ai <- s[[which(titles == "Persönliches Feedback (KI)")]]$body
+  # what goes to the AI, and what doesn't (same as the FAQ answer)
+  expect_match(ai, "Einstufung pro Themenbereich", fixed = TRUE)
+  expect_match(ai, "Benutzername, deine Antworten auf Aufgaben und deine Kommentare werden nicht übermittelt", fixed = TRUE)
+  # what tigeR stores
+  for (x in c("Bewertung", "Kommentar", "Meldungen", "geöffnet")) expect_match(ai, x, fixed = TRUE)
+  stored <- s[[which(titles == "Welche Daten tigeR verarbeitet")]]$body
+  expect_match(stored, "Persönliches Feedback (KI)", fixed = TRUE)
+})
