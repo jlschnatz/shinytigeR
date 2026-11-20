@@ -8,6 +8,13 @@
 #   feedback  ai_latest_feedback() or NULL
 #   cfg       ai_config() (for the model's label)
 #   flash     list(type = "warning"/"info", text) from the last click, or NULL
+#   rating    ai_get_rating() for the shown feedback, or NULL
+#   rate_open TRUE while the rating form is open (after a thumb, "Ändern")
+#   reported  positions of the recommendations reported (ai_reported_positions())
+#
+# The rating's buttons carry data-ai-action; www/js/dashboard.js reads the
+# form fields and sends them in one input event (ai_rate, ai_rate_send,
+# ai_rate_edit, ai_report), so nothing is sent while typing.
 #
 # The model's text is shown as plain text (escaped), never as Markdown/HTML.
 # The card says it's AI-generated, and by which model (legally required, and
@@ -40,7 +47,10 @@ ai_feedback_card <- function(view, ns = identity) {
       )
     )
   } else {
-    ai_feedback_body(fb, ns)
+    tagList(
+      ai_feedback_body(fb, ns, reported = if (running) NULL else view$reported, report = !running),
+      if (!running) ai_rating_block(fb$id_feedback, view$rating, isTRUE(view$rate_open), ns)
+    )
   }
 
   bslib::card(
@@ -85,9 +95,10 @@ ai_feedback_skeleton <- function() {
   )
 }
 
-# Summary and the recommendations (topic, linked title, the model's tip).
-# A click on a title is logged (link_click) via input$ai_link.
-ai_feedback_body <- function(fb, ns = identity) {
+# Summary and the recommendations (topic, linked title, the model's tip,
+# "Problem melden"). A click on a title is logged (link_click) via
+# input$ai_link.
+ai_feedback_body <- function(fb, ns = identity, reported = NULL, report = TRUE) {
   rec <- fb$recommendations
   div(
     class = "ai-fb",
@@ -116,7 +127,8 @@ ai_feedback_body <- function(fb, ns = identity) {
             class = "ai-fb-rec",
             div(class = "ai-fb-topic", r$topic),
             title,
-            tags$p(class = "ai-fb-text", r$text)
+            tags$p(class = "ai-fb-text", r$text),
+            if (report) ai_report_form(fb$id_feedback, r$position, r$position %in% reported, ns)
           )
         })
       )
@@ -159,3 +171,130 @@ ai_feedback_action <- function(view, has_feedback, ns = identity) {
     if (has_feedback) "Neues Feedback erstellen" else "Feedback erstellen"
   )
 }
+# "Problem melden" under one recommendation: a native <details>, so opening
+# it needs no round trip. Once reported, a short thank-you instead.
+ai_report_form <- function(id_feedback, position, reported, ns = identity) {
+  if (reported) {
+    return(tags$p(class = "ai-fb-reported", bsicons::bs_icon("check2"), "Gemeldet, danke!"))
+  }
+  name <- sprintf("%s-%d-%d", ns("ai_rep"), as.integer(id_feedback), as.integer(position))
+  tags$details(
+    class = "ai-fb-report",
+    tags$summary("Problem melden"),
+    div(
+      class = "ai-fb-form",
+      lapply(seq_along(AI_REPORT_REASONS), function(k) {
+        id <- paste0(name, "-", k)
+        div(
+          class = "form-check",
+          tags$input(class = "form-check-input", type = "radio", name = name, id = id, value = names(AI_REPORT_REASONS)[k]),
+          tags$label(class = "form-check-label", `for` = id, AI_REPORT_REASONS[[k]])
+        )
+      }),
+      ai_comment_field(paste0(name, "-c"), NA, "Was genau? (optional)"),
+      tags$button(
+        type = "button", class = "btn btn-sm btn-outline-primary",
+        `data-ai-action` = "report-send", `data-input` = ns("ai_report"),
+        `data-id` = as.integer(id_feedback), `data-pos` = as.integer(position),
+        "Melden"
+      )
+    )
+  )
+}
+
+# The comment field shared by the rating form and the reports. Says that the
+# comment is stored.
+ai_comment_field <- function(id, value, label) {
+  tagList(
+    tags$label(class = "ai-fb-label", `for` = id, label),
+    tags$textarea(
+      class = "form-control form-control-sm", id = id, rows = "2",
+      maxlength = AI_COMMENT_MAX_CHARS,
+      if (!is.na(value)) value
+    ),
+    tags$p(
+      class = "ai-fb-hint",
+      sprintf("Höchstens %d Zeichen. Dein Kommentar wird gespeichert und hilft uns, das Feedback zu verbessern.", AI_COMMENT_MAX_CHARS)
+    )
+  )
+}
+
+# "War dieses Feedback hilfreich?" The thumb is saved on its click
+# (input$ai_rate); then the form opens with the reasons for that thumb and
+# the comment, sent with "Senden" (input$ai_rate_send). Once sent, a
+# thank-you with "Ändern" (input$ai_rate_edit).
+ai_rating_block <- function(id_feedback, rating, open, ns = identity) {
+  id_feedback <- as.integer(id_feedback)
+  helpful <- if (is.null(rating)) NA_integer_ else rating$helpful
+  thumb <- function(value, icon, label) {
+    on <- identical(helpful, value)
+    tags$button(
+      type = "button",
+      class = paste("btn btn-sm ai-fb-thumb", if (on) "is-on"),
+      `aria-pressed` = if (on) "true" else "false",
+      `aria-label` = label,
+      `data-ai-action` = "rate", `data-input` = ns("ai_rate"),
+      `data-id` = id_feedback, `data-helpful` = value,
+      bsicons::bs_icon(if (on) paste0(icon, "-fill") else icon),
+      label
+    )
+  }
+  question <- div(
+    class = "ai-fb-rate-row",
+    tags$span(class = "ai-fb-rate-q", "War dieses Feedback hilfreich?"),
+    div(
+      class = "ai-fb-thumbs",
+      thumb(1L, "hand-thumbs-up", "Ja"),
+      thumb(0L, "hand-thumbs-down", "Nein")
+    )
+  )
+  if (is.null(rating)) {
+    return(div(class = "ai-fb-rate", question))
+  }
+  if (!open) {
+    return(div(
+      class = "ai-fb-rate",
+      question,
+      tags$p(
+        class = "ai-fb-thanks",
+        "Danke für deine Rückmeldung! ",
+        tags$button(
+          type = "button", class = "btn btn-link btn-sm p-0 align-baseline ai-fb-edit",
+          `data-ai-action` = "rate-edit", `data-input` = ns("ai_rate_edit"), `data-id` = id_feedback,
+          "Ändern"
+        )
+      )
+    ))
+  }
+  reasons <- if (identical(helpful, 1L)) AI_REASONS_POSITIVE else AI_REASONS_NEGATIVE
+  prefix <- sprintf("%s-%d", ns("ai_rate_r"), id_feedback)
+  div(
+    class = "ai-fb-rate",
+    question,
+    div(
+      class = "ai-fb-form ai-fb-rate-form",
+      tags$p(
+        class = "ai-fb-label",
+        if (identical(helpful, 1L)) "Was war hilfreich? (optional)" else "Was hat nicht gepasst? (optional)"
+      ),
+      lapply(seq_along(reasons), function(k) {
+        id <- paste0(prefix, "-", k)
+        div(
+          class = "form-check",
+          tags$input(
+            class = "form-check-input", type = "checkbox", id = id, value = names(reasons)[k],
+            checked = if (names(reasons)[k] %in% rating$reasons) NA
+          ),
+          tags$label(class = "form-check-label", `for` = id, reasons[[k]])
+        )
+      }),
+      ai_comment_field(paste0(prefix, "-c"), rating$comment, "Kommentar (optional)"),
+      tags$button(
+        type = "button", class = "btn btn-sm btn-primary",
+        `data-ai-action` = "rate-send", `data-input` = ns("ai_rate_send"), `data-id` = id_feedback,
+        "Senden"
+      )
+    )
+  )
+}
+

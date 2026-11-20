@@ -1119,6 +1119,68 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   background: #fff8e6;
 }
 .ai-fb-flash.is-info { border-left-color: var(--tiger-primary); background: #e8f0f7; }
+/* "Problem melden" under a recommendation (a <details>) */
+.ai-fb-report { margin-top: 0.35rem; font-size: var(--fs-small); }
+.ai-fb-report > summary {
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+  width: fit-content;
+}
+.ai-fb-report > summary:hover { color: var(--tiger-primary); }
+.ai-fb-report[open] > summary { margin-bottom: 0.4rem; }
+.ai-fb-reported {
+  margin: 0.35rem 0 0;
+  font-size: var(--fs-small);
+  color: var(--bs-secondary-color);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+/* the rating: question with the two thumbs, then the form */
+.ai-fb-rate {
+  margin-top: var(--gap-inner);
+  padding-top: var(--gap-inner);
+  border-top: 1px solid #e5e7eb;
+}
+.ai-fb-rate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ai-fb-rate-q { font-size: var(--fs-label); font-weight: var(--fw-semibold); }
+.ai-fb-thumbs { display: flex; gap: 0.4rem; }
+.ai-fb-thumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #d0d7de;
+  background: #fff;
+  color: var(--bs-body-color);
+}
+.ai-fb-thumb:hover { border-color: var(--tiger-primary); color: var(--tiger-primary); }
+.ai-fb-thumb.is-on {
+  border-color: var(--tiger-primary);
+  background: #e8f0f7;
+  color: var(--tiger-primary);
+}
+.ai-fb-thanks { margin: 0.5rem 0 0; font-size: var(--fs-secondary); color: var(--bs-secondary-color); }
+.ai-fb-edit { font-size: inherit; }
+/* the form fields of the rating and of "Problem melden" */
+.ai-fb-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  font-size: var(--fs-secondary);
+}
+.ai-fb-rate-form { margin-top: 0.6rem; }
+.ai-fb-form .form-check { margin-bottom: 0; }
+.ai-fb-form textarea { width: 100%; font-size: var(--fs-secondary); }
+.ai-fb-label { margin: 0.25rem 0 0; font-weight: var(--fw-semibold); }
+.ai-fb-hint { margin: 0 0 0.2rem; font-size: var(--fs-tiny); color: var(--bs-secondary-color); }
+
 /* footer: who wrote it, then the button or why there's none yet */
 .ai-fb-footer { display: flex; flex-direction: column; gap: 0.5rem; }
 .ai-fb-meta, .ai-fb-wait {

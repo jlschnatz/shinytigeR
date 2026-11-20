@@ -44,8 +44,8 @@ test_that("without feedback it explains the feature and offers the button", {
 })
 
 test_that("when it's not possible, the reason replaces the button", {
-  html <- card_html(state = "cooldown", notice = "Ein neues Feedback ist in 2 h 5 min möglich.", feedback = fake_feedback())
-  expect_match(html, "in 2 h 5 min", fixed = TRUE)
+  html <- card_html(state = "cooldown", notice = "Ein neues Feedback ist ab 18:42 Uhr möglich.", feedback = fake_feedback())
+  expect_match(html, "ab 18:42 Uhr", fixed = TRUE)
   expect_no_match(html, "ai_create", fixed = TRUE)
   expect_match(html, "Du kommst gut voran", fixed = TRUE) # the last one stays
 })
@@ -88,6 +88,58 @@ test_that("a message from the last click is shown", {
   html <- card_html(flash = list(type = "warning", text = "Gerade nicht verfügbar."))
   expect_match(html, "ai-fb-flash is-warning", fixed = TRUE)
   expect_match(html, "Gerade nicht verfügbar.", fixed = TRUE)
+})
+
+# ── Rating and "Problem melden" ───────────────────────────────────────────────
+
+test_that("the rating starts with the two thumbs, no form", {
+  html <- card_html(feedback = fake_feedback())
+  expect_match(html, "War dieses Feedback hilfreich?", fixed = TRUE)
+  expect_match(html, 'data-ai-action="rate" data-input="dash-ai_rate" data-id="12" data-helpful="1"', fixed = TRUE)
+  expect_match(html, 'data-helpful="0"', fixed = TRUE)
+  expect_no_match(html, "ai-fb-rate-form", fixed = TRUE)
+  expect_no_match(html, "is-on", fixed = TRUE)
+})
+
+test_that("after a thumbs-down the form shows the negative reasons, ticks and the comment", {
+  rating <- list(helpful = 0L, reasons = "too_generic", comment = "Zu <b>vage</b>.")
+  html <- card_html(feedback = fake_feedback(), rating = rating, rate_open = TRUE)
+  expect_match(html, "ai-fb-rate-form", fixed = TRUE)
+  for (label in AI_REASONS_NEGATIVE) expect_match(html, label, fixed = TRUE)
+  expect_no_match(html, AI_REASONS_POSITIVE[["good_materials"]], fixed = TRUE)
+  expect_match(html, 'value="too_generic" checked', fixed = TRUE)
+  expect_match(html, "Zu &lt;b&gt;vage&lt;/b&gt;.", fixed = TRUE)
+  expect_match(html, sprintf('maxlength="%d"', AI_COMMENT_MAX_CHARS), fixed = TRUE)
+  expect_match(html, "Dein Kommentar wird gespeichert", fixed = TRUE)
+  expect_match(html, 'data-ai-action="rate-send"', fixed = TRUE)
+  expect_match(html, 'aria-pressed="true"', fixed = TRUE)
+})
+
+test_that("after a thumbs-up the form shows the positive reasons", {
+  html <- card_html(feedback = fake_feedback(), rating = list(helpful = 1L, reasons = character(0), comment = NA), rate_open = TRUE)
+  for (label in AI_REASONS_POSITIVE) expect_match(html, label, fixed = TRUE)
+  expect_no_match(html, AI_REASONS_NEGATIVE[["incorrect"]], fixed = TRUE)
+})
+
+test_that("once sent: a thank-you and Ändern", {
+  html <- card_html(feedback = fake_feedback(), rating = list(helpful = 1L, reasons = character(0), comment = NA), rate_open = FALSE)
+  expect_match(html, "Danke für deine Rückmeldung!", fixed = TRUE)
+  expect_match(html, 'data-ai-action="rate-edit"', fixed = TRUE)
+  expect_no_match(html, "ai-fb-rate-form", fixed = TRUE)
+})
+
+test_that("each recommendation can be reported once", {
+  html <- card_html(feedback = fake_feedback(), reported = 2L)
+  expect_equal(lengths(regmatches(html, gregexpr("Problem melden", html))), 1L)
+  expect_match(html, "Gemeldet, danke!", fixed = TRUE)
+  expect_match(html, 'data-ai-action="report-send" data-input="dash-ai_report" data-id="12" data-pos="1"', fixed = TRUE)
+  for (label in AI_REPORT_REASONS) expect_match(html, label, fixed = TRUE)
+})
+
+test_that("while a new one is written, no rating and no reports", {
+  html <- card_html(feedback = fake_feedback(), running = TRUE)
+  expect_no_match(html, "War dieses Feedback hilfreich?", fixed = TRUE)
+  expect_no_match(html, "Problem melden", fixed = TRUE)
 })
 
 # ── Link clicks ───────────────────────────────────────────────────────────────
@@ -152,13 +204,47 @@ test_that("dashboard: the button creates a feedback in the background and shows 
     expect_match(html, "Modell Eins", fixed = TRUE)
     # the next one only after the cooldown
     expect_equal(ai_status()$state, "cooldown")
-    expect_match(html, "Ein neues Feedback ist in (4 h 0|3 h 59) min möglich.")
+    expect_match(html, "Ein neues Feedback ist ab .* Uhr möglich.")
     expect_no_match(html, "ai_create", fixed = TRUE)
     expect_null(ai_flash())
 
     session$setInputs(ai_link = list(id = ai_latest()$id_feedback, pos = 1, t = 1))
     n <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM link_click")$n)
     expect_equal(n, 1L)
+  })
+})
+
+test_that("dashboard: thumb, form, Senden and Problem melden are saved", {
+  dir <- local_ai_dir(cfg = list(enabled = TRUE, models = "m1"))
+  local_ability(dir)
+  mock_models(list(m1 = function(req) fake_answer(req)))
+
+  testServer(mod_dashboard_server, args = dashboard_args(), {
+    session$setInputs(ai_create = 1)
+    pump_until(session, function() ai_task$status() == "success")
+    session$flushReact()
+    id <- ai_latest()$id_feedback
+
+    session$setInputs(ai_rate = list(id = id, helpful = 0L, t = 1))
+    expect_equal(ai_rating()$helpful, 0L)
+    expect_true(ai_rate_open())
+    expect_match(as.character(output$ai_feedback$html), "ai-fb-rate-form", fixed = TRUE)
+
+    session$setInputs(ai_rate_send = list(id = id, reasons = list("too_generic", "incorrect"), comment = "Zu vage.", t = 2))
+    expect_false(ai_rate_open())
+    expect_setequal(ai_rating()$reasons, c("too_generic", "incorrect"))
+    expect_equal(ai_rating()$comment, "Zu vage.")
+    expect_match(as.character(output$ai_feedback$html), "Danke für deine Rückmeldung!", fixed = TRUE)
+
+    # no reasons ticked: an empty list from the browser clears them
+    session$setInputs(ai_rate_edit = list(id = id, t = 3))
+    expect_true(ai_rate_open())
+    session$setInputs(ai_rate_send = list(id = id, reasons = list(), comment = "", t = 4))
+    expect_length(ai_rating()$reasons, 0L)
+
+    session$setInputs(ai_report = list(id = id, pos = 2L, reasons = list("link_broken"), comment = "", t = 5))
+    expect_equal(ai_reported(), 2L)
+    expect_match(as.character(output$ai_feedback$html), "Gemeldet, danke!", fixed = TRUE)
   })
 })
 

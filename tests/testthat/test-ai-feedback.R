@@ -243,7 +243,7 @@ test_that("new feedback needs only the cooldown to have passed, also on the same
     st <- ai_feedback_status("u", comp_mixed(snapshot), now = now)
     expect_equal(st$state, "cooldown")
     expect_equal(st$minutes, 180L)
-    expect_match(st$notice, "3 h 0 min")
+    expect_equal(st$notice, "Ein neues Feedback ist ab 15:00 Uhr möglich.")
   }
   # 4 hours later: possible again, on the same estimate too (the last one
   # may not have helped)
@@ -253,7 +253,7 @@ test_that("new feedback needs only the cooldown to have passed, also on the same
   expect_equal(ai_feedback_status("v", comp_mixed(1000L), now = now)$state, "ready")
 })
 
-test_that("the cooldown is set in minutes; short ones read without hours, 0 turns it off", {
+test_that("the cooldown is set in minutes and 0 turns it off", {
   now <- as.POSIXct("2026-11-20 12:00:00")
   last_feedback <- function() {
     ai_db(function(con) {
@@ -265,7 +265,8 @@ test_that("the cooldown is set in minutes; short ones read without hours, 0 turn
   last_feedback()
   st <- ai_feedback_status("u", comp_mixed(), now = now)
   expect_equal(st$state, "cooldown")
-  expect_equal(st$notice, "Ein neues Feedback ist in 9 min möglich.")
+  expect_equal(st$notice, "Ein neues Feedback ist ab 12:09 Uhr möglich.")
+  expect_equal(st$minutes, 9L)
   expect_equal(ai_feedback_status("u", comp_mixed(), now = now + 9 * 60)$state, "ready")
 
   local_ai_dir(cfg = list(enabled = TRUE, models = "m1", cooldown_minutes = 0))
@@ -420,4 +421,86 @@ test_that("a source removed from the list since shows without title and link", {
   fb <- ai_latest_feedback("u", lookup = make_lookup()[0, ])
   expect_true(all(is.na(fb$recommendations$title)))
   expect_equal(nrow(fb$recommendations), 3L)
+})
+
+test_that("the cooldown notice names the time it ends", {
+  now <- as.POSIXct("2026-11-20 12:00:00")
+  expect_equal(ai_cooldown_notice(now + 3600, now), "Ein neues Feedback ist ab 13:00 Uhr möglich.")
+  expect_equal(ai_cooldown_notice(now + 14 * 3600, now), "Ein neues Feedback ist ab morgen 02:00 Uhr möglich.")
+  expect_equal(ai_cooldown_notice(now + 50 * 3600, now), "Ein neues Feedback ist ab 22. Nov 2026, 14:00 Uhr möglich.")
+})
+
+# ── Rating ────────────────────────────────────────────────────────────────────
+
+local_saved_feedback <- function(env = parent.frame()) {
+  local_ai_dir(env = env)
+  mock_models(list(m1 = function(req) fake_answer(req)), env = env)
+  wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))$id_feedback
+}
+
+test_that("the thumb is saved alone, then reasons and comment; one rating per student", {
+  id <- local_saved_feedback()
+  expect_null(ai_get_rating("u", id))
+
+  expect_true(ai_save_rating("u", id, 0L))
+  expect_equal(ai_get_rating("u", id), list(helpful = 0L, reasons = character(0), comment = NA_character_))
+
+  expect_true(ai_save_rating("u", id, 0L,
+    reasons = c("too_generic", "link_broken", "good_materials", "nonsense"),
+    comment = "  Zu allgemein.  "
+  ))
+  r <- ai_get_rating("u", id)
+  expect_setequal(r$reasons, c("too_generic", "link_broken")) # only reasons for a thumbs-down
+  expect_equal(r$comment, "Zu allgemein.")
+
+  # the thumb again alone keeps reasons and comment
+  expect_true(ai_save_rating("u", id, 0L))
+  expect_equal(ai_get_rating("u", id)$comment, "Zu allgemein.")
+  expect_length(ai_get_rating("u", id)$reasons, 2L)
+
+  n <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM rating")$n)
+  expect_equal(n, 1L)
+})
+
+test_that("switching the thumb clears the reasons and comment of the other one", {
+  id <- local_saved_feedback()
+  ai_save_rating("u", id, 0L, reasons = "incorrect", comment = "Falsch.")
+  expect_true(ai_save_rating("u", id, 1L))
+  expect_equal(ai_get_rating("u", id), list(helpful = 1L, reasons = character(0), comment = NA_character_))
+  ai_save_rating("u", id, 1L, reasons = c("clear_start", "incorrect"), comment = "")
+  r <- ai_get_rating("u", id)
+  expect_equal(r$reasons, "clear_start")
+  expect_true(is.na(r$comment))
+})
+
+test_that("ratings are only saved for the student's own feedback and valid values", {
+  id <- local_saved_feedback()
+  expect_false(ai_save_rating("v", id, 1L))
+  expect_false(ai_save_rating("u", id + 99L, 1L))
+  expect_false(ai_save_rating("u", id, 2L))
+  expect_false(ai_save_rating("u", "x", 1L))
+  expect_false(ai_save_rating("u", id, NULL))
+  expect_null(ai_get_rating("u", id))
+})
+
+test_that("comments are cut to AI_COMMENT_MAX_CHARS", {
+  id <- local_saved_feedback()
+  ai_save_rating("u", id, 0L, comment = strrep("a", AI_COMMENT_MAX_CHARS + 50))
+  expect_equal(nchar(ai_get_rating("u", id)$comment), AI_COMMENT_MAX_CHARS)
+})
+
+test_that("a problem report needs a reason or a comment and replaces an earlier one", {
+  id <- local_saved_feedback()
+  expect_false(ai_save_report("u", id, 1, reason = NULL, comment = "   "))
+  expect_false(ai_save_report("u", id, 9, reason = "link_broken")) # no such position
+  expect_false(ai_save_report("v", id, 1, reason = "link_broken")) # someone else's
+  expect_true(ai_save_report("u", id, 1, reason = "link_broken"))
+  expect_true(ai_save_report("u", id, 1, reason = list("materials_unfit"), comment = "Zu schwer."))
+  expect_true(ai_save_report("u", id, 2, reason = "nonsense", comment = "Seite leer."))
+  rep <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT position, reason_code, comment FROM recommendation_report ORDER BY position"))
+  expect_equal(rep$position, 1:2)
+  expect_equal(rep$reason_code, c("materials_unfit", "other"))
+  expect_equal(rep$comment, c("Zu schwer.", "Seite leer."))
+  expect_equal(sort(ai_reported_positions("u", id)), 1:2)
+  expect_length(ai_reported_positions("v", id), 0L)
 })

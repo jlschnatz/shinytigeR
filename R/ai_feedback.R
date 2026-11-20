@@ -477,21 +477,174 @@ ai_feedback_status <- function(user_id, comp, cfg = ai_config(), now = Sys.time(
     )
   })
   if (nrow(last) == 1L) {
-    seconds_left <- last$created_at + cfg$cooldown_minutes * 60 - as.integer(now)
+    until <- last$created_at + cfg$cooldown_minutes * 60
+    seconds_left <- until - as.integer(now)
     if (seconds_left > 0) {
       minutes <- as.integer(ceiling(seconds_left / 60))
-      wait <- if (minutes < 60L) {
-        sprintf("%d min", minutes)
-      } else {
-        sprintf("%d h %d min", minutes %/% 60L, minutes %% 60L)
-      }
-      return(out("cooldown", sprintf("Ein neues Feedback ist in %s möglich.", wait), minutes))
+      return(out("cooldown", ai_cooldown_notice(until, now), minutes))
     }
   }
   if (ai_calls_today(now) >= cfg$daily_limit) {
     return(out("daily_limit", "Heute wurden schon sehr viele Feedbacks erstellt. Morgen geht es wieder."))
   }
   out("ready")
+}
+
+# "Ein neues Feedback ist ab 18:42 Uhr möglich." (later days with the date).
+# The time it ends rather than a countdown: the text stays the same for the
+# whole cooldown, so the card doesn't re-render every minute (which would
+# wipe a comment being typed into the rating form).
+ai_cooldown_notice <- function(until, now = Sys.time()) {
+  until <- as.POSIXct(until, origin = "1970-01-01")
+  day <- local_date(until)
+  when <- if (day == local_date(now)) {
+    format(until, "%H:%M")
+  } else if (day == local_date(now) + 1L) {
+    paste("morgen", format(until, "%H:%M"))
+  } else {
+    paste0(format_date_de(day), ", ", format(until, "%H:%M"))
+  }
+  sprintf("Ein neues Feedback ist ab %s Uhr möglich.", when)
+}
+
+# ── Students' rating of a feedback ────────────────────────────────────────────
+# The ids come from the browser, so every write first checks that the
+# feedback is the student's. Reasons are stored as codes (names of
+# AI_REASONS_POSITIVE / AI_REASONS_NEGATIVE / AI_REPORT_REASONS), unknown
+# codes are dropped.
+
+as_int1 <- function(x) {
+  x <- suppressWarnings(as.integer(unlist(x)))
+  if (length(x) != 1L || is.na(x)) NA_integer_ else x
+}
+
+# A comment as stored: trimmed, at most AI_COMMENT_MAX_CHARS, NA if empty
+ai_clean_comment <- function(x) {
+  x <- unlist(x)
+  if (length(x) != 1L || is.na(x)) {
+    return(NA_character_)
+  }
+  x <- trimws(as.character(x))
+  if (!nzchar(x)) NA_character_ else substr(x, 1L, AI_COMMENT_MAX_CHARS)
+}
+
+ai_owns_feedback <- function(con, user_id, id) {
+  nrow(DBI::dbGetQuery(con, "SELECT 1 FROM feedback WHERE id_feedback = ? AND id_user = ?",
+    params = list(id, user_id)
+  )) == 1L
+}
+
+# Saves the student's rating: one per feedback and student, updated. The
+# thumb alone is saved on its click (reasons/comment NULL = keep them); the
+# form's "Senden" passes reasons and comment. Switching the thumb clears the
+# reasons and the comment (they were about the other one). TRUE if saved.
+ai_save_rating <- function(user_id, id_feedback, helpful, reasons = NULL, comment = NULL) {
+  id <- as_int1(id_feedback)
+  h <- as_int1(helpful)
+  if (is.na(id) || is.na(h) || !h %in% 0:1) {
+    return(FALSE)
+  }
+  allowed <- names(if (h == 1L) AI_REASONS_POSITIVE else AI_REASONS_NEGATIVE)
+  ai_db(function(con) {
+    if (!ai_owns_feedback(con, user_id, id)) {
+      return(FALSE)
+    }
+    DBI::dbWithTransaction(con, {
+      now <- as.integer(Sys.time())
+      old <- DBI::dbGetQuery(con, "SELECT helpful FROM rating WHERE id_feedback = ? AND id_user = ?",
+        params = list(id, user_id)
+      )
+      switched <- nrow(old) == 1L && !identical(as.integer(old$helpful), h)
+      if (nrow(old) == 0L) {
+        DBI::dbExecute(con, "
+          INSERT INTO rating (id_feedback, id_user, helpful, comment, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)",
+          params = list(id, user_id, h, ai_clean_comment(comment), now, now)
+        )
+      } else {
+        DBI::dbExecute(con, "UPDATE rating SET helpful = ?, updated_at = ? WHERE id_feedback = ? AND id_user = ?",
+          params = list(h, now, id, user_id)
+        )
+        if (!is.null(comment) || switched) {
+          DBI::dbExecute(con, "UPDATE rating SET comment = ? WHERE id_feedback = ? AND id_user = ?",
+            params = list(if (is.null(comment)) NA_character_ else ai_clean_comment(comment), id, user_id)
+          )
+        }
+      }
+      if (!is.null(reasons) || switched) {
+        DBI::dbExecute(con, "DELETE FROM rating_reason WHERE id_feedback = ? AND id_user = ?",
+          params = list(id, user_id)
+        )
+        for (code in intersect(unique(as.character(unlist(reasons))), allowed)) {
+          DBI::dbExecute(con, "INSERT INTO rating_reason (id_feedback, id_user, reason_code) VALUES (?, ?, ?)",
+            params = list(id, user_id, code)
+          )
+        }
+      }
+    })
+    TRUE
+  })
+}
+
+# The student's rating of a feedback: list(helpful, reasons, comment), or NULL
+ai_get_rating <- function(user_id, id_feedback) {
+  ai_db(function(con) {
+    r <- DBI::dbGetQuery(con, "SELECT helpful, comment FROM rating WHERE id_feedback = ? AND id_user = ?",
+      params = list(as_int1(id_feedback), user_id)
+    )
+    if (nrow(r) == 0L) {
+      return(NULL)
+    }
+    reasons <- DBI::dbGetQuery(con, "SELECT reason_code FROM rating_reason WHERE id_feedback = ? AND id_user = ?",
+      params = list(as_int1(id_feedback), user_id)
+    )$reason_code
+    list(helpful = as.integer(r$helpful), reasons = reasons, comment = r$comment)
+  })
+}
+
+# "Problem melden" on one recommendation: a reason (AI_REPORT_REASONS) and/or
+# a comment (no reason but a comment = "other"). One per recommendation and
+# student, a second one replaces it. TRUE if saved.
+ai_save_report <- function(user_id, id_feedback, position, reason = NULL, comment = NULL) {
+  id <- as_int1(id_feedback)
+  pos <- as_int1(position)
+  reason <- as.character(unlist(reason))
+  reason <- if (length(reason) >= 1L && reason[1] %in% names(AI_REPORT_REASONS)) reason[1] else NA_character_
+  comment <- ai_clean_comment(comment)
+  if (is.na(id) || is.na(pos) || (is.na(reason) && is.na(comment))) {
+    return(FALSE)
+  }
+  if (is.na(reason)) reason <- "other"
+  ai_db(function(con) {
+    found <- DBI::dbGetQuery(con, "
+      SELECT 1 FROM recommendation r JOIN feedback f ON f.id_feedback = r.id_feedback
+      WHERE f.id_feedback = ? AND f.id_user = ? AND r.position = ?",
+      params = list(id, user_id, pos)
+    )
+    if (nrow(found) == 0L) {
+      return(FALSE)
+    }
+    DBI::dbWithTransaction(con, {
+      DBI::dbExecute(con, "DELETE FROM recommendation_report WHERE id_feedback = ? AND position = ? AND id_user = ?",
+        params = list(id, pos, user_id)
+      )
+      DBI::dbExecute(con, "
+        INSERT INTO recommendation_report (id_feedback, position, id_user, created_at, reason_code, comment)
+        VALUES (?, ?, ?, ?, ?, ?)",
+        params = list(id, pos, user_id, as.integer(Sys.time()), reason, comment)
+      )
+    })
+    TRUE
+  })
+}
+
+# Positions of the recommendations the student reported a problem with
+ai_reported_positions <- function(user_id, id_feedback) {
+  ai_db(function(con) {
+    DBI::dbGetQuery(con, "SELECT DISTINCT position FROM recommendation_report WHERE id_feedback = ? AND id_user = ?",
+      params = list(as_int1(id_feedback), user_id)
+    )$position
+  })
 }
 
 # ── 6. Calling the model ──────────────────────────────────────────────────────

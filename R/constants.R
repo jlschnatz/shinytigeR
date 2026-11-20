@@ -192,6 +192,31 @@ AI_RATE_LIMIT_WAIT_S <- 5
 AI_BLOCK_MINUTES <- 10
 AI_BLOCKING_ERRORS <- c("timeout", "connection", "unavailable")
 
+# Students' rating of a feedback (db_feedback.sqlite: rating, rating_reason,
+# recommendation_report). The database stores the codes (names), so the
+# German labels can change without breaking analyses. Each negative reason
+# points to the part to fix: level mapping, prompt, source list, links,
+# model, tone. "other" is for the comment.
+AI_REASONS_NEGATIVE <- c(
+  level_mismatch = "Passt nicht zu meinem Stand",
+  too_generic = "Sagt mir nichts Neues / zu allgemein",
+  materials_unfit = "Die Materialien passen nicht zu mir",
+  link_broken = "Ein Link funktioniert nicht",
+  incorrect = "Etwas daran stimmt nicht",
+  hard_to_read = "Schwer verständlich / zu lang",
+  other = "Sonstiges"
+)
+AI_REASONS_POSITIVE <- c(
+  good_materials = "Gute Materialien",
+  clear_start = "Hat mir gezeigt, wo ich ansetzen kann"
+)
+# "Problem melden" on a single recommendation
+AI_REPORT_REASONS <- c(
+  link_broken = "Der Link funktioniert nicht",
+  materials_unfit = "Das Material passt nicht zu mir"
+)
+AI_COMMENT_MAX_CHARS <- 500L
+
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored
 EVIDENCE_HIGH     <-  8L

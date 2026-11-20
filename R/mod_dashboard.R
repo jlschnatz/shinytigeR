@@ -712,12 +712,61 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     ai_status <- reactive({
       ai_version()
       st <- ai_feedback_status(ai_user(), competency())
-      if (st$state == "cooldown") invalidateLater(60 * 1000)
+      # once more when the cooldown ends (its notice names that time)
+      if (st$state == "cooldown") invalidateLater(st$minutes * 60 * 1000 + 1000)
       st
     })
+    # What the card shows of the status. A reactiveVal only invalidates when
+    # its value changes, so a re-check with the same result (e.g. after the
+    # ability refresh) doesn't re-render the card and wipe a comment being
+    # typed.
+    ai_card_status <- reactiveVal(NULL)
+    observe(ai_card_status(ai_status()[c("state", "notice")]))
     ai_latest <- reactive({
       ai_version()
       ai_latest_feedback(ai_user())
+    })
+
+    # The rating of the shown feedback (R/ai_feedback.R): saved on the
+    # thumb's click, then the form opens (ai_rate_open) for reasons and a
+    # comment; "Problem melden" per recommendation.
+    ai_rating_version <- reactiveVal(0L)
+    ai_rate_open <- reactiveVal(FALSE)
+    ai_rating <- reactive({
+      ai_rating_version()
+      fb <- ai_latest()
+      if (is.null(fb)) NULL else ai_get_rating(ai_user(), fb$id_feedback)
+    })
+    ai_reported <- reactive({
+      ai_rating_version()
+      fb <- ai_latest()
+      if (is.null(fb)) integer(0) else ai_reported_positions(ai_user(), fb$id_feedback)
+    })
+    observeEvent(input$ai_rate, {
+      if (ai_save_rating(ai_user(), input$ai_rate$id, input$ai_rate$helpful)) {
+        ai_rate_open(TRUE)
+        ai_rating_version(ai_rating_version() + 1L)
+      }
+    })
+    observeEvent(input$ai_rate_send, {
+      v <- input$ai_rate_send
+      current <- ai_get_rating(ai_user(), v$id)
+      if (is.null(current)) {
+        return()
+      }
+      if (ai_save_rating(ai_user(), v$id, current$helpful,
+        reasons = as.character(unlist(v$reasons)), comment = v$comment
+      )) {
+        ai_rate_open(FALSE)
+        ai_rating_version(ai_rating_version() + 1L)
+      }
+    })
+    observeEvent(input$ai_rate_edit, ai_rate_open(TRUE))
+    observeEvent(input$ai_report, {
+      v <- input$ai_report
+      if (ai_save_report(ai_user(), v$id, v$pos, reason = v$reasons, comment = v$comment)) {
+        ai_rating_version(ai_rating_version() + 1L)
+      }
     })
 
     observeEvent(input$ai_create, {
@@ -738,6 +787,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       if (status == "success") {
         res <- ai_task$result()
         ai_flash(if (!isTRUE(res$ok)) list(type = "warning", text = res$notice))
+        if (isTRUE(res$ok)) ai_rate_open(FALSE)
         ai_version(ai_version() + 1L)
       } else if (status == "error") {
         msg <- tryCatch({
@@ -758,15 +808,20 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     })
 
     output$ai_feedback <- renderUI({
-      st <- ai_status()
+      st <- ai_card_status()
+      req(st)
+      off <- st$state == "off"
       ai_feedback_card(
         list(
           state = st$state,
           notice = st$notice,
           running = ai_task$status() == "running",
-          feedback = if (st$state != "off") ai_latest(),
+          feedback = if (!off) ai_latest(),
           cfg = ai_config(),
-          flash = ai_flash()
+          flash = ai_flash(),
+          rating = if (!off) ai_rating(),
+          rate_open = ai_rate_open(),
+          reported = if (!off) ai_reported()
         ),
         ns = session$ns
       )
