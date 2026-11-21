@@ -1165,6 +1165,10 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   background: #e8f0f7;
   color: var(--tiger-primary);
 }
+/* a rating from an earlier session is final: the chosen thumb as usual, the
+   other faded, neither clickable */
+.ai-fb-rate.is-locked .ai-fb-thumb:disabled { opacity: 1; }
+.ai-fb-rate.is-locked .ai-fb-thumb:not(.is-on) { opacity: 0.4; }
 .ai-fb-thanks { margin: 0.5rem 0 0; font-size: var(--fs-secondary); color: var(--bs-secondary-color); }
 .ai-fb-edit { font-size: inherit; }
 /* the form fields of the rating and of "Problem melden" */
@@ -1180,6 +1184,19 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .ai-fb-form textarea { width: 100%; font-size: var(--fs-secondary); }
 .ai-fb-label { margin: 0.25rem 0 0; font-weight: var(--fw-semibold); }
 .ai-fb-hint { margin: 0 0 0.2rem; font-size: var(--fs-tiny); color: var(--bs-secondary-color); }
+/* the rating form saves itself: a note, and "✓ Gespeichert" after each save */
+.ai-fb-autosave { margin: 0; font-size: var(--fs-tiny); color: var(--bs-secondary-color); }
+.ai-fb-saved { margin-left: 0.4em; color: var(--tiger-correct); font-weight: var(--fw-semibold); }
+/* note left, "Einklappen" right */
+.ai-fb-form-end {
+  align-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+.ai-fb-fold { font-size: var(--fs-small); display: inline-flex; align-items: center; gap: 0.25rem; text-decoration: none; }
 
 /* footer: who wrote it, then the button or why there's none yet */
 .ai-fb-footer { display: flex; flex-direction: column; gap: 0.5rem; }

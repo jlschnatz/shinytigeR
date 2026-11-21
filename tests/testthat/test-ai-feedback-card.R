@@ -111,7 +111,11 @@ test_that("after a thumbs-down the form shows the negative reasons, ticks and th
   expect_match(html, "Zu &lt;b&gt;vage&lt;/b&gt;.", fixed = TRUE)
   expect_match(html, sprintf('maxlength="%d"', AI_COMMENT_MAX_CHARS), fixed = TRUE)
   expect_match(html, "Dein Kommentar wird gespeichert", fixed = TRUE)
-  expect_match(html, 'data-ai-action="rate-send"', fixed = TRUE)
+  # saves itself: no Senden button, the inputs for ticks and comment instead
+  expect_no_match(html, "Senden", fixed = TRUE)
+  expect_match(html, 'data-reasons-input="dash-ai_rate_reasons" data-comment-input="dash-ai_rate_comment"', fixed = TRUE)
+  expect_match(html, "automatisch gespeichert", fixed = TRUE)
+  expect_match(html, 'data-ai-action="rate-close" data-input="dash-ai_rate_close"', fixed = TRUE)
   expect_match(html, 'aria-pressed="true"', fixed = TRUE)
 })
 
@@ -121,11 +125,25 @@ test_that("after a thumbs-up the form shows the positive reasons", {
   expect_no_match(html, AI_REASONS_NEGATIVE[["incorrect"]], fixed = TRUE)
 })
 
-test_that("once sent: a thank-you and Ändern", {
+test_that("coming back later (form closed): a thank-you and Ändern", {
   html <- card_html(feedback = fake_feedback(), rating = list(helpful = 1L, reasons = character(0), comment = NA), rate_open = FALSE)
   expect_match(html, "Danke für deine Rückmeldung!", fixed = TRUE)
   expect_match(html, 'data-ai-action="rate-edit"', fixed = TRUE)
   expect_no_match(html, "ai-fb-rate-form", fixed = TRUE)
+})
+
+test_that("a rating from an earlier session is final: thumb shown, nothing to click", {
+  rating <- list(helpful = 0L, reasons = "incorrect", comment = "x")
+  html <- card_html(feedback = fake_feedback(), rating = rating, rate_locked = TRUE, rate_open = TRUE)
+  expect_match(html, "ai-fb-rate is-locked", fixed = TRUE)
+  expect_match(html, "Danke für deine Rückmeldung!", fixed = TRUE)
+  expect_no_match(html, "data-ai-action=\"rate", fixed = TRUE) # no rate, rate-edit, rate-close
+  expect_no_match(html, "Ändern", fixed = TRUE)
+  expect_no_match(html, "ai-fb-rate-form", fixed = TRUE)
+  expect_equal(lengths(regmatches(html, gregexpr("disabled", html))), 2L)
+  expect_match(html, 'aria-pressed="true"', fixed = TRUE)
+  # without a rating there is nothing to lock
+  expect_match(card_html(feedback = fake_feedback(), rate_locked = TRUE), 'data-ai-action="rate"', fixed = TRUE)
 })
 
 test_that("each recommendation can be reported once", {
@@ -214,7 +232,7 @@ test_that("dashboard: the button creates a feedback in the background and shows 
   })
 })
 
-test_that("dashboard: thumb, form, Senden and Problem melden are saved", {
+test_that("dashboard: the thumb, each tick, the comment and Problem melden are saved", {
   dir <- local_ai_dir(cfg = list(enabled = TRUE, models = "m1"))
   local_ability(dir)
   mock_models(list(m1 = function(req) fake_answer(req)))
@@ -230,21 +248,60 @@ test_that("dashboard: thumb, form, Senden and Problem melden are saved", {
     expect_true(ai_rate_open())
     expect_match(as.character(output$ai_feedback$html), "ai-fb-rate-form", fixed = TRUE)
 
-    session$setInputs(ai_rate_send = list(id = id, reasons = list("too_generic", "incorrect"), comment = "Zu vage.", t = 2))
-    expect_false(ai_rate_open())
+    # ticks and comment are saved one by one, each keeping the other, and
+    # without re-rendering the card (that would wipe a comment being typed)
+    version <- ai_rating_version()
+    session$setInputs(ai_rate_reasons = list(id = id, reasons = list("too_generic"), t = 2))
+    expect_equal(ai_rating()$reasons, "too_generic")
+    session$setInputs(ai_rate_comment = list(id = id, comment = "Zu vage.", t = 3))
+    session$setInputs(ai_rate_reasons = list(id = id, reasons = list("too_generic", "incorrect"), t = 4))
     expect_setequal(ai_rating()$reasons, c("too_generic", "incorrect"))
     expect_equal(ai_rating()$comment, "Zu vage.")
-    expect_match(as.character(output$ai_feedback$html), "Danke für deine Rückmeldung!", fixed = TRUE)
-
-    # no reasons ticked: an empty list from the browser clears them
-    session$setInputs(ai_rate_edit = list(id = id, t = 3))
-    expect_true(ai_rate_open())
-    session$setInputs(ai_rate_send = list(id = id, reasons = list(), comment = "", t = 4))
+    expect_equal(ai_rating_version(), version)
+    expect_true(ai_rate_open()) # stays open, nothing to send
+    # all ticks cleared: an empty list from the browser
+    session$setInputs(ai_rate_reasons = list(id = id, reasons = list(), t = 5))
     expect_length(ai_rating()$reasons, 0L)
+    expect_equal(ai_rating()$comment, "Zu vage.")
+    # a re-render shows what is saved, not what was there when the form opened
+    ai_rating_version(ai_rating_version() + 1L)
+    session$flushReact()
+    expect_match(as.character(output$ai_feedback$html), "Zu vage.", fixed = TRUE)
 
-    session$setInputs(ai_report = list(id = id, pos = 2L, reasons = list("link_broken"), comment = "", t = 5))
+    # Einklappen folds the form to the thank-you, Ändern opens it again
+    session$setInputs(ai_rate_close = list(id = id, t = 7))
+    expect_false(ai_rate_open())
+    html <- as.character(output$ai_feedback$html)
+    expect_match(html, "Danke für deine Rückmeldung!", fixed = TRUE)
+    expect_no_match(html, "ai-fb-rate-form", fixed = TRUE)
+    session$setInputs(ai_rate_edit = list(id = id, t = 8))
+    expect_match(as.character(output$ai_feedback$html), "Zu vage.", fixed = TRUE)
+
+    session$setInputs(ai_report = list(id = id, pos = 2L, reasons = list("link_broken"), comment = "", t = 6))
     expect_equal(ai_reported(), 2L)
     expect_match(as.character(output$ai_feedback$html), "Gemeldet, danke!", fixed = TRUE)
+  })
+})
+
+test_that("dashboard: a rating from an earlier session is final, the browser can't change it", {
+  dir <- local_ai_dir(cfg = list(enabled = TRUE, models = "m1"))
+  local_ability(dir)
+  mock_models(list(m1 = function(req) fake_answer(req)))
+  fb_id <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))$id_feedback
+  ai_save_rating("u", fb_id, 1L, reasons = "clear_start")
+
+  testServer(mod_dashboard_server, args = dashboard_args(), {
+    html <- as.character(output$ai_feedback$html)
+    expect_match(html, "ai-fb-rate is-locked", fixed = TRUE)
+    expect_no_match(html, "Ändern", fixed = TRUE)
+    # (fb_id, not id: inside testServer, `id` is the module id)
+    # whatever the browser sends, nothing changes
+    session$setInputs(ai_rate_edit = list(id = fb_id, t = 1))
+    expect_false(ai_rate_open())
+    session$setInputs(ai_rate = list(id = fb_id, helpful = 0L, t = 2))
+    session$setInputs(ai_rate_reasons = list(id = fb_id, reasons = list("incorrect"), t = 3))
+    session$setInputs(ai_rate_comment = list(id = fb_id, comment = "geändert", t = 4))
+    expect_equal(ai_get_rating("u", fb_id), list(helpful = 1L, reasons = "clear_start", comment = NA_character_))
   })
 })
 

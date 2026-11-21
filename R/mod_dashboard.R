@@ -728,40 +728,63 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     })
 
     # The rating of the shown feedback (R/ai_feedback.R): saved on the
-    # thumb's click, then the form opens (ai_rate_open) for reasons and a
-    # comment; "Problem melden" per recommendation.
+    # thumb's click, then the form opens (ai_rate_open, for this session) and
+    # saves its ticks and comment as they change; "Problem melden" per
+    # recommendation. Those form saves deliberately don't bump
+    # ai_rating_version: re-rendering the card would wipe a comment being
+    # typed. So the card reads the rating fresh from the database whenever it
+    # does render (ai_rating() is a plain function, not a cached reactive).
     ai_rating_version <- reactiveVal(0L)
     ai_rate_open <- reactiveVal(FALSE)
-    ai_rating <- reactive({
-      ai_rating_version()
+    # Feedbacks rated in this session: only these ratings can still change.
+    # A rating from an earlier session is final (a rating belongs to that
+    # one look at the feedback); the observers below refuse changes to it,
+    # whatever the browser sends.
+    ai_rated_here <- reactiveVal(integer(0))
+    ai_may_rate <- function(id) {
+      id <- as_int1(id)
+      !is.na(id) && (id %in% ai_rated_here() || is.null(ai_get_rating(ai_user(), id)))
+    }
+    ai_rating <- function() {
       fb <- ai_latest()
       if (is.null(fb)) NULL else ai_get_rating(ai_user(), fb$id_feedback)
-    })
+    }
     ai_reported <- reactive({
       ai_rating_version()
       fb <- ai_latest()
       if (is.null(fb)) integer(0) else ai_reported_positions(ai_user(), fb$id_feedback)
     })
     observeEvent(input$ai_rate, {
-      if (ai_save_rating(ai_user(), input$ai_rate$id, input$ai_rate$helpful)) {
+      id <- as_int1(input$ai_rate$id)
+      if (!ai_may_rate(id)) {
+        return()
+      }
+      if (ai_save_rating(ai_user(), id, input$ai_rate$helpful)) {
+        ai_rated_here(union(ai_rated_here(), id))
         ai_rate_open(TRUE)
         ai_rating_version(ai_rating_version() + 1L)
       }
     })
-    observeEvent(input$ai_rate_send, {
-      v <- input$ai_rate_send
+    # The form's ticks and comment, each saved alone (the other is kept)
+    ai_save_rating_part <- function(v, ...) {
+      if (!as_int1(v$id) %in% ai_rated_here()) {
+        return(FALSE)
+      }
       current <- ai_get_rating(ai_user(), v$id)
-      if (is.null(current)) {
-        return()
-      }
-      if (ai_save_rating(ai_user(), v$id, current$helpful,
-        reasons = as.character(unlist(v$reasons)), comment = v$comment
-      )) {
-        ai_rate_open(FALSE)
-        ai_rating_version(ai_rating_version() + 1L)
-      }
+      if (!is.null(current)) ai_save_rating(ai_user(), v$id, current$helpful, ...)
+    }
+    observeEvent(input$ai_rate_reasons, {
+      ai_save_rating_part(input$ai_rate_reasons, reasons = as.character(unlist(input$ai_rate_reasons$reasons)))
     })
-    observeEvent(input$ai_rate_edit, ai_rate_open(TRUE))
+    observeEvent(input$ai_rate_comment, {
+      ai_save_rating_part(input$ai_rate_comment, comment = input$ai_rate_comment$comment)
+    })
+    observeEvent(input$ai_rate_edit, {
+      if (as_int1(input$ai_rate_edit$id) %in% ai_rated_here()) ai_rate_open(TRUE)
+    })
+    # everything is saved already (the comment on leaving its field, which
+    # happens before this click arrives), so folding can re-render
+    observeEvent(input$ai_rate_close, ai_rate_open(FALSE))
     observeEvent(input$ai_report, {
       v <- input$ai_report
       if (ai_save_report(ai_user(), v$id, v$pos, reason = v$reasons, comment = v$comment)) {
@@ -819,8 +842,15 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           feedback = if (!off) ai_latest(),
           cfg = ai_config(),
           flash = ai_flash(),
-          rating = if (!off) ai_rating(),
+          rating = if (!off) {
+            ai_rating_version()
+            ai_rating()
+          },
           rate_open = ai_rate_open(),
+          rate_locked = {
+            fb <- if (!off) ai_latest()
+            !is.null(fb) && !fb$id_feedback %in% ai_rated_here()
+          },
           reported = if (!off) ai_reported()
         ),
         ns = session$ns

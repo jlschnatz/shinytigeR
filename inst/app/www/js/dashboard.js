@@ -128,11 +128,10 @@ document.addEventListener('click', function (e) {
   });
 })();
 
-// AI feedback card (ai_feedback_card.R): the rating's thumbs, its form
-// ("Senden", "Ändern") and "Problem melden" under a recommendation. Buttons
-// carry data-ai-action, data-input (the namespaced input id) and data-id;
-// the form's ticks and comment are read here and sent in one input event,
-// so nothing goes to the server while typing.
+// AI feedback card (ai_feedback_card.R). Buttons carry data-ai-action,
+// data-input (the namespaced input id) and data-id: the rating's thumbs,
+// "Ändern", and "Melden" under a recommendation (its choice and comment are
+// read here and sent in one event).
 document.addEventListener('click', function (e) {
   var btn = e.target.closest('[data-ai-action]');
   if (!btn || !window.Shiny) return;
@@ -141,18 +140,61 @@ document.addEventListener('click', function (e) {
   if (action === 'rate') {
     value.helpful = parseInt(btn.getAttribute('data-helpful'), 10);
   }
-  if (action === 'rate-send' || action === 'report-send') {
+  if (action === 'report-send') {
     var form = btn.closest('.ai-fb-form');
+    value.pos = parseInt(btn.getAttribute('data-pos'), 10);
     value.reasons = Array.prototype.map.call(
       form.querySelectorAll('input:checked'),
       function (el) { return el.value; }
     );
     var text = form.querySelector('textarea');
     value.comment = text ? text.value : '';
-  }
-  if (action === 'report-send') {
-    value.pos = parseInt(btn.getAttribute('data-pos'), 10);
     if (value.reasons.length === 0 && !value.comment.trim()) return; // nothing to report
   }
   Shiny.setInputValue(btn.getAttribute('data-input'), value, { priority: 'event' });
 });
+
+// Its rating form saves itself, so nobody can forget to send it: each tick
+// at once, the comment 1 s after typing stops and when leaving the field.
+// The server doesn't re-render the card for these saves (that would wipe
+// the comment being typed). "✓ Gespeichert" shows briefly after each one.
+(function () {
+  var timer = null;
+  function saved(form) {
+    var el = form.querySelector('.ai-fb-saved');
+    if (!el) return;
+    el.textContent = '\u2713 Gespeichert';
+    clearTimeout(el._hide);
+    el._hide = setTimeout(function () { el.textContent = ''; }, 2000);
+  }
+  function send(form, kind) {
+    if (!window.Shiny) return;
+    var value = { id: parseInt(form.getAttribute('data-id'), 10), t: Date.now() };
+    if (kind === 'reasons') {
+      value.reasons = Array.prototype.map.call(
+        form.querySelectorAll('input[type=checkbox]:checked'),
+        function (el) { return el.value; }
+      );
+    } else {
+      var text = form.querySelector('textarea');
+      value.comment = text ? text.value : '';
+      if (form._sentComment === value.comment) return; // unchanged
+      form._sentComment = value.comment;
+    }
+    Shiny.setInputValue(form.getAttribute('data-' + kind + '-input'), value, { priority: 'event' });
+    saved(form);
+  }
+  document.addEventListener('change', function (e) {
+    var form = e.target.closest('.ai-fb-rate-form');
+    if (!form) return;
+    if (e.target.type === 'checkbox') send(form, 'reasons');
+    if (e.target.tagName === 'TEXTAREA') { clearTimeout(timer); send(form, 'comment'); }
+  });
+  document.addEventListener('input', function (e) {
+    var form = e.target.closest('.ai-fb-rate-form');
+    if (!form || e.target.tagName !== 'TEXTAREA') return;
+    clearTimeout(timer);
+    timer = setTimeout(function () { send(form, 'comment'); }, 1000);
+  });
+})();
+

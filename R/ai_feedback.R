@@ -536,7 +536,8 @@ ai_owns_feedback <- function(con, user_id, id) {
 
 # Saves the student's rating: one per feedback and student, updated. The
 # thumb alone is saved on its click (reasons/comment NULL = keep them); the
-# form's "Senden" passes reasons and comment. Switching the thumb clears the
+# form then saves the reasons and the comment, each alone as it changes.
+# Switching the thumb clears the
 # reasons and the comment (they were about the other one). TRUE if saved.
 ai_save_rating <- function(user_id, id_feedback, helpful, reasons = NULL, comment = NULL) {
   id <- as_int1(id_feedback)

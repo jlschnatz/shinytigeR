@@ -9,12 +9,15 @@
 #   cfg       ai_config() (for the model's label)
 #   flash     list(type = "warning"/"info", text) from the last click, or NULL
 #   rating    ai_get_rating() for the shown feedback, or NULL
-#   rate_open TRUE while the rating form is open (after a thumb, "Ändern")
+#   rate_open TRUE while the rating form is open (after a thumb or "Ändern")
+#   rate_locked TRUE if the rating was given in an earlier session: it's final
+#             then (the chosen thumb shown, nothing clickable)
 #   reported  positions of the recommendations reported (ai_reported_positions())
 #
-# The rating's buttons carry data-ai-action; www/js/dashboard.js reads the
-# form fields and sends them in one input event (ai_rate, ai_rate_send,
-# ai_rate_edit, ai_report), so nothing is sent while typing.
+# The rating's buttons carry data-ai-action (ai_rate, ai_rate_edit,
+# ai_report); its form saves itself (www/js/dashboard.js): each tick at once
+# (ai_rate_reasons), the comment shortly after typing stops and on leaving
+# the field (ai_rate_comment). Those saves don't re-render the card.
 #
 # The model's text is shown as plain text (escaped), never as Markdown/HTML.
 # The card says it's AI-generated, and by which model (legally required, and
@@ -49,7 +52,7 @@ ai_feedback_card <- function(view, ns = identity) {
   } else {
     tagList(
       ai_feedback_body(fb, ns, reported = if (running) NULL else view$reported, report = !running),
-      if (!running) ai_rating_block(fb$id_feedback, view$rating, isTRUE(view$rate_open), ns)
+      if (!running) ai_rating_block(fb$id_feedback, view$rating, isTRUE(view$rate_open), ns, locked = isTRUE(view$rate_locked))
     )
   }
 
@@ -221,11 +224,15 @@ ai_comment_field <- function(id, value, label) {
 
 # "War dieses Feedback hilfreich?" The thumb is saved on its click
 # (input$ai_rate); then the form opens with the reasons for that thumb and
-# the comment, sent with "Senden" (input$ai_rate_send). Once sent, a
-# thank-you with "Ändern" (input$ai_rate_edit).
-ai_rating_block <- function(id_feedback, rating, open, ns = identity) {
+# the comment, both saved as they change, so nobody can forget to send them.
+# "Einklappen" (input$ai_rate_close) folds it to a thank-you with "Ändern"
+# (input$ai_rate_edit), which opens it again. Only within the session it was
+# given in: coming back later, the rating is final (`locked`), a thank-you
+# with the chosen thumb, nothing to click.
+ai_rating_block <- function(id_feedback, rating, open, ns = identity, locked = FALSE) {
   id_feedback <- as.integer(id_feedback)
   helpful <- if (is.null(rating)) NA_integer_ else rating$helpful
+  locked <- locked && !is.null(rating)
   thumb <- function(value, icon, label) {
     on <- identical(helpful, value)
     tags$button(
@@ -233,7 +240,8 @@ ai_rating_block <- function(id_feedback, rating, open, ns = identity) {
       class = paste("btn btn-sm ai-fb-thumb", if (on) "is-on"),
       `aria-pressed` = if (on) "true" else "false",
       `aria-label` = label,
-      `data-ai-action` = "rate", `data-input` = ns("ai_rate"),
+      disabled = if (locked) NA,
+      `data-ai-action` = if (!locked) "rate", `data-input` = if (!locked) ns("ai_rate"),
       `data-id` = id_feedback, `data-helpful` = value,
       bsicons::bs_icon(if (on) paste0(icon, "-fill") else icon),
       label
@@ -250,6 +258,13 @@ ai_rating_block <- function(id_feedback, rating, open, ns = identity) {
   )
   if (is.null(rating)) {
     return(div(class = "ai-fb-rate", question))
+  }
+  if (locked) {
+    return(div(
+      class = "ai-fb-rate is-locked",
+      question,
+      tags$p(class = "ai-fb-thanks", "Danke für deine Rückmeldung!")
+    ))
   }
   if (!open) {
     return(div(
@@ -273,6 +288,9 @@ ai_rating_block <- function(id_feedback, rating, open, ns = identity) {
     question,
     div(
       class = "ai-fb-form ai-fb-rate-form",
+      `data-id` = id_feedback,
+      `data-reasons-input` = ns("ai_rate_reasons"),
+      `data-comment-input` = ns("ai_rate_comment"),
       tags$p(
         class = "ai-fb-label",
         if (identical(helpful, 1L)) "Was war hilfreich? (optional)" else "Was hat nicht gepasst? (optional)"
@@ -289,10 +307,19 @@ ai_rating_block <- function(id_feedback, rating, open, ns = identity) {
         )
       }),
       ai_comment_field(paste0(prefix, "-c"), rating$comment, "Kommentar (optional)"),
-      tags$button(
-        type = "button", class = "btn btn-sm btn-primary",
-        `data-ai-action` = "rate-send", `data-input` = ns("ai_rate_send"), `data-id` = id_feedback,
-        "Senden"
+      div(
+        class = "ai-fb-form-end",
+        tags$p(
+          class = "ai-fb-autosave",
+          "Deine Auswahl und dein Kommentar werden automatisch gespeichert.",
+          tags$span(class = "ai-fb-saved", `aria-live` = "polite")
+        ),
+        tags$button(
+          type = "button", class = "btn btn-link btn-sm p-0 ai-fb-fold",
+          `data-ai-action` = "rate-close", `data-input` = ns("ai_rate_close"), `data-id` = id_feedback,
+          bsicons::bs_icon("chevron-up"),
+          "Einklappen"
+        )
       )
     )
   )
