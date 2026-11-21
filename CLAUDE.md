@@ -138,6 +138,7 @@ app_v3/
 │   ├── seed_db.R                 # creates db_credentials.sqlite + empty db_user.sqlite; copies db_item_sample.sqlite in if db_item.sqlite is missing
 │   ├── export_ai_lookup.R        # AI feedback's source list: Excel -> ai_lookup.csv in the DB folder (needs readxl, plain Rscript)
 │   ├── try_ai_feedback.R         # generates AI feedback for a local user and prints it with the API calls' metadata
+│   ├── ai_feedback_report.R      # read-only report on db_feedback.sqlite: ratings per model/prompt, API errors, reasons, comments, sources to check
 │   ├── ai_config.example.json    # template for ai_config.json in the DB folder
 │   ├── check_deploy_dbs.R        # read-only check of a DB folder before upload (current format? sample items? images? files present?)
 │   ├── db_item_sample.sqlite     # committed sample pool (18 items: 14 mc + 4 num)
@@ -654,7 +655,7 @@ Shared tables with an `id_user` column (not one table per user), created on firs
 | `link_click` | click on a recommended source | `position`, `created_at` |
 | `prompt` | system prompt version | `version` (primary key), `text` (as sent, evidence words filled in), `first_used_at`. Written once per version with the first feedback that uses it; the MD5 prefix alone can't tell what a version said. Versions from before this table (Nov 2026, local tests only) have no text |
 
-All four are written by the card (rating, "Problem melden", link clicks). The privacy page and the FAQ list all of this (and what goes to the API); keep them in sync with these tables.
+All four are written by the card (rating, "Problem melden", link clicks). `dev/ai_feedback_report.R` summarises all of it (read-only, no usernames). The privacy page and the FAQ list all of this (and what goes to the API); keep them in sync with these tables.
 
 ### `db_credentials.sqlite` — authentication
 

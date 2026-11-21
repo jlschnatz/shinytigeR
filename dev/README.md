@@ -12,6 +12,7 @@ Scripts for working on the app locally. Run them from the project root with
 | `add_mock_user.R` | To try the dashboard with data: adds a fake user who has answered every item. Local only |
 | `add_showcase_user.R [username]` | Before a demo: adds a showcase account (default `tiger_demo`) with 5 weeks of simulated practice that shows every dashboard feature. Dates are relative to the run day, so run it shortly before the demo. Password in `SHOWCASE_ACCOUNT.txt` in the DB folder |
 | `export_ai_lookup.R <lookup.xlsx> [folder]` | When the AI feedback's source list (Excel, sheet "Sources") changes: writes `ai_lookup.csv` to the DB folder, refuses if the list has problems. Needs `readxl` (personal library, not in rv), so run with plain `Rscript` |
+| `ai_feedback_report.R [folder] [--days N]` | To see how the AI feedback is used and rated: per model and prompt version (ratings, duration, tokens, fallbacks), the API's errors over the last N days (default 30), the reasons ticked, the latest comments, and which sources are clicked or reported (the to-do list for `ai_lookup.csv`). Read-only, never prints usernames; works on a backup downloaded from the server |
 | `try_ai_feedback.R [user] [--force]` | To try the AI feedback without the app: generates it for a local user (default `tiger_demo`) like the app does and prints the prompt, the feedback and the API calls (tokens, duration, outcome). `--force` ignores the cooldown and the daily limit. Saves to `db_feedback.sqlite` |
 
 The sample pool (`db_item_sample.sqlite`, 18 items incl. 4 numeric ones, with
