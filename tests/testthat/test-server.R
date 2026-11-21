@@ -63,7 +63,7 @@ test_that("login's silent ability catch-up does not block the dashboard button f
   # Regression test for a real bug: the login-time auto-catch-up (meant only
   # to clear out STALE data from a prior session) was also latching
   # ability_computed_this_session, which then blocked the refresh button for
-  # data answered THIS session — "Fähigkeitsverlauf aktualisieren" incorrectly
+  # data answered THIS session — the refresh button (then "Fähigkeitsverlauf aktualisieren", now "Lernstand aktualisieren") incorrectly
   # reported "up to date" right after practicing. See the "Bug, hit and fixed
   # once" callout in CLAUDE.md's R/mod_dashboard.R section.
   db_dir <- tempfile("tiger_test")

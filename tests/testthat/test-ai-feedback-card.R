@@ -347,3 +347,65 @@ test_that("dashboard: with the feature off the card shows only the notice", {
     expect_false(file.exists(file.path(dir, "db_feedback.sqlite"))) # not even created
   })
 })
+
+# ── The two buttons: "Lernstand aktualisieren" and "Feedback erstellen" ───────
+
+test_that("the feedback says which estimate it's based on, and when that changed", {
+  fb <- fake_feedback()
+  fb$ability_computed_at <- as.integer(as.POSIXct("2026-11-19 10:00:00"))
+  html <- card_html(feedback = fb)
+  expect_match(html, "Beruht auf deinem Lernstand vom 19. Nov 2026.", fixed = TRUE)
+  expect_no_match(html, "seitdem verändert", fixed = TRUE)
+  expect_match(card_html(feedback = fb, estimate_newer = TRUE), "Dein Lernstand hat sich seitdem verändert.", fixed = TRUE)
+})
+
+test_that("the button says when it updates the estimate first", {
+  expect_match(card_html(will_refresh = TRUE), "Dabei wird zuerst dein Lernstand", fixed = TRUE)
+  expect_no_match(card_html(will_refresh = FALSE), "Dabei wird zuerst", fixed = TRUE)
+  # no button, no note
+  expect_no_match(card_html(will_refresh = TRUE, state = "cooldown", notice = "x"), "Dabei wird zuerst", fixed = TRUE)
+})
+
+test_that("'Lernstand aktualisieren' is a quiet button with its reason as tooltip", {
+  on <- as.character(ability_refresh_button("dash-refresh_ability", TRUE, FALSE, TRUE))
+  expect_match(on, "Lernstand aktualisieren", fixed = TRUE)
+  expect_match(on, "btn-link", fixed = TRUE)
+  expect_no_match(on, "disabled", fixed = TRUE)
+  done <- as.character(ability_refresh_button("x", FALSE, TRUE, TRUE))
+  expect_match(done, "disabled", fixed = TRUE)
+  expect_match(done, "In dieser Sitzung bereits aktualisiert", fixed = TRUE)
+  expect_match(as.character(ability_refresh_button("x", FALSE, FALSE, TRUE)), "Keine neuen Antworten", fixed = TRUE)
+  expect_match(as.character(ability_refresh_button("x", FALSE, FALSE, FALSE)), "Noch keine Antworten", fixed = TRUE)
+})
+
+test_that("dashboard: 'Feedback erstellen' first updates the estimate with new answers", {
+  dir <- local_ai_dir(cfg = list(enabled = TRUE, models = "m1"))
+  local_ability(dir, computed_at = as.integer(Sys.time()) - 3600L)
+  # answers after that estimate (Regression), not in it yet
+  file.copy(
+    make_user_db(user = "u", item_ids = 1:3, correct = c(TRUE, FALSE, TRUE)),
+    file.path(dir, "db_user.sqlite"),
+    overwrite = TRUE
+  )
+  mock_models(list(m1 = function(req) fake_answer(req)))
+  args <- dashboard_args()
+
+  testServer(mod_dashboard_server, args = args, {
+    expect_true(can_refresh_ability())
+    before <- max(competency()$computed_at)
+    expect_match(as.character(output$ai_feedback$html), "Dabei wird zuerst dein Lernstand", fixed = TRUE)
+
+    session$setInputs(ai_create = 1)
+    pump_until(session, function() ai_task$status() == "success")
+    session$flushReact()
+
+    # the estimate was updated (it counts as the session's one update) ...
+    expect_true(ability_computed_this_session())
+    expect_false(can_refresh_ability())
+    after <- max(competency()$computed_at)
+    expect_gt(after, before)
+    # ... and the feedback is based on the updated one
+    expect_equal(ai_latest()$ability_computed_at, after)
+    expect_no_match(as.character(output$ai_feedback$html), "seitdem verändert", fixed = TRUE)
+  })
+})

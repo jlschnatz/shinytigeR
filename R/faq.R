@@ -130,7 +130,8 @@ faq_entries <- function(contact = CONTACT_EMAIL, provisional = NULL) {
       topic = "Fortschritt",
       q = "Warum ändert sich meine Einschätzung nicht nach jeder Aufgabe?",
       a = paste(
-        "Die Einschätzung wird höchstens einmal pro Sitzung neu berechnet: beim Anmelden oder über **Fähigkeitsverlauf aktualisieren**.",
+        "Die Einschätzung wird höchstens einmal pro Sitzung neu berechnet: beim Anmelden, über **Lernstand aktualisieren** (oben bei „Dein Lernstand“)",
+        "oder wenn du ein **Persönliches Feedback** erstellst, das dafür zuerst deine neuen Antworten einbezieht.",
         "Dein Lernstand ändert sich nicht von Aufgabe zu Aufgabe, und so springt die Einschätzung nicht bei jeder einzelnen Antwort hin und her."
       )
     ),

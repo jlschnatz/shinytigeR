@@ -1033,9 +1033,22 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   .dashboard-comp-table thead th:first-child { display: none; }
   .dashboard-comp-table thead tr { padding-top: 0.4rem; padding-bottom: 0.4rem; }
   .dashboard-comp-table td.comp-area { grid-column: 1 / -1; }
-  /* footer: note above, button full width */
-  .comp-footer { flex-direction: column; align-items: stretch !important; }
 }
+
+/* "Dein Lernstand" header: the date and "Lernstand aktualisieren" (a quiet
+   secondary button; why it's disabled is the wrapper's tooltip) */
+.comp-head-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.15rem 0.6rem; }
+.comp-refresh-wrap { display: inline-flex; }
+.comp-refresh {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  padding: 0.1rem 0.25rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.comp-refresh:disabled { color: var(--bs-secondary-color); opacity: 0.6; }
 
 /* ── Dashboard — AI feedback card (R/ai_feedback_card.R) ───────────────────── */
 .ai-feedback-badge {
@@ -1206,6 +1219,17 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   margin: 0;
 }
 .ai-fb-btn { align-self: flex-end; display: inline-flex; align-items: center; gap: 0.4rem; }
+/* under the button: it updates the estimate first */
+.ai-fb-refresh-note { align-self: flex-end; text-align: right; }
+/* the estimate is newer than the one the feedback is based on */
+.ai-fb-changed {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--tiger-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 /* while a new one is written, the old feedback stays, dimmed */
 .ai-feedback-card.is-running .ai-fb { opacity: 0.55; transition: opacity var(--anim-dur); }
 @media (max-width: 575.98px) {

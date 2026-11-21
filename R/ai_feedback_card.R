@@ -12,6 +12,9 @@
 #   rate_open TRUE while the rating form is open (after a thumb or "Ändern")
 #   rate_locked TRUE if the rating was given in an earlier session: it's final
 #             then (the chosen thumb shown, nothing clickable)
+#   estimate_newer TRUE if the saved estimate is newer than the one the
+#             feedback is based on (said in the footer)
+#   will_refresh TRUE if "Feedback erstellen" updates the estimate first
 #   reported  positions of the recommendations reported (ai_reported_positions())
 #
 # The rating's buttons carry data-ai-action (ai_rate, ai_rate_edit,
@@ -82,6 +85,13 @@ ai_feedback_card <- function(view, ns = identity) {
       bslib::card_footer(
         class = "ai-fb-footer",
         if (!is.null(fb)) ai_feedback_meta(fb, view$cfg),
+        if (!is.null(fb) && isTRUE(view$estimate_newer)) {
+          tags$p(
+            class = "ai-fb-changed",
+            bsicons::bs_icon("info-circle"),
+            "Dein Lernstand hat sich seitdem verändert."
+          )
+        },
         ai_feedback_action(view, has_feedback = !is.null(fb), ns = ns)
       )
     }
@@ -139,8 +149,8 @@ ai_feedback_body <- function(fb, ns = identity, reported = NULL, report = TRUE) 
   )
 }
 
-# "Von einer KI erstellt mit Gemma 4 (31B), 20. Nov 2026, 14:03". Says so
-# when a fallback model wrote it.
+# "Von einer KI erstellt mit Gemma 4 (31B), 20. Nov 2026, 14:03. Beruht auf
+# deinem Lernstand vom 19. Nov 2026." Says so when a fallback model wrote it.
 ai_feedback_meta <- function(fb, cfg) {
   t <- as.POSIXct(fb$created_at, origin = "1970-01-01")
   when <- paste0(format_date_de(local_date(t)), ", ", format(t, "%H:%M"))
@@ -148,6 +158,12 @@ ai_feedback_meta <- function(fb, cfg) {
   tags$p(
     class = "ai-fb-meta",
     sprintf("Von einer KI erstellt mit %s, %s.", model, when),
+    if (!is.null(fb$ability_computed_at) && !is.na(fb$ability_computed_at)) {
+      sprintf(
+        " Beruht auf deinem Lernstand vom %s.",
+        format_date_de(local_date(as.POSIXct(fb$ability_computed_at, origin = "1970-01-01")))
+      )
+    },
     if (isTRUE(as.logical(fb$used_fallback))) {
       " Das Standardmodell war nicht erreichbar, deshalb hat ein Ersatzmodell geschrieben."
     },
@@ -167,11 +183,16 @@ ai_feedback_action <- function(view, has_feedback, ns = identity) {
   if (!identical(view$state, "ready")) {
     return(tags$p(class = "ai-fb-wait", view$notice))
   }
-  tags$button(
-    type = "button", class = "btn btn-sm btn-primary ai-fb-btn",
-    onclick = sprintf("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", ns("ai_create")),
-    bsicons::bs_icon("stars"),
-    if (has_feedback) "Neues Feedback erstellen" else "Feedback erstellen"
+  tagList(
+    tags$button(
+      type = "button", class = "btn btn-sm btn-primary ai-fb-btn",
+      onclick = sprintf("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", ns("ai_create")),
+      bsicons::bs_icon("stars"),
+      if (has_feedback) "Neues Feedback erstellen" else "Feedback erstellen"
+    ),
+    if (isTRUE(view$will_refresh)) {
+      tags$p(class = "ai-fb-wait ai-fb-refresh-note", "Dabei wird zuerst dein Lernstand mit deinen neuen Antworten aktualisiert.")
+    }
   )
 }
 # "Problem melden" under one recommendation: a native <details>, so opening

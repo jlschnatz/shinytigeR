@@ -236,7 +236,7 @@ explainer_card <- function() {
       step(
         4,
         "Einmal pro Sitzung neu berechnet",
-        "Beim Anmelden oder über „Fähigkeitsverlauf aktualisieren“. Deshalb ändert sich die Einschätzung nicht nach jeder einzelnen Aufgabe."
+        "Beim Anmelden, über „Lernstand aktualisieren“ oder beim Erstellen eines Persönlichen Feedbacks. Deshalb ändert sich die Einschätzung nicht nach jeder einzelnen Aufgabe."
       )
     ),
     tags$p(

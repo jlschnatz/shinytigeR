@@ -132,6 +132,38 @@ certainty_dots <- function(theta, se, n_items, cl) {
   )
 }
 
+# "Aktualisieren" in the header of "Dein Lernstand", next to the date it
+# changes: a quiet secondary button (the main action is "Feedback erstellen",
+# which updates the estimate itself first). Why it can't be used is its
+# tooltip (on a wrapper: a disabled button gets no hover events). Still an
+# actionButton with the id refresh_ability (input$refresh_ability; the
+# server ignores its resend-0 on re-render via req(can_refresh_ability())).
+ability_refresh_button <- function(id, can_refresh, done_this_session, has_estimate) {
+  tip <- if (can_refresh) {
+    "Bezieht deine neuen Antworten in die Einschätzung ein (einmal pro Sitzung)."
+  } else if (done_this_session) {
+    "In dieser Sitzung bereits aktualisiert. Beim nächsten Login geht es wieder."
+  } else if (has_estimate) {
+    "Keine neuen Antworten seit der letzten Einschätzung."
+  } else {
+    "Noch keine Antworten für eine Einschätzung."
+  }
+  tags$span(
+    class = "comp-refresh-wrap",
+    `data-tip` = tip,
+    tabindex = if (!can_refresh) "0",
+    actionButton(
+      id,
+      "Lernstand aktualisieren",
+      icon = shiny::icon("rotate"),
+      class = "btn-sm btn-link comp-refresh",
+      # a logical: actionButton()'s own argument (Shiny >= 1.9). The string
+      # "disabled" that used to be passed here left the button enabled.
+      disabled = !can_refresh
+    )
+  )
+}
+
 # Locale-independent "24. Aug 2026" — format(..., "%b") depends on the
 # server's locale, which is not German in the Docker image.
 format_date_de <- function(date) {
@@ -464,7 +496,7 @@ trajectory_section <- function(hist, ns = shiny::NS(NULL), now = Sys.time()) {
         trajectory_window_switch(),
         info_tip(paste(
           "Jeder Punkt ist eine gespeicherte Schätzung deines Lernstands in diesem Themenbereich.",
-          "Eine neue entsteht höchstens einmal pro Sitzung (beim Login oder über „Fähigkeitsverlauf aktualisieren“),",
+          "Eine neue entsteht höchstens einmal pro Sitzung (beim Login, über „Lernstand aktualisieren“ oder beim Erstellen eines Persönlichen Feedbacks),",
           "und nur für Bereiche, die du seitdem geübt hast. Die farbigen Bänder sind die Kompetenzstufen."
         ))
       ),
@@ -542,8 +574,12 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
     # The latest saved estimate per learning area (latest_ability()).
     competency <- reactive(latest_ability(ability_history()))
 
-    observeEvent(input$refresh_ability, {
-      req(can_refresh_ability())
+    # The session's one on-demand update of the estimate: the button, or
+    # "Feedback erstellen" (which updates first if it can, so the feedback is
+    # based on the current answers). Both are the student's own action in
+    # this session, so both set ability_computed_this_session; the login
+    # catch-up never does (see the bug note in CLAUDE.md).
+    refresh_ability_now <- function() {
       compute_and_save_ability(
         credentials()$info$user_name,
         session$token,
@@ -551,6 +587,10 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       )
       ability_computed_this_session(TRUE)
       ability_version(ability_version() + 1L)
+    }
+    observeEvent(input$refresh_ability, {
+      req(can_refresh_ability())
+      refresh_ability_now()
     })
 
     output$dash_content <- renderUI({
@@ -584,14 +624,21 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
             bslib::card(
               class = "comp-card",
               bslib::card_header(
-                class = "d-flex justify-content-between align-items-center",
+                class = "d-flex justify-content-between align-items-center gap-2",
                 tags$b("Dein Lernstand"),
-                if (!is.null(comp)) {
-                  tags$span(
-                    class = "text-muted small",
-                    format_date_de(local_date(comp$computed_at[1]))
+                div(
+                  class = "comp-head-meta",
+                  if (!is.null(comp)) {
+                    tags$span(
+                      class = "text-muted small",
+                      format_date_de(local_date(comp$computed_at[1]))
+                    )
+                  },
+                  ability_refresh_button(
+                    session$ns("refresh_ability"), can_refresh,
+                    isTRUE(ability_computed_this_session()), !is.null(comp)
                   )
-                }
+                )
               ),
               bslib::card_body(
                 class = "p-0",
@@ -637,28 +684,6 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
                   )
                 )
               ),
-              bslib::card_footer(
-                class = "d-flex justify-content-between align-items-center gap-2 comp-footer",
-                tags$span(
-                  class = "text-muted small",
-                  if (is.null(comp)) {
-                    "Noch keine Fähigkeitsschätzung vorhanden."
-                  } else if (can_refresh) {
-                    NULL
-                  } else if (isTRUE(ability_computed_this_session())) {
-                    "In dieser Sitzung bereits aktualisiert."
-                  } else {
-                    "Keine neuen Daten seit der letzten Schätzung."
-                  }
-                ),
-                actionButton(
-                  session$ns("refresh_ability"),
-                  "Fähigkeitsverlauf aktualisieren",
-                  icon = shiny::icon("rotate"),
-                  class = "btn-sm btn-outline-primary",
-                  disabled = if (!can_refresh) "disabled" else NULL
-                )
-              )
             ),
             exam_literature_card(comp)
           ),
@@ -796,7 +821,10 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       if (ai_task$status() == "running") {
         return()
       }
-      req_ai <- ai_feedback_prepare(ai_user(), competency())
+      # new answers not in the estimate yet, and the session's update unused:
+      # update first, so the feedback matches the table next to it
+      if (isTRUE(can_refresh_ability())) refresh_ability_now()
+      req_ai <- ai_feedback_prepare(ai_user(), latest_ability(db_get_ability(ai_user())))
       if (!req_ai$ok) {
         ai_flash(list(type = "warning", text = req_ai$notice))
         return()
@@ -851,6 +879,15 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
             fb <- if (!off) ai_latest()
             !is.null(fb) && !fb$id_feedback %in% ai_rated_here()
           },
+          # the estimate is newer than the one the feedback is based on
+          estimate_newer = {
+            fb <- if (!off) ai_latest()
+            comp <- competency()
+            !is.null(fb) && !is.null(comp) && !is.na(fb$ability_computed_at) &&
+              max(comp$computed_at, na.rm = TRUE) > fb$ability_computed_at
+          },
+          # "Feedback erstellen" will update the estimate first
+          will_refresh = isTRUE(can_refresh_ability()),
           reported = if (!off) ai_reported()
         ),
         ns = session$ns
