@@ -144,7 +144,7 @@ app_v3/
 │   └── img_item_sample/          # the sample items' images; seed_db.R copies them to <DB folder>/img_item
 │
 ├── inst/extdata/
-│   ├── ai_system_prompt.txt  # AI feedback's system prompt (German); its MD5 prefix is stored as prompt_version
+│   ├── ai_system_prompt.txt  # AI feedback's system prompt (German); the MD5 prefix of the text as sent is prompt_version, the text goes to the prompt table
 │   └── lookup_exam.csv    # exam literature per learning area (textbook sections, pandaR links), see R/exam_literature.R
 │
 ├── inst/app/
@@ -645,13 +645,14 @@ Shared tables with an `id_user` column (not one table per user), created on firs
 
 | Table | One row per | Columns (besides `id_feedback`/`id_user`) |
 |---|---|---|
-| `feedback` | generated feedback | `id_session`, `created_at`, `ability_computed_at` (the snapshot it's based on), `model`, `used_fallback`, `format_ok`, `prompt_version` (MD5 prefix of the prompt file), `summary`, `user_prompt` (what was sent: levels, focus topics, sources; no user id), `duration_seconds` (click to answer, all models) |
+| `feedback` | generated feedback | `id_session`, `created_at`, `ability_computed_at` (the snapshot it's based on), `model`, `used_fallback`, `format_ok`, `prompt_version` (MD5 prefix of the system prompt as sent, `ai_prompt_version()`; its text is in `prompt`), `summary`, `user_prompt` (what was sent: levels, focus topics, sources; no user id), `duration_seconds` (click to answer, all models) |
 | `recommendation` | recommendation of a feedback | `position`, `topic`, `resource_id`, `text`. Title and link are looked up in the **current** source list when shown (NA if removed since) |
 | `api_call` | call to the API, successful or not | `created_at`, `model`, `outcome` (`ok`, `format`, `invalid`, `rate_limit`, `timeout`, `connection`, `unavailable`), `message`, `duration_seconds`, `input_tokens`, `output_tokens`, `cached_tokens`, `reasoning_tokens` (if reported), `finish_reason` (`length` = hit `max_tokens`), `response_model`, `response_id`; `id_feedback` set on the call whose answer was used. Also the source for blocking and the daily limit (replaces the prototype's `error_log`) |
 | `rating` | feedback and student (primary key, updated, not appended) | `helpful` (1/0), `comment`, `created_at`, `updated_at` |
 | `rating_reason` | reason ticked with a rating | `reason_code` (stable codes, not the German labels) |
 | `recommendation_report` | problem reported for one recommendation | `position`, `created_at`, `reason_code`, `comment` |
 | `link_click` | click on a recommended source | `position`, `created_at` |
+| `prompt` | system prompt version | `version` (primary key), `text` (as sent, evidence words filled in), `first_used_at`. Written once per version with the first feedback that uses it; the MD5 prefix alone can't tell what a version said. Versions from before this table (Nov 2026, local tests only) have no text |
 
 All four are written by the card (rating, "Problem melden", link clicks). The privacy page and the FAQ list all of this (and what goes to the API); keep them in sync with these tables.
 

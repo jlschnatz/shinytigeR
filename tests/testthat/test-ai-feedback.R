@@ -504,3 +504,19 @@ test_that("a problem report needs a reason or a comment and replaces an earlier 
   expect_equal(sort(ai_reported_positions("u", id)), 1:2)
   expect_length(ai_reported_positions("v", id), 0L)
 })
+
+test_that("each prompt version's full text is stored once", {
+  local_ai_dir()
+  mock_models(list(m1 = function(req) fake_answer(req)))
+  for (user in c("u", "v")) wait_for(ai_feedback_run(ai_feedback_prepare(user, comp_mixed()), "tok"))
+  p <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT * FROM prompt"))
+  sp <- ai_system_prompt()
+  expect_equal(nrow(p), 1L)
+  expect_equal(p$version, sp$version)
+  expect_equal(p$text, sp$text)
+  versions <- ai_db(function(con) DBI::dbGetQuery(con, "SELECT DISTINCT prompt_version FROM feedback")$prompt_version)
+  expect_equal(versions, sp$version)
+  # the version is of the text as sent: a different text, a different version
+  expect_false(identical(ai_prompt_version(paste(sp$text, "x")), sp$version))
+  expect_match(sp$version, "^[0-9a-f]{8}$")
+})

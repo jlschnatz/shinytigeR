@@ -190,14 +190,21 @@ ai_system_prompt_path <- function() {
   system.file("extdata", AI_SYSTEM_PROMPT_FILE, package = "shinytigeR")
 }
 
-# The system prompt with the evidence words filled in, and its version (the
-# file's MD5, shortened), stored with every feedback
+# The system prompt with the evidence words filled in, and its version
+# (ai_prompt_version()), stored with every feedback
 ai_system_prompt <- function(path = ai_system_prompt_path()) {
   txt <- paste(readLines(path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
   for (i in seq_along(AI_EVIDENCE_WORDS)) {
     txt <- gsub(sprintf("[[EVIDENCE_%d]]", i), AI_EVIDENCE_WORDS[i], txt, fixed = TRUE)
   }
-  list(text = txt, version = substr(unname(tools::md5sum(path)), 1L, 8L))
+  list(text = txt, version = ai_prompt_version(txt))
+}
+
+# MD5 prefix of the text as sent (evidence words filled in): two different
+# texts never share a version. Stored with every feedback; the text itself
+# goes to the `prompt` table once (ai_save_feedback()).
+ai_prompt_version <- function(text) {
+  substr(unname(tools::md5sum(bytes = charToRaw(enc2utf8(text)))), 1L, 8L)
 }
 
 # The request text (German, like the system prompt): LERNSTAND (every area
@@ -253,7 +260,7 @@ AI_DB_SCHEMA <- c(
     model TEXT,                  -- the model that answered
     used_fallback INTEGER,       -- 1 = not the first model in the config
     format_ok INTEGER,           -- 0 = broke the length/word rules (best there was)
-    prompt_version TEXT,         -- MD5 prefix of the system prompt file
+    prompt_version TEXT,         -- MD5 prefix of the system prompt as sent (see table prompt)
     summary TEXT,
     user_prompt TEXT,            -- what was sent (levels, focus topics, sources)
     duration_seconds REAL        -- click to answer, all models tried
@@ -293,6 +300,13 @@ AI_DB_SCHEMA <- c(
   "CREATE TABLE IF NOT EXISTS recommendation_report (
     id_feedback INTEGER, position INTEGER, id_user TEXT,
     created_at INTEGER, reason_code TEXT, comment TEXT
+  )",
+  # every system prompt version once, with its full text (the MD5 prefix in
+  # feedback.prompt_version alone can't tell what a version said)
+  "CREATE TABLE IF NOT EXISTS prompt (
+    version TEXT PRIMARY KEY,
+    text TEXT,
+    first_used_at INTEGER
   )",
   # a click on a recommended source
   "CREATE TABLE IF NOT EXISTS link_click (
@@ -374,6 +388,9 @@ ai_save_feedback <- function(req, session_token, chosen, duration) {
         )
       )
       id <- DBI::dbGetQuery(con, "SELECT last_insert_rowid() AS id")$id
+      DBI::dbExecute(con, "INSERT OR IGNORE INTO prompt (version, text, first_used_at) VALUES (?, ?, ?)",
+        params = list(req$prompt_version, req$system_prompt, as.integer(Sys.time()))
+      )
       rec <- chosen$recommendations
       for (i in seq_len(nrow(rec))) {
         DBI::dbExecute(con, "
