@@ -145,11 +145,37 @@ test_that("the user prompt has levels and words only, no estimates", {
   expect_false(grepl("-0.6|1.8|0.4", p))
 })
 
-test_that("the system prompt gets the evidence words and a version", {
+test_that("the system prompt comes from the DB folder, with the evidence words filled in", {
+  dir <- local_ai_dir()
   sp <- ai_system_prompt()
   expect_false(grepl("[[EVIDENCE_", sp$text, fixed = TRUE))
   expect_match(sp$text, paste(AI_EVIDENCE_WORDS, collapse = ", "), fixed = TRUE)
   expect_match(sp$version, "^[0-9a-f]{8}$")
+  # it's read on every request: a changed file is a new version at once
+  writeLines(c(test_prompt(), "Noch ein Satz."), file.path(dir, AI_SYSTEM_PROMPT_FILE))
+  expect_false(identical(ai_system_prompt()$version, sp$version))
+  # not part of the package (the repo is public)
+  expect_identical(system.file("extdata", AI_SYSTEM_PROMPT_FILE, package = "shinytigeR"), "")
+})
+
+test_that("without a system prompt the feature is off", {
+  local_ai_dir(prompt = NULL)
+  expect_null(ai_system_prompt())
+  expect_equal(ai_feedback_status("u", comp_mixed())$state, "off")
+  expect_false(ai_feedback_prepare("u", comp_mixed(), check_status = FALSE)$ok)
+})
+
+test_that("ai_prompt_problems() names what the code relies on but the prompt lacks", {
+  dir <- local_ai_dir()
+  expect_length(ai_prompt_problems(), 0L)
+  writeLines("Schreib etwas Nettes. LERNSTAND und FOKUSTHEMEN.", file.path(dir, AI_SYSTEM_PROMPT_FILE))
+  p <- ai_prompt_problems()
+  expect_match(p, "[[EVIDENCE_1]]", fixed = TRUE)
+  expect_match(p, "RESSOURCEN", fixed = TRUE)
+  expect_match(p, "resource_id", fixed = TRUE)
+  expect_no_match(p, "LERNSTAND", fixed = TRUE)
+  unlink(file.path(dir, AI_SYSTEM_PROMPT_FILE))
+  expect_match(ai_prompt_problems(), "is missing")
 })
 
 # ── Validation and format ─────────────────────────────────────────────────────

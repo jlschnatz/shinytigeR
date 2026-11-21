@@ -21,11 +21,12 @@ fixed fixture (the repo is public, the real pool is exam content): if the item
 format changes, edit it directly. The real pool is built with `make` in
 `item_database/` (next to `app/`, see its README).
 
-**AI feedback locally** needs three files in the DB folder, none of them in
+**AI feedback locally** needs four files in the DB folder, none of them in
 the repo:
 
 ```
 cp dev/ai_config.example.json ../db/ai_config.json
+cp <your copy>/ai_system_prompt.txt ../db/     # the system prompt, kept outside the public repo
 Rscript dev/export_ai_lookup.R <path>/lookup_table_ai_v3.xlsx
 nano ../db/llm_key.txt        # paste the API key; not with echo (shell history)
 chmod 600 ../db/llm_key.txt

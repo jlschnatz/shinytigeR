@@ -27,6 +27,7 @@ shinyapps/
     ├── db_item.sqlite, db_user.sqlite, db_credentials.sqlite, db_ability.sqlite
     ├── reg_code.txt
     ├── ai_config.json      AI feedback: on/off, models, cooldown (read on every request)
+    ├── ai_system_prompt.txt AI feedback: the system prompt (not in the repo)
     ├── ai_lookup.csv       AI feedback: the source list (dev/export_ai_lookup.R)
     ├── db_feedback.sqlite  AI feedback: created by the app on first use
     └── img_item/           the item images (since Nov 2026, before: in the package)
@@ -126,6 +127,10 @@ Then, in a separate local folder:
 - **AI feedback** (optional; without `ai_config.json` the feature is simply off):
   - `ai_config.json`: from `dev/ai_config.example.json`. `"enabled": false`
     switches it off at once, without a build. Missing or unreadable file = off.
+  - `ai_system_prompt.txt`: the system prompt (German). Kept out of the public
+    repo, so keep your own copy (e.g. with the kiwi project). It can be
+    changed by SFTP like the config; every feedback stores which version it
+    used, and the version's full text.
   - `ai_lookup.csv`: `Rscript dev/export_ai_lookup.R <lookup.xlsx> <folder>`
     (exports the Excel list and refuses if it has problems). The list isn't in
     the repo because the repo is public.
@@ -147,8 +152,10 @@ rv run dev/check_deploy_dbs.R <folder>
 It must end with "Ready to upload". It also lists items without `irt_diff`
 (they don't count towards the ability estimate). For the AI feedback it checks
 `ai_config.json` (readable, models listed, no unknown keys such as the old
-`cooldown_hours`, and no cooldown of 0, the local testing value) and
-`ai_lookup.csv`, and says where the key comes from. Without `ai_config.json`
+`cooldown_hours`, and no cooldown of 0, the local testing value),
+`ai_system_prompt.txt` (present, and mentioning the placeholders, blocks and
+fields the code relies on) and `ai_lookup.csv`, and says where the key comes
+from. Without `ai_config.json`
 it only notes that the feature is off.
 
 ### 3. Upload (SFTP)

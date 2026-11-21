@@ -9,8 +9,9 @@
 # --force  ignore the cooldown and the daily limit
 #
 # Uses the DB folder (TIGER_DB_DIR, default ../db) like the app: needs
-# ai_config.json (copy dev/ai_config.example.json), ai_lookup.csv
-# (dev/export_ai_lookup.R) and the key (TIGER_LLM_KEY or llm_key.txt).
+# ai_config.json (copy dev/ai_config.example.json), ai_system_prompt.txt
+# (kept outside the repo), ai_lookup.csv (dev/export_ai_lookup.R) and the key
+# (TIGER_LLM_KEY or llm_key.txt).
 # The feedback is saved to db_feedback.sqlite like a real one.
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -32,6 +33,10 @@ problems <- c(
     sprintf("%s: \"enabled\" is false or no models listed", AI_CONFIG_FILE)
   },
   if (!nzchar(ai_api_key())) sprintf("no key: set %s or create %s", AI_KEY_ENV, file.path(dir, AI_KEY_FILE)),
+  local({
+    p <- ai_prompt_problems(ai_system_prompt_path(dir))
+    if (length(p) > 0L) paste(AI_SYSTEM_PROMPT_FILE, "-", p, "(it's kept outside the repo)")
+  }),
   local({
     p <- ai_lookup_problems(read_ai_lookup())
     if (length(p) > 0L) paste(AI_LOOKUP_FILE, "-", p, "(dev/export_ai_lookup.R)")

@@ -41,12 +41,25 @@ make_lookup <- function() {
 }
 
 # A DB folder with config, source list and key; returns its path
+# A stand-in for the system prompt: the real one is kept out of the public
+# repo (DB folder only). Contains everything the code relies on.
+test_prompt <- function() {
+  c(
+    "Du schreibst Lernfeedback.",
+    "LERNSTAND nennt Stufe und Evidenz: [[EVIDENCE_1]], [[EVIDENCE_2]], [[EVIDENCE_3]].",
+    "FOKUSTHEMEN sind die schwächsten Themen, RESSOURCEN die Materialien.",
+    "Antworte mit summary und recommendations (topic, resource_id, text)."
+  )
+}
+
+# A DB folder with config, source list, system prompt and key; returns its path
 local_ai_dir <- function(cfg = list(enabled = TRUE, models = c("m1", "m2")),
-                         lookup = make_lookup(), env = parent.frame()) {
+                         lookup = make_lookup(), prompt = test_prompt(), env = parent.frame()) {
   dir <- withr::local_tempdir(.local_envir = env)
   withr::local_envvar(TIGER_DB_DIR = dir, TIGER_LLM_KEY = "test-key", .local_envir = env)
   if (!is.null(cfg)) jsonlite::write_json(cfg, file.path(dir, AI_CONFIG_FILE), auto_unbox = TRUE)
   if (!is.null(lookup)) utils::write.csv(lookup, file.path(dir, AI_LOOKUP_FILE), row.names = FALSE)
+  if (!is.null(prompt)) writeLines(prompt, file.path(dir, AI_SYSTEM_PROMPT_FILE), useBytes = TRUE)
   dir
 }
 

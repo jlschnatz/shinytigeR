@@ -11,7 +11,8 @@
 #
 # --items-only checks just db_item.sqlite and img_item/, e.g. a freshly built
 # pool in a release folder that has no user or credentials databases.
-# Otherwise the AI feedback's ai_config.json and ai_lookup.csv are checked too
+# Otherwise the AI feedback's ai_config.json, ai_system_prompt.txt and
+# ai_lookup.csv are checked too
 # (if there's a config; without one the feature is just off).
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -186,6 +187,12 @@ if (!items_only) {
           warn(sprintf("cooldown_minutes is only %s (default 240)", cfg$cooldown_minutes))
         } else {
           ok(sprintf("cooldown %s min, daily limit %s API calls", cfg$cooldown_minutes, cfg$daily_limit))
+        }
+        prompt_problems <- ai_prompt_problems(ai_system_prompt_path(dir))
+        if (length(prompt_problems) == 0L) {
+          ok(sprintf("%s: mentions everything the code relies on", AI_SYSTEM_PROMPT_FILE))
+        } else {
+          for (p in prompt_problems) fail(sprintf("%s: %s", AI_SYSTEM_PROMPT_FILE, p))
         }
         lookup_problems <- ai_lookup_problems(read_ai_lookup(file.path(dir, AI_LOOKUP_FILE)))
         if (length(lookup_problems) == 0L) {

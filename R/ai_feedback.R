@@ -186,18 +186,32 @@ ai_select_resources <- function(focus, lookup, n_max = AI_MAX_RESOURCES_PER_TOPI
 
 # ── 3. Prompt and schema ──────────────────────────────────────────────────────
 
-ai_system_prompt_path <- function() {
-  system.file("extdata", AI_SYSTEM_PROMPT_FILE, package = "shinytigeR")
-}
+ai_system_prompt_path <- function(dir = .db_dir()) file.path(dir, AI_SYSTEM_PROMPT_FILE)
 
-# The system prompt with the evidence words filled in, and its version
-# (ai_prompt_version()), stored with every feedback
+# The system prompt (from the DB folder, read on every request) with the
+# evidence words filled in, and its version (ai_prompt_version()), stored
+# with every feedback. NULL if the file is missing (the feature is off then).
 ai_system_prompt <- function(path = ai_system_prompt_path()) {
+  if (!file.exists(path)) {
+    return(NULL)
+  }
   txt <- paste(readLines(path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
   for (i in seq_along(AI_EVIDENCE_WORDS)) {
     txt <- gsub(sprintf("[[EVIDENCE_%d]]", i), AI_EVIDENCE_WORDS[i], txt, fixed = TRUE)
   }
   list(text = txt, version = ai_prompt_version(txt))
+}
+
+# What's missing from a prompt file the code relies on (AI_PROMPT_REQUIRED),
+# as sentences; empty = fine. For dev/check_deploy_dbs.R: an edited prompt
+# that drifts from the code wouldn't fail, the feedback would just get worse.
+ai_prompt_problems <- function(path = ai_system_prompt_path()) {
+  if (!file.exists(path)) {
+    return(paste(AI_SYSTEM_PROMPT_FILE, "is missing"))
+  }
+  txt <- paste(readLines(path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  missing <- AI_PROMPT_REQUIRED[!vapply(AI_PROMPT_REQUIRED, grepl, logical(1), x = txt, fixed = TRUE)]
+  if (length(missing) == 0L) character(0) else paste("doesn't mention:", paste(missing, collapse = ", "))
 }
 
 # MD5 prefix of the text as sent (evidence words filled in): two different
@@ -482,7 +496,7 @@ area_practice_items <- function(area, data_item, ud, n = AI_PRACTICE_ITEMS, toda
 # ── 5. May the student ask for feedback now? ──────────────────────────────────
 
 # list(state, notice, minutes): state is "ready", or why not:
-#   off          disabled in the config, or no API key
+#   off          disabled in the config, no API key, or no system prompt
 #   no_data      no area with enough items for a focus topic yet
 #   cooldown     cooldown_minutes since the last feedback haven't passed. The
 #                only limit per student: after it, a new feedback is possible
@@ -494,7 +508,7 @@ ai_feedback_status <- function(user_id, comp, cfg = ai_config(), now = Sys.time(
   out <- function(state, notice = NULL, minutes = 0L) {
     list(state = state, notice = notice, minutes = minutes)
   }
-  if (!cfg$enabled || !nzchar(ai_api_key())) {
+  if (!cfg$enabled || !nzchar(ai_api_key()) || !file.exists(ai_system_prompt_path())) {
     return(out("off", "Das persönliche Feedback ist zurzeit nicht verfügbar."))
   }
   status <- ai_learning_status(comp)
@@ -844,7 +858,7 @@ ai_check_format <- function(validated, tolerance = AI_FORMAT_TOLERANCE) {
 # Synchronous part, run on the click: checks, then builds the request.
 # list(ok = FALSE, notice) or list(ok = TRUE, ...the request...).
 # check_status = FALSE skips cooldown, snapshot and daily limit (only for
-# dev/try_ai_feedback.R; the feature must still be on and have a key).
+# dev/try_ai_feedback.R; the feature must still be on, with key and prompt).
 ai_feedback_prepare <- function(user_id, comp, cfg = ai_config(), check_status = TRUE) {
   if (check_status) {
     st <- ai_feedback_status(user_id, comp, cfg)
@@ -864,6 +878,9 @@ ai_feedback_prepare <- function(user_id, comp, cfg = ai_config(), check_status =
     return(list(ok = FALSE, notice = "Für deinen Lernstand sind gerade keine passenden Materialien hinterlegt."))
   }
   sp <- ai_system_prompt()
+  if (is.null(sp)) {
+    return(list(ok = FALSE, notice = "Das persönliche Feedback ist zurzeit nicht verfügbar."))
+  }
   list(
     ok = TRUE, user_id = user_id, cfg = cfg, key = ai_api_key(),
     system_prompt = sp$text, prompt_version = sp$version,

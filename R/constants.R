@@ -133,8 +133,18 @@ AI_CONFIG_FILE <- "ai_config.json"
 AI_LOOKUP_FILE <- "ai_lookup.csv"
 AI_KEY_ENV <- "TIGER_LLM_KEY"
 AI_KEY_FILE <- "llm_key.txt"
-# The system prompt (German), shipped with the package
+# The system prompt (German), also in the DB folder: it's tuned more often than
+# the code changes, and it's kept out of the public repo. Missing = feature
+# off. It must contain what the code relies on (AI_PROMPT_REQUIRED).
 AI_SYSTEM_PROMPT_FILE <- "ai_system_prompt.txt"
+# The placeholders the code fills in, the user prompt's blocks
+# (ai_user_prompt()) and the schema's fields (ai_schema()); checked by
+# ai_prompt_problems() before an upload
+AI_PROMPT_REQUIRED <- c(
+  "[[EVIDENCE_1]]", "[[EVIDENCE_2]]", "[[EVIDENCE_3]]",
+  "LERNSTAND", "FOKUSTHEMEN", "RESSOURCEN",
+  "summary", "recommendations", "topic", "resource_id"
+)
 
 # Defaults for the optional keys of AI_CONFIG_FILE
 AI_CONFIG_DEFAULTS <- list(
