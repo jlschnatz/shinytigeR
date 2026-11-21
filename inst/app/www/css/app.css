@@ -1219,6 +1219,11 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
 .dash-left { display: flex; flex-direction: column; gap: var(--gap-card); }
 .dash-left > .bslib-card,
 .dash-left + div > .bslib-card { margin-bottom: 0; }
+/* Both columns end at the same line, whichever is taller: the row stretches
+   both columns to the taller one, the AI card fills its column (height:
+   100%), and on the left "Zum Nacharbeiten" takes up the rest. The AI
+   feedback's length varies, so neither side has a fixed height. */
+.dash-left > .exam-lit-card { flex-grow: 1; }
 .exam-lit-tag {
   font-size: var(--fs-tiny);
   font-weight: var(--fw-semibold);

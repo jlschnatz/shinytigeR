@@ -580,7 +580,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           # literature recommendation for the weakest area; right: the AI
           # feedback, as tall as the whole left column
           div(
-            class = "col-lg-7 dash-left",
+            class = "col-lg-5 dash-left",
             bslib::card(
               class = "comp-card",
               bslib::card_header(
@@ -666,7 +666,7 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
           # AI feedback (R/ai_feedback_card.R): its own output, so it isn't
           # rebuilt with dash_content after every answer
           div(
-            class = "col-lg-5",
+            class = "col-lg-7",
             uiOutput(session$ns("ai_feedback"), class = "h-100")
           )
         ),
