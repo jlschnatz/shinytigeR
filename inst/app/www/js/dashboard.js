@@ -130,7 +130,7 @@ document.addEventListener('click', function (e) {
 
 // AI feedback card (ai_feedback_card.R). Buttons carry data-ai-action,
 // data-input (the namespaced input id) and data-id: the rating's thumbs,
-// "Ändern", and "Melden" under a recommendation (its choice and comment are
+// "Ändern", "Aufgaben dazu üben" and "Melden" under a recommendation (its choice and comment are
 // read here and sent in one event).
 document.addEventListener('click', function (e) {
   var btn = e.target.closest('[data-ai-action]');
@@ -139,6 +139,9 @@ document.addEventListener('click', function (e) {
   var value = { id: parseInt(btn.getAttribute('data-id'), 10), t: Date.now() };
   if (action === 'rate') {
     value.helpful = parseInt(btn.getAttribute('data-helpful'), 10);
+  }
+  if (action === 'practice') {
+    value.pos = parseInt(btn.getAttribute('data-pos'), 10);
   }
   if (action === 'report-send') {
     var form = btn.closest('.ai-fb-form');

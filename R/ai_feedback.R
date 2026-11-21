@@ -461,6 +461,24 @@ ai_log_link_click <- function(user_id, id_feedback, position) {
   })
 }
 
+# "Aufgaben dazu üben" under a recommendation: up to `n` items of `area`,
+# those not answered yet first, then open mistakes past their time-out
+# (retry_eligible()), then the rest, each group in random order; the queue is
+# shuffled at the end so it doesn't run group by group. `ud` is the
+# student's responses (db_get_userdata()).
+area_practice_items <- function(area, data_item, ud, n = AI_PRACTICE_ITEMS, today = Sys.Date()) {
+  items <- data_item$id_item[as.character(data_item$learning_area) == area]
+  if (length(items) == 0L) {
+    return(integer(0))
+  }
+  answered <- unique(answered_rows(ud, data_item)$id_item)
+  fresh <- setdiff(items, answered)
+  wrong <- intersect(retry_eligible(open_items(ud, data_item), today)$id_item, items)
+  rest <- setdiff(items, c(fresh, wrong))
+  picked <- head(c(safe_sample(fresh), safe_sample(wrong), safe_sample(rest)), n)
+  as.integer(safe_sample(picked))
+}
+
 # ── 5. May the student ask for feedback now? ──────────────────────────────────
 
 # list(state, notice, minutes): state is "ready", or why not:

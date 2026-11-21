@@ -270,8 +270,9 @@ build_response_row <- function(
     bool_correct = bool_correct,
     skipped = skipped,
     typed_value = as.numeric(typed_value),
-    # "standard" (a queue from the selector) or "retry" (the dashboard's
-    # "nochmal üben") — metadata only, scoring treats both the same
+    # "standard" (a queue from the selector), "retry" (the dashboard's
+    # "nochmal üben") or "ai_feedback" ("Aufgaben dazu üben" under an AI
+    # recommendation) — metadata only, scoring treats them all the same
     practice_mode = as.character(practice_mode),
     stringsAsFactors = FALSE
   )

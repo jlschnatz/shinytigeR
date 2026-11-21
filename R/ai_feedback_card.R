@@ -109,8 +109,8 @@ ai_feedback_skeleton <- function() {
 }
 
 # Summary and the recommendations (topic, linked title, the model's tip,
-# "Problem melden"). A click on a title is logged (link_click) via
-# input$ai_link.
+# "Aufgaben dazu üben" (input$ai_practice), "Problem melden"). A click on a
+# title is logged (link_click) via input$ai_link.
 ai_feedback_body <- function(fb, ns = identity, reported = NULL, report = TRUE) {
   rec <- fb$recommendations
   div(
@@ -141,6 +141,15 @@ ai_feedback_body <- function(fb, ns = identity, reported = NULL, report = TRUE) 
             div(class = "ai-fb-topic", r$topic),
             title,
             tags$p(class = "ai-fb-text", r$text),
+            if (report) {
+              tags$button(
+                type = "button", class = "btn btn-sm btn-outline-primary ai-fb-practice",
+                `data-ai-action` = "practice", `data-input` = ns("ai_practice"),
+                `data-id` = as.integer(fb$id_feedback), `data-pos` = as.integer(r$position),
+                bsicons::bs_icon("pencil-square"),
+                "Aufgaben dazu üben"
+              )
+            },
             if (report) ai_report_form(fb$id_feedback, r$position, r$position %in% reported, ns)
           )
         })

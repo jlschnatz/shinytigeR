@@ -166,16 +166,17 @@ mod_practice_server <- function(
   practice_ids,
   credentials,
   write_trigger,
-  # TRUE while the queue is a retry from the dashboard ("Offene Fehler"):
-  # answers are stored with practice_mode = "retry", and leaving the queue
-  # leads back to the dashboard (server.R), so the back label says so
-  retry_active = reactive(FALSE)
+  # The kind of queue if it was started on the dashboard ("retry",
+  # "ai_feedback"; dashboard_queue in server.R), else NULL: answers are stored
+  # with it as practice_mode ("standard" for NULL), and leaving the queue
+  # leads back to the dashboard, so the back label says so
+  dashboard_queue = reactive(NULL)
 ) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     observe({
-      shinyjs::html("back_label", if (isTRUE(retry_active())) "Zurück zum Fortschritt" else "Neue Auswahl")
+      shinyjs::html("back_label", if (!is.null(dashboard_queue())) "Zurück zum Fortschritt" else "Neue Auswahl")
     })
 
     # Internal state — position in the queue + check state.
@@ -371,7 +372,7 @@ mod_practice_server <- function(
         token,
         typed_value = typed_value,
         skipped = category == "skip",
-        practice_mode = if (isTRUE(retry_active())) "retry" else "standard"
+        practice_mode = if (is.null(dashboard_queue())) "standard" else dashboard_queue()
       )
       tryCatch(
         {
@@ -427,7 +428,7 @@ mod_practice_server <- function(
         state$pos <- state$pos + 1L
       } else {
         # Finished all items — return to selector (or to the dashboard, if
-        # the queue was a retry from there: see retry_active in server.R)
+        # the queue was started there: see dashboard_queue in server.R)
         practice_ids(NULL)
         showNotification(
           paste0("Du hast alle ", length(ids), " Aufgaben bearbeitet!"),

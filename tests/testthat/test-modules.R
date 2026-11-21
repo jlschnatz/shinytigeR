@@ -258,6 +258,27 @@ test_that("practice: checking an answer sets state$checked and writes to DB", {
   })
 })
 
+test_that("practice: a queue from the dashboard stores its kind as practice_mode", {
+  db_dir <- tempfile("tiger_test")
+  dir.create(db_dir)
+  withr::with_envvar(list(TIGER_DB_DIR = db_dir), {
+    testServer(
+      mod_practice_server,
+      args = list(
+        data_item = make_data_item(),
+        practice_ids = reactiveVal(c(1L, 2L)),
+        credentials = fake_credentials(),
+        write_trigger = reactiveVal(0L),
+        dashboard_queue = reactive("ai_feedback")
+      ),
+      {
+        session$setInputs(`answer_mc-answer` = "1", check = 1L)
+        expect_equal(db_get_userdata("testuser", DB_USERS())$practice_mode, "ai_feedback")
+      }
+    )
+  })
+})
+
 test_that("practice: outputs are revealed by item, with the math rendered on the server", {
   # www/js/practice.js reveals a new item's .reveal-output outputs together,
   # by their data-reveal-key; the formulas arrive as finished KaTeX HTML

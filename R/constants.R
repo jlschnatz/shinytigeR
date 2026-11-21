@@ -216,6 +216,9 @@ AI_REPORT_REASONS <- c(
   materials_unfit = "Das Material passt nicht zu mir"
 )
 AI_COMMENT_MAX_CHARS <- 500L
+# "Aufgaben dazu üben" under a recommendation: a practice queue of at most
+# this many items from its learning area (area_practice_items())
+AI_PRACTICE_ITEMS <- 10L
 
 # Evidence strength thresholds (unique items per area) — fallback for saved
 # snapshots from before the standard error was stored

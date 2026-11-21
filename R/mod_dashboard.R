@@ -527,8 +527,12 @@ mod_dashboard_ui <- function(id) {
 # their time-out (retry_eligible()), in random order. These answers count like
 # any other, also for the ability estimate; they're stored with
 # practice_mode = "retry".
+# `practice_items(ids)` (optional callback, server.R): "Aufgaben dazu üben"
+# under an AI recommendation, a queue of up to AI_PRACTICE_ITEMS items of
+# that recommendation's area (area_practice_items()), stored with
+# practice_mode = "ai_feedback".
 mod_dashboard_server <- function(id, data_item, credentials, write_trigger, ability_computed_this_session,
-                                 retry_items = NULL) {
+                                 retry_items = NULL, practice_items = NULL) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$retry_open, {
       ids <- retry_eligible(open_items(user_data(), data_item))$id_item
@@ -814,6 +818,27 @@ mod_dashboard_server <- function(id, data_item, credentials, write_trigger, abil
       v <- input$ai_report
       if (ai_save_report(ai_user(), v$id, v$pos, reason = v$reasons, comment = v$comment)) {
         ai_rating_version(ai_rating_version() + 1L)
+      }
+    })
+
+    # "Aufgaben dazu üben" under a recommendation of the shown feedback (the
+    # area comes from the database, not from the browser)
+    observeEvent(input$ai_practice, {
+      fb <- ai_latest()
+      v <- input$ai_practice
+      if (is.null(fb) || !identical(as_int1(v$id), as.integer(fb$id_feedback))) {
+        return()
+      }
+      rec <- fb$recommendations
+      area <- rec$topic[match(as_int1(v$pos), rec$position)]
+      if (is.na(area)) {
+        return()
+      }
+      ids <- area_practice_items(area, data_item, user_data())
+      if (length(ids) == 0L) {
+        ai_flash(list(type = "warning", text = "Zu diesem Thema gibt es gerade keine Aufgaben."))
+      } else if (!is.null(practice_items)) {
+        practice_items(ids)
       }
     })
 

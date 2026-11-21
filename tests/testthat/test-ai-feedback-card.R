@@ -146,6 +146,13 @@ test_that("a rating from an earlier session is final: thumb shown, nothing to cl
   expect_match(card_html(feedback = fake_feedback(), rate_locked = TRUE), 'data-ai-action="rate"', fixed = TRUE)
 })
 
+test_that("each recommendation offers 'Aufgaben dazu üben', not while running", {
+  html <- card_html(feedback = fake_feedback())
+  expect_equal(lengths(regmatches(html, gregexpr("Aufgaben dazu üben", html))), 2L)
+  expect_match(html, 'data-ai-action="practice" data-input="dash-ai_practice" data-id="12" data-pos="2"', fixed = TRUE)
+  expect_no_match(card_html(feedback = fake_feedback(), running = TRUE), "Aufgaben dazu üben", fixed = TRUE)
+})
+
 test_that("each recommendation can be reported once", {
   html <- card_html(feedback = fake_feedback(), reported = 2L)
   expect_equal(lengths(regmatches(html, gregexpr("Problem melden", html))), 1L)
@@ -302,6 +309,34 @@ test_that("dashboard: a rating from an earlier session is final, the browser can
     session$setInputs(ai_rate_reasons = list(id = fb_id, reasons = list("incorrect"), t = 3))
     session$setInputs(ai_rate_comment = list(id = fb_id, comment = "geändert", t = 4))
     expect_equal(ai_get_rating("u", fb_id), list(helpful = 1L, reasons = "clear_start", comment = NA_character_))
+  })
+})
+
+test_that("dashboard: 'Aufgaben dazu üben' starts a queue from that recommendation's area", {
+  dir <- local_ai_dir(cfg = list(enabled = TRUE, models = "m1"))
+  local_ability(dir)
+  mock_models(list(m1 = function(req) fake_answer(req)))
+  fb_id <- wait_for(ai_feedback_run(ai_feedback_prepare("u", comp_mixed()), "tok"))$id_feedback
+  queued <- NULL
+  args <- dashboard_args()
+  args$practice_items <- function(ids) queued <<- ids
+
+  testServer(mod_dashboard_server, args = args, {
+    rec <- ai_latest()$recommendations
+    # make_data_item() has Regression (1-3) and Poweranalyse (4-6) items
+    pos <- rec$position[rec$topic == "Poweranalyse"]
+    session$setInputs(ai_practice = list(id = fb_id, pos = pos, t = 1))
+    expect_setequal(queued, 4:6)
+    # an area without items in the pool: a notice, no queue
+    queued <<- NULL
+    other <- rec$position[!rec$topic %in% c("Poweranalyse", "Regression")][1]
+    session$setInputs(ai_practice = list(id = fb_id, pos = other, t = 2))
+    expect_null(queued)
+    expect_match(ai_flash()$text, "keine Aufgaben")
+    # another feedback's id or a bad position: ignored
+    session$setInputs(ai_practice = list(id = fb_id + 1L, pos = pos, t = 3))
+    session$setInputs(ai_practice = list(id = fb_id, pos = 99L, t = 4))
+    expect_null(queued)
   })
 })
 

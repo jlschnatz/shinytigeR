@@ -520,3 +520,36 @@ test_that("each prompt version's full text is stored once", {
   expect_false(identical(ai_prompt_version(paste(sp$text, "x")), sp$version))
   expect_match(sp$version, "^[0-9a-f]{8}$")
 })
+
+# ── "Aufgaben dazu üben" ──────────────────────────────────────────────────────
+
+test_that("area practice: unanswered items first, then open mistakes past their time-out, at most n", {
+  di <- data.frame(
+    id_item = 1:14,
+    learning_area = c(rep("Regression", 12), rep("Poweranalyse", 2)),
+    type_item = "content",
+    stringsAsFactors = FALSE
+  )
+  old <- as.integer(as.POSIXct("2026-11-10 10:00:00"))
+  ud <- data.frame(
+    id_item = c(1:6, 7L),
+    bool_correct = c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE),
+    skipped = 0L,
+    id_datetime = c(rep(old, 6), as.integer(as.POSIXct("2026-11-20 10:00:00"))),
+    learning_area = "Regression",
+    stringsAsFactors = FALSE
+  )
+  today <- as.Date("2026-11-20")
+  # Regression: unanswered 8-12 (5), open mistakes past the time-out 4-5,
+  # the rest 1-3, 6 and 7 (answered wrong today, still in its time-out)
+  for (i in 1:20) {
+    ids <- area_practice_items("Regression", di, ud, n = 7, today = today)
+    expect_length(ids, 7L)
+    expect_true(all(8:12 %in% ids))
+    expect_setequal(setdiff(ids, 8:12), 4:5)
+  }
+  expect_setequal(area_practice_items("Regression", di, ud, n = 50, today = today), 1:12)
+  expect_setequal(area_practice_items("Poweranalyse", di, ud, today = today), 13:14)
+  expect_length(area_practice_items("Gruppenvergleiche", di, ud, today = today), 0L)
+  expect_lte(length(area_practice_items("Regression", di, ud[0, ], today = today)), AI_PRACTICE_ITEMS)
+})

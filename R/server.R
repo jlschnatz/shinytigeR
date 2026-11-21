@@ -61,11 +61,19 @@ app_server <- function(input, output, session) {
     # overview instead of entering the practice queue. Takes priority over
     # practice_ids when both would otherwise apply.
     inspect_id <- reactiveVal(NULL)
-    # retry_active: TRUE while a practice queue started from the dashboard's
-    # "nochmal üben" runs. Its answers are stored with practice_mode = "retry",
-    # and leaving it returns to the dashboard instead of the selector (see the
+    # dashboard_queue: which kind of practice queue started on the dashboard
+    # is running, NULL for a queue from the selector. "retry" for "Fehler
+    # nochmal üben", "ai_feedback" for "Aufgaben dazu üben" under an AI
+    # recommendation. Its answers are stored with that practice_mode, and
+    # leaving it returns to the dashboard instead of the selector (see the
     # view observer below); the back button says so.
-    retry_active <- reactiveVal(FALSE)
+    dashboard_queue <- reactiveVal(NULL)
+    start_dashboard_queue <- function(mode, item_ids) {
+      dashboard_queue(mode)
+      inspect_id(NULL) # would take priority over the queue
+      practice_ids(item_ids)
+      bslib::nav_select("main_tabs", "train_panel", session = session)
+    }
     # write_trigger: incremented after each confirmed DB write so dashboard
     # knows to re-fetch user data without being tightly coupled to practice
     write_trigger <- reactiveVal(0L)
@@ -117,9 +125,9 @@ app_server <- function(input, output, session) {
         "practice"
       }
       bslib::nav_select("train_nav", view)
-      # A retry queue from the dashboard has ended: go back there
-      if (view == "selector" && isolate(retry_active())) {
-        retry_active(FALSE)
+      # A queue started on the dashboard has ended: go back there
+      if (view == "selector" && !is.null(isolate(dashboard_queue()))) {
+        dashboard_queue(NULL)
         bslib::nav_select("main_tabs", "progress_panel")
       }
     })
@@ -160,7 +168,7 @@ app_server <- function(input, output, session) {
       practice_ids = practice_ids,
       credentials = credentials,
       write_trigger = write_trigger,
-      retry_active = retry_active
+      dashboard_queue = dashboard_queue
     )
 
     mod_inspect_server(
@@ -175,14 +183,10 @@ app_server <- function(input, output, session) {
       credentials = credentials,
       write_trigger = write_trigger,
       ability_computed_this_session = ability_computed_this_session,
-      # "Offene Fehler": a practice queue of the open mistakes on the Üben tab
-      # (inspect_id would take priority over the queue, so it's cleared first)
-      retry_items = function(item_ids) {
-        retry_active(TRUE)
-        inspect_id(NULL)
-        practice_ids(item_ids)
-        bslib::nav_select("main_tabs", "train_panel", session = app_session)
-      }
+      # "Fehler nochmal üben": a practice queue of the open mistakes
+      retry_items = function(item_ids) start_dashboard_queue("retry", item_ids),
+      # "Aufgaben dazu üben" under an AI recommendation: items of its area
+      practice_items = function(item_ids) start_dashboard_queue("ai_feedback", item_ids)
     )
   })
 }

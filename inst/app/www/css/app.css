@@ -1132,6 +1132,15 @@ b, strong { font-weight: var(--fw-bold); }   /* Bootstrap's "bolder" computed to
   background: #fff8e6;
 }
 .ai-fb-flash.is-info { border-left-color: var(--tiger-primary); background: #e8f0f7; }
+/* "Aufgaben dazu üben" under a recommendation */
+.ai-fb-practice {
+  margin-top: 0.45rem;
+  font-size: var(--fs-small);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem;
+}
 /* "Problem melden" under a recommendation (a <details>) */
 .ai-fb-report { margin-top: 0.35rem; font-size: var(--fs-small); }
 .ai-fb-report > summary {
